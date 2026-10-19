@@ -90,7 +90,7 @@ export function DashboardPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold">¡Hola, {usuario?.nombre.split(" ")[0]}!</h1>
+          <h1 className="text-xl font-bold">¡Hola, {usuario?.nombre?.split(" ")[0] ?? "de nuevo"}!</h1>
           <p className="text-sm text-muted-foreground">Aqui tienes el resumen del departamento audiovisual.</p>
         </div>
         <DemoBadge />
