@@ -1,4 +1,15 @@
-import { addDoc, collection, doc, onSnapshot, orderBy, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
+import {
+  addDoc,
+  collection,
+  doc,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  Timestamp,
+  updateDoc,
+  where,
+} from "firebase/firestore";
 import { db, isFirebaseConfigured } from "@/lib/firebase";
 import type { Notificacion } from "@/types";
 
@@ -22,6 +33,14 @@ export function escucharNotificaciones(
   if (!isFirebaseConfigured || !db) return () => {};
   const q = query(collection(db, COLECCION), where("paraUsuarioId", "==", usuarioId), orderBy("creadoEn", "desc"));
   return onSnapshot(q, (snap) => {
-    onCambio(snap.docs.slice(0, 30).map((d) => ({ id: d.id, ...d.data() }) as Notificacion));
+    onCambio(
+      snap.docs.slice(0, 30).map((d) => {
+        const data = d.data();
+        // serverTimestamp() llega como Timestamp de Firestore (o null un instante antes
+        // de confirmarse) — nunca como string. Normalizar aqui evita romper el formateo de fecha.
+        const creadoEn = data.creadoEn instanceof Timestamp ? data.creadoEn.toDate().toISOString() : new Date().toISOString();
+        return { id: d.id, ...data, creadoEn } as Notificacion;
+      })
+    );
   });
 }
