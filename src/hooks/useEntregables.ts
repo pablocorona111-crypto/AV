@@ -1,0 +1,69 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  agregarComentario,
+  aprobarEntregable,
+  crearEntregable,
+  enviarARevision,
+  listarComentarios,
+  marcarEntregado,
+  solicitarCorrecciones,
+} from "@/services/entregablesService";
+import type { Entregable } from "@/types";
+
+export function useCrearEntregable() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Omit<Entregable, "id" | "version" | "estado" | "creadoEn">) => crearEntregable(data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["entregables"] }),
+  });
+}
+
+export function useEnviarARevision() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { id: string; urlRevision: string; orientacionVideo?: "vertical" | "horizontal" }) =>
+      enviarARevision(data.id, data.urlRevision, data.orientacionVideo),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["entregables"] }),
+  });
+}
+
+export function useAprobarEntregable() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, aprobadorId, urlFinal }: { id: string; aprobadorId: string; urlFinal: string }) =>
+      aprobarEntregable(id, aprobadorId, urlFinal),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["entregables"] }),
+  });
+}
+
+export function useSolicitarCorrecciones() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => solicitarCorrecciones(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["entregables"] }),
+  });
+}
+
+export function useMarcarEntregado() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => marcarEntregado(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["entregables"] }),
+  });
+}
+
+export const useComentarios = (entregableId: string) =>
+  useQuery({
+    queryKey: ["comentarios", entregableId],
+    queryFn: () => listarComentarios(entregableId),
+    enabled: Boolean(entregableId),
+  });
+
+export function useAgregarComentario(entregableId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { autorId: string; autorNombre: string; texto: string; momento?: string }) =>
+      agregarComentario(entregableId, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["comentarios", entregableId] }),
+  });
+}

@@ -1,0 +1,33 @@
+rules_version = '2';
+
+// Borrador inicial — ver SECURITY.md. Validar con Firebase Emulator antes de produccion.
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function autenticado() {
+      return request.auth != null;
+    }
+
+    // Referencias y adjuntos de requisiciones: cualquier usuario autenticado puede
+    // leer y subir (la validacion de quien puede adjuntar vive en Firestore Security
+    // Rules sobre el documento de la requisicion — ver SECURITY.md).
+    match /requisiciones/{requisicionId}/{archivo} {
+      allow read: if autenticado();
+      allow write: if autenticado() && request.resource.size < 200 * 1024 * 1024;
+    }
+
+    match /entregables/{proyectoId}/{archivo} {
+      allow read: if autenticado();
+      allow write: if autenticado() && request.resource.size < 2 * 1024 * 1024 * 1024;
+    }
+
+    match /salidas/{salidaId}/{archivo} {
+      allow read: if autenticado();
+      allow write: if autenticado() && request.resource.size < 2 * 1024 * 1024 * 1024;
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

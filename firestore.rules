@@ -1,0 +1,186 @@
+rules_version = '2';
+
+// Borrador inicial — validar con Firebase Emulator antes de produccion.
+// Ver SECURITY.md para la matriz completa de permisos.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function usuarioAutenticado() {
+      return request.auth != null;
+    }
+
+    function datosUsuario() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
+    }
+
+    function rol() {
+      return datosUsuario().rol;
+    }
+
+    function esSuperadmin() {
+      return usuarioAutenticado() && rol() == 'superadmin';
+    }
+
+    function esLiderAudiovisual() {
+      return usuarioAutenticado() && rol() == 'lider_audiovisual';
+    }
+
+    function esAprobadorDepartamental() {
+      return usuarioAutenticado() && rol() == 'aprobador_departamental';
+    }
+
+    // "community" es un rol de verdad; tambien se respeta el permiso heredado
+    // sobre otros roles (asignado via el checkbox de gestor de requisiciones).
+    function esGestorRequisiciones() {
+      return usuarioAutenticado() &&
+        (
+          rol() == 'community' ||
+          (('gestorRequisiciones' in datosUsuario()) && datosUsuario().gestorRequisiciones.activo == true)
+        );
+    }
+
+    function invitacionDe(correo) {
+      return get(/databases/$(database)/documents/invitaciones/$(correo)).data;
+    }
+
+    function puedeAprobar() {
+      return esSuperadmin() || esLiderAudiovisual() || esAprobadorDepartamental();
+    }
+
+    match /usuarios/{usuarioId} {
+      allow read: if usuarioAutenticado();
+
+      // Auto-alta: un usuario nuevo puede crear su propio doc solo si existe
+      // una invitacion con su correo. El rol Y el permiso de gestor deben
+      // coincidir EXACTO con la invitacion — nadie se auto-otorga permisos.
+      allow create: if usuarioAutenticado() &&
+        request.auth.uid == usuarioId &&
+        request.resource.data.correo == request.auth.token.email &&
+        request.resource.data.rol == invitacionDe(request.auth.token.email.lower()).rol &&
+        request.resource.data.get('gestorRequisiciones', null) ==
+          invitacionDe(request.auth.token.email.lower()).get('gestorRequisiciones', null);
+
+      allow update, delete: if esSuperadmin() || esLiderAudiovisual();
+    }
+
+    match /contadores/{contadorId} {
+      allow read, write: if usuarioAutenticado();
+    }
+
+    match /invitaciones/{correoId} {
+      allow get: if usuarioAutenticado() && request.auth.token.email.lower() == correoId;
+      allow read, write: if esSuperadmin() || esLiderAudiovisual();
+    }
+
+    match /requisiciones/{reqId} {
+      allow read: if usuarioAutenticado() && (
+        esSuperadmin() || esLiderAudiovisual() || esAprobadorDepartamental() ||
+        resource.data.solicitanteId == request.auth.uid ||
+        (esGestorRequisiciones() && resource.data.responsableVentaId == request.auth.uid)
+      );
+
+      allow create: if usuarioAutenticado();
+
+      // Un gestor no puede aprobar/rechazar, ni auto-asignarse, ni tocar campos restringidos.
+      allow update: if usuarioAutenticado() && (
+        puedeAprobar() ||
+        (
+          esGestorRequisiciones() &&
+          resource.data.responsableVentaId == request.auth.uid &&
+          request.resource.data.estado == resource.data.estado &&
+          request.resource.data.responsableVentaId == resource.data.responsableVentaId &&
+          request.resource.data.prioridad == resource.data.prioridad
+        ) ||
+        (resource.data.solicitanteId == request.auth.uid && resource.data.estado == 'borrador')
+      );
+
+      allow delete: if esSuperadmin();
+    }
+
+    match /proyectos/{proyectoId} {
+      allow read: if usuarioAutenticado();
+      allow create, update, delete: if esSuperadmin() || esLiderAudiovisual();
+    }
+
+    match /salidas/{salidaId} {
+      allow read: if usuarioAutenticado();
+      allow create: if esSuperadmin() || esLiderAudiovisual();
+      allow update: if esSuperadmin() || esLiderAudiovisual() ||
+        resource.data.responsableProduccionId == request.auth.uid;
+      allow delete: if esSuperadmin() || esLiderAudiovisual();
+    }
+
+    match /entregables/{entregableId} {
+      allow read: if usuarioAutenticado();
+      allow create: if esSuperadmin() || esLiderAudiovisual();
+
+      // El responsable puede actualizar su entregable (ej. subir link de Drive,
+      // mandar a revision) pero nunca puede aprobarse a si mismo.
+      allow update: if puedeAprobar() ||
+        (resource.data.responsableId == request.auth.uid && request.resource.data.estado != 'aprobado');
+
+      allow delete: if esSuperadmin() || esLiderAudiovisual();
+
+      match /comentarios/{comentarioId} {
+        allow read: if usuarioAutenticado();
+        allow create: if puedeAprobar() || esGestorRequisiciones() ||
+          get(/databases/$(database)/documents/entregables/$(entregableId)).data.responsableId == request.auth.uid;
+        allow update, delete: if false;
+      }
+    }
+
+    match /guiones/{guionId} {
+      allow read: if usuarioAutenticado();
+      allow create: if esSuperadmin() || esLiderAudiovisual();
+
+      // El redactor edita contenido y lo manda a revision. Solo la community (gestor de
+      // requisiciones) o el superadmin aprueban/piden cambios — el lider solo crea/asigna.
+      allow update: if esSuperadmin() ||
+        (resource.data.responsableId == request.auth.uid && request.resource.data.estado != 'aprobado') ||
+        (
+          esGestorRequisiciones() &&
+          request.resource.data.contenido == resource.data.contenido &&
+          request.resource.data.responsableId == resource.data.responsableId
+        );
+
+      allow delete: if esSuperadmin() || esLiderAudiovisual();
+
+      match /comentarios/{comentarioId} {
+        allow read: if usuarioAutenticado();
+        allow create: if puedeAprobar() || esGestorRequisiciones() ||
+          get(/databases/$(database)/documents/guiones/$(guionId)).data.responsableId == request.auth.uid;
+        allow update, delete: if false;
+      }
+    }
+
+    match /equipo_av/{equipoId} {
+      allow read: if usuarioAutenticado();
+      allow write: if esSuperadmin() || esLiderAudiovisual();
+    }
+
+    match /colaboradores/{colaboradorId} {
+      allow read: if usuarioAutenticado();
+      allow write: if esSuperadmin() || esLiderAudiovisual();
+    }
+
+    match /notificaciones/{notifId} {
+      allow read: if usuarioAutenticado() && resource.data.paraUsuarioId == request.auth.uid;
+      allow create: if usuarioAutenticado();
+      // Solo el dueño la marca como leida, y solo ese campo.
+      allow update: if usuarioAutenticado() && resource.data.paraUsuarioId == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['leida']);
+      allow delete: if false;
+    }
+
+    match /audit_log/{entryId} {
+      allow read: if esSuperadmin() || esLiderAudiovisual();
+      allow create: if usuarioAutenticado();
+      allow update, delete: if false;
+    }
+
+    match /notification_log/{entryId} {
+      allow read: if esSuperadmin() || esLiderAudiovisual();
+      allow write: if false; // solo Cloud Functions (admin SDK) escriben aqui
+    }
+  }
+}
