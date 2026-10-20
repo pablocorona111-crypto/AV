@@ -13,6 +13,19 @@ export function extraerFileIdDrive(url: string): string | null {
   return match ? match[1] : null;
 }
 
+/** Miniatura que Drive ya genera del video — rapido, no hay que descargar el archivo. */
+export async function obtenerMiniaturaDrive(fileId: string, accessToken: string): Promise<string | null> {
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${fileId}?fields=thumbnailLink`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  if (!res.ok) return null;
+  const data = await res.json();
+  if (!data.thumbnailLink) return null;
+  // El link viene con un tamaño chico al final (ej. "=s220") — lo cambiamos por uno mas grande.
+  return data.thumbnailLink.replace(/=s\d+$/, "=s400");
+}
+
 async function buscarCarpeta(nombre: string, accessToken: string, parentId: string | null): Promise<string | null> {
   const escapado = nombre.replace(/'/g, "\\'");
   const condiciones = [

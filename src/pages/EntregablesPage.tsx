@@ -19,6 +19,7 @@ import { NuevoEntregableDialog } from "@/components/entregables/NuevoEntregableD
 import { RevisarEntregableDialog } from "@/components/entregables/RevisarEntregableDialog";
 import { NuevoGuionDialog } from "@/components/guiones/NuevoGuionDialog";
 import { RevisarGuionDialog } from "@/components/guiones/RevisarGuionDialog";
+import { MiniaturaVideo } from "@/components/entregables/MiniaturaVideo";
 import type { EstadoEntregable, EstadoGuion } from "@/types";
 
 const COLUMNAS: EstadoEntregable[] = [
@@ -118,13 +119,18 @@ export function EntregablesPage() {
                         <button
                           key={e.id}
                           onClick={() => setSeleccionadoId(e.id)}
-                          className="w-full rounded-md border border-border bg-white p-2.5 text-left text-xs transition-colors hover:bg-bg-secondary"
+                          className="w-full overflow-hidden rounded-md border border-border bg-white text-left text-xs transition-colors hover:bg-bg-secondary"
                         >
-                          <p className="font-medium text-text-primary">{e.nombre}</p>
-                          <p className="truncate text-muted-foreground">{proyectoDe(e.proyectoId)}</p>
-                          <div className="mt-1 flex items-center justify-between">
-                            <span className="text-muted-foreground">{nombreDe(e.responsableId)}</span>
-                            <Badge variant="outline">{formatFecha(e.fechaCompromiso)}</Badge>
+                          <div className="aspect-video w-full overflow-hidden bg-bg-secondary">
+                            <MiniaturaVideo url={e.urlRevision || e.urlFinal} />
+                          </div>
+                          <div className="p-2.5">
+                            <p className="font-medium text-text-primary">{e.nombre}</p>
+                            <p className="truncate text-muted-foreground">{proyectoDe(e.proyectoId)}</p>
+                            <div className="mt-1 flex items-center justify-between">
+                              <span className="text-muted-foreground">{nombreDe(e.responsableId)}</span>
+                              <Badge variant="outline">{formatFecha(e.fechaCompromiso)}</Badge>
+                            </div>
                           </div>
                         </button>
                       ))}

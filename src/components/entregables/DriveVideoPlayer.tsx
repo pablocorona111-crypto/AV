@@ -40,12 +40,12 @@ export function DriveVideoPlayer({
         key={fileId}
         src={src}
         controls
-        preload="auto"
+        preload="metadata"
         className="max-h-[60vh] w-auto max-w-full"
-        onCanPlay={() => setCargando(false)}
         onError={() => onError?.()}
         onLoadedMetadata={(e) => {
           const v = e.currentTarget;
+          setCargando(false);
           onOrientacion?.(v.videoHeight > v.videoWidth ? "vertical" : "horizontal");
         }}
         onPause={(e) => {

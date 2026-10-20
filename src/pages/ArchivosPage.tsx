@@ -1,13 +1,11 @@
 import { useState } from "react";
-import { FileImage, FileVideo, FileText as FileIcon } from "lucide-react";
 import { useProyectos } from "@/hooks/useProyectos";
 import { useEntregables, useUsuarios } from "@/hooks/useCatalogos";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { DemoBadge } from "@/components/DemoBadge";
 import { RevisarEntregableDialog } from "@/components/entregables/RevisarEntregableDialog";
-
-const ICONOS = { video: FileVideo, imagen: FileImage, doc: FileIcon } as const;
+import { MiniaturaVideo } from "@/components/entregables/MiniaturaVideo";
 
 export function ArchivosPage() {
   const { data: proyectos = [] } = useProyectos();
@@ -32,25 +30,24 @@ export function ArchivosPage() {
         <DemoBadge />
       </div>
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {referencias.map((e) => {
-          const Icono = ICONOS.video;
           const proyecto = proyectos.find((p) => p.id === e.proyectoId);
           return (
             <Card
               key={e.id}
-              className="cursor-pointer hover:shadow-md"
+              className="cursor-pointer overflow-hidden hover:shadow-md"
               onClick={() => setSeleccionadoId(e.id)}
             >
-              <CardContent className="flex items-center gap-3 p-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-bg-secondary">
-                  <Icono className="h-5 w-5 text-text-primary/70" />
-                </div>
-                <div className="min-w-0 flex-1">
+              <div className="aspect-video w-full overflow-hidden bg-bg-secondary">
+                <MiniaturaVideo url={e.urlRevision || e.urlFinal} />
+              </div>
+              <CardContent className="space-y-1 p-3">
+                <div className="flex items-start justify-between gap-2">
                   <p className="truncate text-sm font-medium">{e.nombre}</p>
-                  <p className="truncate text-xs text-muted-foreground">{proyecto?.nombre ?? "Proyecto eliminado"}</p>
+                  <Badge variant="outline" className="shrink-0">{e.version}</Badge>
                 </div>
-                <Badge variant="outline">{e.version}</Badge>
+                <p className="truncate text-xs text-muted-foreground">{proyecto?.nombre ?? "Proyecto eliminado"}</p>
               </CardContent>
             </Card>
           );
