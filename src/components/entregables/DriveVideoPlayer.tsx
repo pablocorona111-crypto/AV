@@ -25,6 +25,7 @@ export function DriveVideoPlayer({
   onMomentoPausa,
   onError,
   onOrientacion,
+  onRatio,
 }: {
   fileId: string;
   accessToken: string;
@@ -32,6 +33,7 @@ export function DriveVideoPlayer({
   onMomentoPausa?: (tiempo: string) => void;
   onError?: () => void;
   onOrientacion?: (orientacion: "vertical" | "horizontal") => void;
+  onRatio?: (ratio: number) => void;
 }) {
   const [cargando, setCargando] = useState(true);
   const src = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&access_token=${encodeURIComponent(accessToken)}`;
@@ -61,6 +63,7 @@ export function DriveVideoPlayer({
           const v = e.currentTarget;
           setCargando(false);
           onOrientacion?.(v.videoHeight > v.videoWidth ? "vertical" : "horizontal");
+          onRatio?.(v.videoWidth / v.videoHeight);
         }}
         onPause={(e) => {
           const v = e.currentTarget;

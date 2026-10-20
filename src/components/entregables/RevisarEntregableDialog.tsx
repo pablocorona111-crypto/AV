@@ -51,11 +51,13 @@ export function RevisarEntregableDialog({
   const [errorSubida, setErrorSubida] = useState<string | null>(null);
   const [playerPropioFallo, setPlayerPropioFallo] = useState(false);
   const [orientacion, setOrientacion] = useState<"vertical" | "horizontal" | null>(null);
+  const [ratioReal, setRatioReal] = useState<number | null>(null);
   const [orientacionSubida, setOrientacionSubida] = useState<"vertical" | "horizontal">("horizontal");
   const inputArchivoRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setPlayerPropioFallo(false);
+    setRatioReal(null);
     // Si ya quedo etiquetado al subirlo, se usa de una vez — sin esperar a que cargue el video (sin parpadeo).
     setOrientacion(entregable?.orientacionVideo ?? null);
   }, [entregable?.id, entregable?.orientacionVideo]);
@@ -165,8 +167,12 @@ export function RevisarEntregableDialog({
     }
   };
 
+  // Un video casi cuadrado (mal etiquetado "vertical") no necesita una columna angosta —
+  // se le da mas ancho para que se vea grande. Uno realmente alto (9:16) se queda angosto.
+  const anchoColumna = ratioReal != null && ratioReal >= 0.75 ? "lg:max-w-xl" : "lg:max-w-sm";
+
   const bloqueVideo = (
-    <div className={cn("space-y-3", layoutLado && "flex flex-col items-center lg:w-auto lg:max-w-sm lg:shrink-0")}>
+    <div className={cn("space-y-3", layoutLado && cn("flex flex-col items-center lg:w-auto lg:shrink-0", anchoColumna))}>
       {fileIdActual && driveToken && !playerPropioFallo ? (
         <DriveVideoPlayer
           fileId={fileIdActual}
@@ -175,6 +181,7 @@ export function RevisarEntregableDialog({
           onMomentoPausa={setMomento}
           onError={() => setPlayerPropioFallo(true)}
           onOrientacion={onOrientacionDetectada}
+          onRatio={setRatioReal}
         />
       ) : fileIdActual && !driveToken ? (
         <div
