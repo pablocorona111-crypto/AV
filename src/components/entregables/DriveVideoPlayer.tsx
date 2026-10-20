@@ -14,9 +14,9 @@ function formatoTiempo(segundos: number): string {
  * poder verse — esto es lo que hace que abra rapido. El token va como query param porque
  * un <video src> normal no puede mandar el header de autorizacion.
  *
- * El tamano real (ancho x alto) lo decide el propio video via max-width/max-height — asi
- * respeta su resolucion EXACTA (1080x1920, 1920x1080, o la que sea) sin forzar una relacion
- * de aspecto adivinada, que es justo lo que generaba barras negras a los lados o arriba/abajo.
+ * El ancho siempre es 100% de su columna (nunca se queda chico aunque el archivo sea de baja
+ * resolucion) y el alto se calcula solo para respetar su relacion real de aspecto — con tope
+ * de 70vh. Asi nunca salen barras negras (no se adivina relacion) y nunca se ve diminuto.
  */
 export function DriveVideoPlayer({
   fileId,
@@ -56,8 +56,8 @@ export function DriveVideoPlayer({
         src={src}
         controls
         preload="metadata"
-        className={cn("block max-h-[70vh] max-w-full rounded-lg", cargando && "hidden")}
-        style={{ width: "auto", height: "auto" }}
+        className={cn("block rounded-lg", cargando && "hidden")}
+        style={{ width: "100%", height: "auto", maxHeight: "70vh" }}
         onError={() => onError?.()}
         onLoadedMetadata={(e) => {
           const v = e.currentTarget;
