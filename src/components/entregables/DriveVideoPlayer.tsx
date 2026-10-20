@@ -14,9 +14,9 @@ function formatoTiempo(segundos: number): string {
  * poder verse — esto es lo que hace que abra rapido. El token va como query param porque
  * un <video src> normal no puede mandar el header de autorizacion.
  *
- * El recuadro usa la orientacion ya conocida (de Firestore) para reservar su forma desde
- * el primer render — asi el video vertical ocupa toda la altura disponible (grande) en vez
- * de quedarse en su tamano original pequeno. "object-contain" nunca recorta el cuadro.
+ * El tamano real (ancho x alto) lo decide el propio video via max-width/max-height — asi
+ * respeta su resolucion EXACTA (1080x1920, 1920x1080, o la que sea) sin forzar una relacion
+ * de aspecto adivinada, que es justo lo que generaba barras negras a los lados o arriba/abajo.
  */
 export function DriveVideoPlayer({
   fileId,
@@ -38,14 +38,14 @@ export function DriveVideoPlayer({
   const vertical = orientacion === "vertical";
 
   return (
-    <div
-      className={cn(
-        "relative mx-auto flex items-center justify-center overflow-hidden rounded-lg bg-black",
-        vertical ? "h-[70vh] max-w-full aspect-[9/16]" : "aspect-video max-h-[70vh] w-full"
-      )}
-    >
+    <div className="relative mx-auto flex w-full items-center justify-center rounded-lg bg-black">
       {cargando && (
-        <div className="absolute inset-0 flex items-center justify-center">
+        <div
+          className={cn(
+            "flex items-center justify-center",
+            vertical ? "aspect-[9/16] h-[60vh]" : "aspect-video w-full"
+          )}
+        >
           <Loader2 className="h-6 w-6 animate-spin text-white/60" />
         </div>
       )}
@@ -54,7 +54,8 @@ export function DriveVideoPlayer({
         src={src}
         controls
         preload="metadata"
-        className={cn("h-full w-full object-contain", cargando && "opacity-0")}
+        className={cn("block max-h-[70vh] max-w-full rounded-lg", cargando && "hidden")}
+        style={{ width: "auto", height: "auto" }}
         onError={() => onError?.()}
         onLoadedMetadata={(e) => {
           const v = e.currentTarget;
