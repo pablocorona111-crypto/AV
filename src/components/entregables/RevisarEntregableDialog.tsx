@@ -7,6 +7,7 @@ import {
   useAprobarEntregable,
   useComentarios,
   useEnviarARevision,
+  useEtiquetarOrientacion,
   useSolicitarCorrecciones,
 } from "@/hooks/useEntregables";
 import { crearNotificacion } from "@/services/notificacionesService";
@@ -64,6 +65,7 @@ export function RevisarEntregableDialog({
   const enviarARevision = useEnviarARevision();
   const aprobar = useAprobarEntregable();
   const solicitarCorrecciones = useSolicitarCorrecciones();
+  const etiquetarOrientacion = useEtiquetarOrientacion();
 
   if (!entregable || !usuario) return null;
 
@@ -154,8 +156,33 @@ export function RevisarEntregableDialog({
     }
   };
 
+  const onCambiarVista = (o: "vertical" | "horizontal") => {
+    setOrientacion(o);
+    etiquetarOrientacion.mutate({ id: entregable.id, orientacionVideo: o });
+  };
+
   const bloqueVideo = (
     <div className={cn("space-y-3", layoutLado && "shrink-0")}>
+      {linkActual && (
+        <div className="flex items-center justify-end gap-1.5">
+          <span className="text-[11px] text-muted-foreground">Ver como:</span>
+          {(["horizontal", "vertical"] as const).map((o) => (
+            <button
+              key={o}
+              type="button"
+              onClick={() => onCambiarVista(o)}
+              className={cn(
+                "rounded-full border px-2.5 py-0.5 text-[11px] font-medium capitalize transition-colors",
+                orientacion === o
+                  ? "border-accent bg-accent text-white"
+                  : "border-border bg-white text-muted-foreground hover:bg-bg-secondary"
+              )}
+            >
+              {o}
+            </button>
+          ))}
+        </div>
+      )}
       {fileIdActual && driveToken && !playerPropioFallo ? (
         <DriveVideoPlayer
           fileId={fileIdActual}

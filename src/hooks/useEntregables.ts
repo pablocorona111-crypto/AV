@@ -4,6 +4,7 @@ import {
   aprobarEntregable,
   crearEntregable,
   enviarARevision,
+  etiquetarOrientacion,
   listarComentarios,
   marcarEntregado,
   solicitarCorrecciones,
@@ -48,6 +49,15 @@ export function useMarcarEntregado() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => marcarEntregado(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["entregables"] }),
+  });
+}
+
+export function useEtiquetarOrientacion() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, orientacionVideo }: { id: string; orientacionVideo: "vertical" | "horizontal" }) =>
+      etiquetarOrientacion(id, orientacionVideo),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["entregables"] }),
   });
 }

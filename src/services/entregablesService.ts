@@ -79,6 +79,11 @@ export async function marcarEntregado(id: string): Promise<void> {
   await actualizarEntregable(id, { estado: "entregado" as EstadoEntregable });
 }
 
+/** Deja marcar la orientacion a mano cuando no se detecto sola (ej. video viejo sin etiqueta). */
+export async function etiquetarOrientacion(id: string, orientacionVideo: "vertical" | "horizontal"): Promise<void> {
+  await actualizarEntregable(id, { orientacionVideo });
+}
+
 export async function listarComentarios(entregableId: string): Promise<ComentarioEntregable[]> {
   if (!isFirebaseConfigured || !db) {
     return demoComentarios[entregableId] ?? [];
