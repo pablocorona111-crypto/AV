@@ -156,40 +156,24 @@ export function RevisarEntregableDialog({
     }
   };
 
-  const onCambiarVista = (o: "vertical" | "horizontal") => {
+  /** Deteccion automatica real (del video, no de la etiqueta). Si no coincide con lo
+   * guardado, lo corrige y lo guarda — asi solo hace falta detectar bien una vez. */
+  const onOrientacionDetectada = (o: "vertical" | "horizontal") => {
     setOrientacion(o);
-    etiquetarOrientacion.mutate({ id: entregable.id, orientacionVideo: o });
+    if (entregable.orientacionVideo !== o) {
+      etiquetarOrientacion.mutate({ id: entregable.id, orientacionVideo: o });
+    }
   };
 
   const bloqueVideo = (
     <div className={cn("space-y-3", layoutLado && "shrink-0")}>
-      {linkActual && (
-        <div className="flex items-center justify-end gap-1.5">
-          <span className="text-[11px] text-muted-foreground">Ver como:</span>
-          {(["horizontal", "vertical"] as const).map((o) => (
-            <button
-              key={o}
-              type="button"
-              onClick={() => onCambiarVista(o)}
-              className={cn(
-                "rounded-full border px-2.5 py-0.5 text-[11px] font-medium capitalize transition-colors",
-                orientacion === o
-                  ? "border-accent bg-accent text-white"
-                  : "border-border bg-white text-muted-foreground hover:bg-bg-secondary"
-              )}
-            >
-              {o}
-            </button>
-          ))}
-        </div>
-      )}
       {fileIdActual && driveToken && !playerPropioFallo ? (
         <DriveVideoPlayer
           fileId={fileIdActual}
           accessToken={driveToken}
           onMomentoPausa={setMomento}
           onError={() => setPlayerPropioFallo(true)}
-          onOrientacion={setOrientacion}
+          onOrientacion={onOrientacionDetectada}
         />
       ) : fileIdActual && !driveToken ? (
         <div className="flex aspect-video w-full flex-col items-center justify-center gap-2 rounded-lg bg-black">
@@ -283,7 +267,7 @@ export function RevisarEntregableDialog({
         <div
           className={cn(
             "space-y-3 overflow-y-auto rounded-md border border-border bg-bg-secondary/40 p-3",
-            layoutLado ? "max-h-[38vh]" : "max-h-56"
+            layoutLado ? "max-h-[45vh]" : "max-h-56"
           )}
         >
           {comentarios.length === 0 && (
@@ -361,7 +345,7 @@ export function RevisarEntregableDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={layoutLado ? "max-w-4xl" : "max-w-3xl"}>
+      <DialogContent className={layoutLado ? "max-w-5xl" : "max-w-3xl"}>
         <DialogHeader>
           <div className="flex items-center gap-2">
             <DialogTitle>{entregable.nombre}</DialogTitle>
