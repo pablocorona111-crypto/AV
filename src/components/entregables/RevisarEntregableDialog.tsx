@@ -166,7 +166,7 @@ export function RevisarEntregableDialog({
   };
 
   const bloqueVideo = (
-    <div className={cn("space-y-3", layoutLado && "shrink-0")}>
+    <div className={cn("space-y-3", layoutLado && "flex w-auto max-w-sm shrink-0 flex-col items-center")}>
       {fileIdActual && driveToken && !playerPropioFallo ? (
         <DriveVideoPlayer
           fileId={fileIdActual}
@@ -360,7 +360,7 @@ export function RevisarEntregableDialog({
           {CATEGORIA_CONTENIDO_LABELS[entregable.tipo]} · Responsable: {nombreResponsable} · v{entregable.version}
         </p>
 
-        <div className={cn(layoutLado ? "flex gap-6" : "space-y-4")}>
+        <div className={cn(layoutLado ? "flex items-start gap-6" : "space-y-4")}>
           {bloqueVideo}
           {bloqueObservaciones}
         </div>

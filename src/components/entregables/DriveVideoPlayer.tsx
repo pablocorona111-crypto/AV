@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 function formatoTiempo(segundos: number): string {
   const m = Math.floor(segundos / 60);
@@ -30,9 +31,9 @@ export function DriveVideoPlayer({
   const src = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&access_token=${encodeURIComponent(accessToken)}`;
 
   return (
-    <div className="relative flex max-h-[75vh] w-full items-center justify-center rounded-lg bg-black">
+    <div className="relative inline-flex max-h-[70vh] items-center justify-center rounded-lg bg-black">
       {cargando && (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+        <div className="flex aspect-video w-56 items-center justify-center">
           <Loader2 className="h-6 w-6 animate-spin text-white/60" />
         </div>
       )}
@@ -41,7 +42,7 @@ export function DriveVideoPlayer({
         src={src}
         controls
         preload="metadata"
-        className="max-h-[75vh] w-auto max-w-full rounded-lg"
+        className={cn("block max-h-[70vh] w-auto rounded-lg", cargando && "hidden")}
         onError={() => onError?.()}
         onLoadedMetadata={(e) => {
           const v = e.currentTarget;
