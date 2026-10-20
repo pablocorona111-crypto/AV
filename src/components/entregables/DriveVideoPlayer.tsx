@@ -30,7 +30,7 @@ export function DriveVideoPlayer({
   const src = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&access_token=${encodeURIComponent(accessToken)}`;
 
   return (
-    <div className="relative flex h-full max-h-[75vh] w-full items-center justify-center overflow-hidden rounded-lg bg-black">
+    <div className="relative flex max-h-[75vh] w-full items-center justify-center rounded-lg bg-black">
       {cargando && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
           <Loader2 className="h-6 w-6 animate-spin text-white/60" />
@@ -41,7 +41,7 @@ export function DriveVideoPlayer({
         src={src}
         controls
         preload="metadata"
-        className="max-h-[75vh] w-auto max-w-full"
+        className="max-h-[75vh] w-auto max-w-full rounded-lg"
         onError={() => onError?.()}
         onLoadedMetadata={(e) => {
           const v = e.currentTarget;

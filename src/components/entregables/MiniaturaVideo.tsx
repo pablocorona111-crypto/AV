@@ -19,12 +19,9 @@ export function MiniaturaVideo({ url, className }: { url?: string; className?: s
 
   if (miniatura) {
     return (
-      <img
-        src={miniatura}
-        alt=""
-        className={cn("h-full w-full object-cover", className)}
-        loading="lazy"
-      />
+      <div className={cn("flex h-full w-full items-center justify-center bg-black", className)}>
+        <img src={miniatura} alt="" className="h-full w-full object-contain" loading="lazy" />
+      </div>
     );
   }
 
