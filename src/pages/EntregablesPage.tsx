@@ -121,9 +121,7 @@ export function EntregablesPage() {
                           onClick={() => setSeleccionadoId(e.id)}
                           className="w-full overflow-hidden rounded-md border border-border bg-white text-left text-xs transition-colors hover:bg-bg-secondary"
                         >
-                          <div className="aspect-video w-full overflow-hidden bg-bg-secondary">
-                            <MiniaturaVideo url={e.urlRevision || e.urlFinal} />
-                          </div>
+                          <MiniaturaVideo url={e.urlRevision || e.urlFinal} orientacion={e.orientacionVideo} />
                           <div className="p-2.5">
                             <p className="font-medium text-text-primary">{e.nombre}</p>
                             <p className="truncate text-muted-foreground">{proyectoDe(e.proyectoId)}</p>

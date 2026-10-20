@@ -39,9 +39,7 @@ export function ArchivosPage() {
               className="cursor-pointer overflow-hidden hover:shadow-md"
               onClick={() => setSeleccionadoId(e.id)}
             >
-              <div className="aspect-video w-full overflow-hidden bg-bg-secondary">
-                <MiniaturaVideo url={e.urlRevision || e.urlFinal} />
-              </div>
+              <MiniaturaVideo url={e.urlRevision || e.urlFinal} orientacion={e.orientacionVideo} />
               <CardContent className="space-y-1 p-3">
                 <div className="flex items-start justify-between gap-2">
                   <p className="truncate text-sm font-medium">{e.nombre}</p>
