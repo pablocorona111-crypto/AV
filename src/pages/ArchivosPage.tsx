@@ -30,7 +30,7 @@ export function ArchivosPage() {
         <DemoBadge />
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
         {referencias.map((e) => {
           const proyecto = proyectos.find((p) => p.id === e.proyectoId);
           return (
@@ -40,12 +40,12 @@ export function ArchivosPage() {
               onClick={() => setSeleccionadoId(e.id)}
             >
               <MiniaturaVideo url={e.urlRevision || e.urlFinal} orientacion={e.orientacionVideo} />
-              <CardContent className="space-y-1 p-3">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="truncate text-sm font-medium">{e.nombre}</p>
-                  <Badge variant="outline" className="shrink-0">{e.version}</Badge>
+              <CardContent className="space-y-0.5 p-2">
+                <div className="flex items-start justify-between gap-1">
+                  <p className="truncate text-xs font-medium">{e.nombre}</p>
+                  <Badge variant="outline" className="shrink-0 text-[10px]">{e.version}</Badge>
                 </div>
-                <p className="truncate text-xs text-muted-foreground">{proyecto?.nombre ?? "Proyecto eliminado"}</p>
+                <p className="truncate text-[11px] text-muted-foreground">{proyecto?.nombre ?? "Proyecto eliminado"}</p>
               </CardContent>
             </Card>
           );
