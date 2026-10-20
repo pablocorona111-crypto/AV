@@ -171,12 +171,18 @@ export function RevisarEntregableDialog({
         <DriveVideoPlayer
           fileId={fileIdActual}
           accessToken={driveToken}
+          orientacion={orientacion}
           onMomentoPausa={setMomento}
           onError={() => setPlayerPropioFallo(true)}
           onOrientacion={onOrientacionDetectada}
         />
       ) : fileIdActual && !driveToken ? (
-        <div className="flex aspect-video w-full flex-col items-center justify-center gap-2 rounded-lg bg-black">
+        <div
+          className={cn(
+            "flex flex-col items-center justify-center gap-2 rounded-lg bg-black",
+            layoutLado ? "h-[70vh] max-w-full aspect-[9/16]" : "aspect-video max-h-[70vh] w-full"
+          )}
+        >
           <p className="text-xs text-white/70">Conecta Drive para ver el video aqui, con marcador de minuto.</p>
           <Button type="button" variant="outline" size="sm" onClick={() => conectarDrive()}>
             Conectar Drive
