@@ -117,7 +117,8 @@ service cloud.firestore {
       // El responsable puede actualizar su entregable (ej. subir link de Drive,
       // mandar a revision) pero nunca puede aprobarse a si mismo.
       allow update: if puedeAprobar() ||
-        (resource.data.responsableId == request.auth.uid && request.resource.data.estado != 'aprobado');
+        (resource.data.responsableId == request.auth.uid && request.resource.data.estado != 'aprobado' &&
+          rol() in ['superadmin', 'lider_audiovisual', 'colaborador_audiovisual']);
 
       allow delete: if esSuperadmin() || esLiderAudiovisual();
 

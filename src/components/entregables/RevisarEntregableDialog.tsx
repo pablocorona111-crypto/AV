@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { CheckCircle2, Clock, ExternalLink, RotateCcw, Send, Upload } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { puedeAprobarEntregables, esGestorRequisiciones } from "@/lib/roles";
+import { puedeAprobarEntregables, puedeSubirVideos, esGestorRequisiciones } from "@/lib/roles";
 import {
   useAgregarComentario,
   useAprobarEntregable,
@@ -211,58 +211,58 @@ export function RevisarEntregableDialog({
           Sin video cargado todavia.
         </p>
       )}
+    </div>
+  );
 
-      {esResponsable && entregable.estado !== "aprobado" && (
-        <div className={cn("space-y-2 rounded-md border border-border p-3", layoutLado && "w-full")}>
-          <Label>Subir video</Label>
-          <div className="flex gap-1.5">
-            {(["horizontal", "vertical"] as const).map((o) => (
-              <button
-                key={o}
-                type="button"
-                onClick={() => setOrientacionSubida(o)}
-                className={cn(
-                  "flex-1 rounded-md border px-2 py-1.5 text-xs font-medium capitalize transition-colors",
-                  orientacionSubida === o
-                    ? "border-accent bg-accent text-white"
-                    : "border-border bg-white text-muted-foreground hover:bg-bg-secondary"
-                )}
-              >
-                {o}
-              </button>
-            ))}
-          </div>
-          <input
-            ref={inputArchivoRef}
-            type="file"
-            accept="video/*"
-            className="hidden"
-            onChange={onSeleccionarArchivo}
-          />
-          <Button
+  const bloqueSubirVideo = esResponsable && puedeSubirVideos(usuario) && entregable.estado !== "aprobado" && (
+    <div className="space-y-2 rounded-md border border-border p-3">
+      <Label>Subir video</Label>
+      <div className="flex gap-1.5">
+        {(["horizontal", "vertical"] as const).map((o) => (
+          <button
+            key={o}
             type="button"
-            className="w-full"
-            onClick={() => inputArchivoRef.current?.click()}
-            disabled={subiendo}
+            onClick={() => setOrientacionSubida(o)}
+            className={cn(
+              "flex-1 rounded-md border px-2 py-1.5 text-xs font-medium capitalize transition-colors",
+              orientacionSubida === o
+                ? "border-accent bg-accent text-white"
+                : "border-border bg-white text-muted-foreground hover:bg-bg-secondary"
+            )}
           >
-            <Upload className="h-4 w-4" />
-            {subiendo ? `Subiendo... ${progreso}%` : "Subir video a Drive"}
-          </Button>
-          {errorSubida && <p className="text-xs text-destructive">{errorSubida}</p>}
+            {o}
+          </button>
+        ))}
+      </div>
+      <input
+        ref={inputArchivoRef}
+        type="file"
+        accept="video/*"
+        className="hidden"
+        onChange={onSeleccionarArchivo}
+      />
+      <Button
+        type="button"
+        className="w-full"
+        onClick={() => inputArchivoRef.current?.click()}
+        disabled={subiendo}
+      >
+        <Upload className="h-4 w-4" />
+        {subiendo ? `Subiendo... ${progreso}%` : "Subir video a Drive"}
+      </Button>
+      {errorSubida && <p className="text-xs text-destructive">{errorSubida}</p>}
 
-          <p className="pt-1 text-center text-xs text-muted-foreground">o pega un link ya existente</p>
-          <div className="flex gap-2">
-            <Input
-              value={linkDraft}
-              onChange={(e) => setLinkDraft(e.target.value)}
-              placeholder="https://drive.google.com/file/d/..."
-            />
-            <Button type="button" variant="outline" onClick={onEnviar} disabled={enviarARevision.isPending}>
-              <Send className="h-4 w-4" /> Enviar
-            </Button>
-          </div>
-        </div>
-      )}
+      <p className="pt-1 text-center text-xs text-muted-foreground">o pega un link ya existente</p>
+      <div className="flex gap-2">
+        <Input
+          value={linkDraft}
+          onChange={(e) => setLinkDraft(e.target.value)}
+          placeholder="https://drive.google.com/file/d/..."
+        />
+        <Button type="button" variant="outline" onClick={onEnviar} disabled={enviarARevision.isPending}>
+          <Send className="h-4 w-4" /> Enviar
+        </Button>
+      </div>
     </div>
   );
 
@@ -346,6 +346,8 @@ export function RevisarEntregableDialog({
           </Button>
         </div>
       )}
+
+      {bloqueSubirVideo}
     </div>
   );
 

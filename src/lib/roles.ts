@@ -52,6 +52,16 @@ export function puedeAsignarEntregables(usuario: Usuario | null): boolean {
   return usuario.rol === "superadmin" || usuario.rol === "lider_audiovisual";
 }
 
+/** Solo quien produce video (colaborador, lider, superadmin) sube archivos. Community nunca sube. */
+export function puedeSubirVideos(usuario: Usuario | null): boolean {
+  if (!usuario) return false;
+  return (
+    usuario.rol === "superadmin" ||
+    usuario.rol === "lider_audiovisual" ||
+    usuario.rol === "colaborador_audiovisual"
+  );
+}
+
 /** Mismos roles que aprueban requisiciones aprueban entregables. */
 export function puedeAprobarEntregables(usuario: Usuario | null): boolean {
   return puedeAprobarRequisiciones(usuario);
