@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Clock, Loader2, Maximize2, Monitor, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -58,12 +58,31 @@ export function DriveVideoPlayer({
 }) {
   const [cargando, setCargando] = useState(true);
   const [ratio, setRatio] = useState<number | null>(null);
+  const [intento, setIntento] = useState(0);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const asignarRef = (el: HTMLVideoElement | null) => {
     videoRef.current = el;
     onVideoRef?.(el);
   };
   const src = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&access_token=${encodeURIComponent(accessToken)}`;
+
+  // Sin esto, el contador de reintentos de un video anterior se arrastraba al siguiente —
+  // un video nuevo con mala suerte se quedaba sin su propio reintento.
+  useEffect(() => {
+    setIntento(0);
+  }, [fileId]);
+
+  // Un primer error (ej. un hipo de red pidiendole el video a Drive) no tira la toalla de una:
+  // se reintenta una vez solita (remontando el <video> con una key distinta) antes de avisarle
+  // al padre que use el visor de respaldo. Asi un hipo pasajero no te saca del reproductor propio.
+  const manejarError = () => {
+    if (intento < 1) {
+      setIntento((n) => n + 1);
+      setCargando(true);
+    } else {
+      onError?.();
+    }
+  };
 
   // Mientras no se conoce la proporcion real se usa una de referencia segun la orientacion ya
   // etiquetada — asi la caja no da un salto grande cuando el video carga.
@@ -106,13 +125,13 @@ export function DriveVideoPlayer({
           </div>
         )}
         <video
-          key={fileId}
+          key={`${fileId}-${intento}`}
           ref={asignarRef}
           src={src}
           controls
           preload="metadata"
           className={cn("h-full w-full scale-[1.03] object-cover", cargando && "invisible")}
-          onError={() => onError?.()}
+          onError={manejarError}
           onCanPlay={() => setCargando(false)}
           onLoadedMetadata={(e) => {
             const v = e.currentTarget;
@@ -169,13 +188,13 @@ export function DriveVideoPlayer({
           </div>
         )}
         <video
-          key={fileId}
+          key={`${fileId}-${intento}`}
           ref={asignarRef}
           src={src}
           controls
           preload="metadata"
           className={cn("h-full w-full scale-[1.03] object-cover", cargando && "invisible")}
-          onError={() => onError?.()}
+          onError={manejarError}
           // Red de seguridad: si por lo que sea no llego `loadedmetadata`, el video no se queda invisible.
           onCanPlay={() => setCargando(false)}
           onLoadedMetadata={(e) => {

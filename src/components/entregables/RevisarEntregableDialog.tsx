@@ -57,11 +57,14 @@ export function RevisarEntregableDialog({
   const videoElRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
+    // `open` tambien dispara el reset: si el reproductor propio fallo una vez (ej. un hipo de
+    // red al pedir el video a Drive), sin esto se quedaba en modo "link" para siempre en esa
+    // sesion, aunque el motivo haya sido pasajero. Reabrir el dialogo le da otra oportunidad.
     setPlayerPropioFallo(false);
     setRatioReal(null);
     // Si ya quedo etiquetado al subirlo, se usa de una vez — sin esperar a que cargue el video (sin parpadeo).
     setOrientacion(entregable?.orientacionVideo ?? null);
-  }, [entregable?.id, entregable?.orientacionVideo]);
+  }, [entregable?.id, entregable?.orientacionVideo, open]);
 
   const { data: comentarios = [] } = useComentarios(entregable?.id ?? "");
   const agregarComentario = useAgregarComentario(entregable?.id ?? "");
@@ -220,16 +223,33 @@ export function RevisarEntregableDialog({
       )}
 
       {modoVisor === "preview" && preview && (
-        <div
-          className="w-full max-h-[60vh] min-h-[180px] overflow-hidden rounded-lg bg-black ring-1 ring-black/10 lg:h-full lg:w-auto lg:max-w-full lg:max-h-none lg:min-h-[160px]"
-          style={{ aspectRatio: String(ratioVisor) }}
-        >
-          <iframe
-            src={preview}
-            className="h-full w-full"
-            allow="autoplay; fullscreen"
-            title="Vista previa del video"
-          />
+        <div className="flex w-full flex-col gap-2 lg:h-full">
+          {/* Si se llega aqui es porque el reproductor propio fallo una vez (ej. un hipo de
+              red) — este es el visor de Drive de respaldo, y NO puede detectar el minuto al
+              pausar (es un iframe de otro dominio). Reintentar vuelve al reproductor propio. */}
+          <div className="flex w-full shrink-0 items-center justify-between gap-2 rounded-md bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-800 ring-1 ring-amber-200">
+            <span>Visor de respaldo: no detecta el minuto solo.</span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-6 shrink-0 px-2 text-[11px]"
+              onClick={() => setPlayerPropioFallo(false)}
+            >
+              Reintentar reproductor propio
+            </Button>
+          </div>
+          <div
+            className="w-full min-h-[180px] max-h-[60vh] overflow-hidden rounded-lg bg-black ring-1 ring-black/10 lg:w-auto lg:max-w-full lg:max-h-none lg:min-h-0 lg:flex-1"
+            style={{ aspectRatio: String(ratioVisor) }}
+          >
+            <iframe
+              src={preview}
+              className="h-full w-full"
+              allow="autoplay; fullscreen"
+              title="Vista previa del video"
+            />
+          </div>
         </div>
       )}
 
