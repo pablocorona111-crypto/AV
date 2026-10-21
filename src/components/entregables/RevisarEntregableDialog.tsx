@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type CSSProperties } from "react";
 import { CheckCircle2, Clock, ExternalLink, RotateCcw, Send, Upload } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { puedeAprobarEntregables, puedeSubirVideos, esGestorRequisiciones } from "@/lib/roles";
@@ -13,7 +13,7 @@ import {
 import { crearNotificacion } from "@/services/notificacionesService";
 import { driveUrlAPreview } from "@/services/entregablesService";
 import { subirArchivoADrive, extraerFileIdDrive } from "@/services/driveService";
-import { DriveVideoPlayer } from "@/components/entregables/DriveVideoPlayer";
+import { DriveVideoPlayer, anchoVisor, ALTO_VISOR } from "@/components/entregables/DriveVideoPlayer";
 import { mensajeErrorAuth } from "@/lib/authErrors";
 import { cn } from "@/lib/utils";
 import { ESTADO_ENTREGABLE_BADGE, ESTADO_ENTREGABLE_LABELS, CATEGORIA_CONTENIDO_LABELS } from "@/lib/labels";
@@ -77,7 +77,19 @@ export function RevisarEntregableDialog({
   const linkActual = entregable.urlRevision || entregable.urlFinal;
   const preview = linkActual ? driveUrlAPreview(linkActual) : null;
   const fileIdActual = linkActual ? extraerFileIdDrive(linkActual) : null;
-  const layoutLado = orientacion === "vertical";
+  const usaPlayerPropio = Boolean(fileIdActual && driveToken && !playerPropioFallo);
+  const modoVisor: "player" | "conectar" | "preview" | "link" | "vacio" = usaPlayerPropio
+    ? "player"
+    : fileIdActual && !driveToken
+      ? "conectar"
+      : preview
+        ? "preview"
+        : linkActual
+          ? "link"
+          : "vacio";
+  // Solo se abre el layout ancho a dos columnas cuando de verdad hay un video que ver.
+  // Para un link suelto, un estado vacio o el aviso de conectar Drive, un dialogo angosto se lee mejor.
+  const layoutLado = modoVisor === "player" || modoVisor === "preview";
 
   const onEnviar = async () => {
     const url = linkDraft.trim() || linkActual;
@@ -167,13 +179,24 @@ export function RevisarEntregableDialog({
     }
   };
 
-  // Un video casi cuadrado (mal etiquetado "vertical") no necesita una columna angosta —
-  // se le da mas ancho para que se vea grande. Uno realmente alto (9:16) se queda angosto.
-  const anchoColumna = ratioReal != null && ratioReal >= 0.75 ? "lg:max-w-xl" : "lg:max-w-sm";
+  // La columna se mide a partir de la proporcion real del video: su ancho es exactamente el que
+  // hace que el visor llegue a su alto maximo. Asi un 9:16 queda angosto y alto, y un 16:9 queda
+  // ancho — ninguno de los dos con barras negras. Si el video aun no carga, se usa la proporcion
+  // de referencia de su orientacion etiquetada para no dar un salto al cargar.
+  const ratioVisor = ratioReal ?? (orientacion === "vertical" ? 9 / 16 : 16 / 9);
+  const estiloColumnaVideo = { "--ancho-visor": anchoVisor(ratioVisor) } as CSSProperties;
 
   const bloqueVideo = (
-    <div className={cn("space-y-3", layoutLado && cn("flex flex-col items-center lg:w-auto lg:shrink-0", anchoColumna))}>
-      {fileIdActual && driveToken && !playerPropioFallo ? (
+    <div
+      style={layoutLado ? estiloColumnaVideo : undefined}
+      className={cn(
+        "space-y-3",
+        // `lg:min-w-0` deja que la columna se encoja si el panel de observaciones necesita su minimo;
+        // el video se sigue viendo completo porque nunca depende del tamaño exacto de su caja.
+        layoutLado && "w-full lg:w-[var(--ancho-visor)] lg:min-w-[220px] lg:max-w-full"
+      )}
+    >
+      {modoVisor === "player" && fileIdActual && driveToken && (
         <DriveVideoPlayer
           fileId={fileIdActual}
           accessToken={driveToken}
@@ -183,20 +206,22 @@ export function RevisarEntregableDialog({
           onOrientacion={onOrientacionDetectada}
           onRatio={setRatioReal}
         />
-      ) : fileIdActual && !driveToken ? (
-        <div
-          className={cn(
-            "flex flex-col items-center justify-center gap-2 rounded-lg bg-black",
-            layoutLado ? "h-[70vh] max-w-full aspect-[9/16]" : "aspect-video max-h-[70vh] w-full"
-          )}
-        >
+      )}
+
+      {modoVisor === "conectar" && (
+        <div className="flex aspect-video w-full flex-col items-center justify-center gap-3 rounded-lg bg-[#0B0B0C] px-4 text-center ring-1 ring-black/10">
           <p className="text-xs text-white/70">Conecta Drive para ver el video aqui, con marcador de minuto.</p>
           <Button type="button" variant="outline" size="sm" onClick={() => conectarDrive()}>
             Conectar Drive
           </Button>
         </div>
-      ) : preview ? (
-        <div className="aspect-video w-full overflow-hidden rounded-lg bg-black">
+      )}
+
+      {modoVisor === "preview" && preview && (
+        <div
+          className="w-full overflow-hidden rounded-lg bg-black ring-1 ring-black/10"
+          style={{ aspectRatio: String(ratioVisor), maxHeight: ALTO_VISOR, minHeight: "220px" }}
+        >
           <iframe
             src={preview}
             className="h-full w-full"
@@ -204,16 +229,20 @@ export function RevisarEntregableDialog({
             title="Vista previa del video"
           />
         </div>
-      ) : linkActual ? (
+      )}
+
+      {modoVisor === "link" && linkActual && (
         <a
           href={linkActual}
           target="_blank"
           rel="noreferrer"
-          className="flex items-center gap-2 rounded-md border border-border bg-bg-secondary p-3 text-sm font-medium"
+          className="flex items-center gap-2 rounded-md border border-border bg-bg-secondary p-3 text-sm font-medium transition-colors hover:bg-border/60"
         >
           <ExternalLink className="h-4 w-4" /> Abrir video en Drive
         </a>
-      ) : (
+      )}
+
+      {modoVisor === "vacio" && (
         <p className="rounded-md border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
           Sin video cargado todavia.
         </p>
@@ -273,14 +302,17 @@ export function RevisarEntregableDialog({
     </div>
   );
 
+  // `lg:min-w-[320px]` es el piso del panel: sin el, un video 16:9 ancho aplastaba esta columna
+  // hasta desbordar el dialogo. `lg:max-w-sm` evita que se estire de mas cuando el dialogo es
+  // ancho — la columna de comentarios no necesita todo el espacio sobrante.
   const bloqueObservaciones = (
-    <div className={cn("space-y-4", layoutLado && "min-w-0 flex-1")}>
+    <div className={cn("space-y-4", layoutLado && "min-w-0 flex-1 lg:min-w-[320px] lg:max-w-sm")}>
       <div className="space-y-2">
         <Label>Observaciones</Label>
         <div
           className={cn(
-            "space-y-3 overflow-y-auto rounded-md border border-border bg-bg-secondary/40 p-3",
-            layoutLado ? "max-h-[45vh]" : "max-h-56"
+            "space-y-3 overflow-y-auto rounded-md border border-border bg-bg-secondary/40 p-3 scrollbar-thin",
+            layoutLado ? "max-h-[46vh]" : "max-h-56"
           )}
         >
           {comentarios.length === 0 && (
@@ -360,9 +392,11 @@ export function RevisarEntregableDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={layoutLado ? "max-w-5xl" : "max-w-3xl"}>
+      {/* layoutLado: el dialogo se ajusta al contenido real (video + panel), ni mas ancho ni
+          mas angosto de lo que necesitan — por eso `w-fit` en vez de un max-w fijo adivinado. */}
+      <DialogContent className={layoutLado ? "w-fit max-w-[95vw]" : "max-w-3xl"}>
         <DialogHeader>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 pr-8">
             <DialogTitle>{entregable.nombre}</DialogTitle>
             <Badge variant={ESTADO_ENTREGABLE_BADGE[entregable.estado]}>
               {ESTADO_ENTREGABLE_LABELS[entregable.estado]}
