@@ -2,51 +2,39 @@ import { useRef, useState } from "react";
 import { Clock, Loader2, Maximize2, Monitor, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-function formatoTiempo(segundos: number): string {
+export function formatoTiempo(segundos: number): string {
   const m = Math.floor(segundos / 60);
   const s = Math.floor(segundos % 60);
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
 /**
- * Alto maximo del escenario del video.
+ * Como se dimensiona el escenario del video (aqui estuvieron varios bugs: "se ve chueco",
+ * "no se ve nada", "se desajusta en otra pantalla").
  *
- * El dialogo que lo contiene es `max-h-[85vh]` con `p-6`; entre el titulo, el subtitulo y las
- * dos barras del reproductor se van ~200px. Restarlos aqui es lo que garantiza que el visor
- * entre COMPLETO sin que el dialogo haga scroll y corte el video por abajo.
- * Es una medida definida (depende del viewport, no del contenido), asi que nunca se resuelve a 0.
- */
-export const ALTO_VISOR = "clamp(260px, calc(85vh - 200px), 820px)";
-
-/**
- * Ancho que debe tener la columna del video para que el escenario llegue justo a `ALTO_VISOR`
- * sin barras negras. Como el escenario deriva su alto del ancho, dar el ancho exacto es lo que
- * hace que el video quede lo mas grande posible dentro del espacio disponible.
- */
-export function anchoVisor(ratio: number): string {
-  return `calc(${ALTO_VISOR} * ${ratio})`;
-}
-
-/**
- * Reproductor propio (no el iframe de Drive). El video se transmite directo desde Drive
- * (el navegador pide por partes, como streaming) en vez de descargarse completo antes de
- * poder verse — esto es lo que hace que abra rapido. El token va como query param porque
- * un <video src> normal no puede mandar el header de autorizacion.
+ * Version anterior: calculaba el ancho de la columna con una formula de `vh` que ADIVINABA
+ * cuanto alto ocupaban el titulo/subtitulo/barras del reproductor (un numero fijo restado).
+ * En una pantalla distinta (mas angosta, con el titulo envolviendo a 2 lineas, con otra fuente
+ * del sistema) ese numero quedaba mal y el video se desbordaba o se encogia de mas.
  *
- * Como se dimensiona (importante, aqui estuvo el bug de "se ve chueco / no se ve nada"):
- *
- * 1. El escenario SIEMPRE se mide por el ancho (`width:100%`, que es una medida definida) y de
- *    ahi deriva el alto con `aspect-ratio`. Nunca al reves. Fijar el alto y dejar el ancho en
- *    `auto` hacia que `max-width` recortara el ancho y el navegador RECALCULARA el alto hacia
- *    abajo: el video salia mas chico de lo pedido y se desbordaba del dialogo.
- * 2. `min-height` le pone piso al escenario, asi que la caja no puede colapsar a 0 aunque la
- *    columna se encoja o el ratio llegue raro.
- * 3. El <video> usa `h-full w-full object-cover` MAS `scale-[1.03]` (un 3% de "overscan"). El
- *    `object-cover` ya deberia llenar la caja sin dejar huecos, pero Chrome puede renderizar una
- *    linea de 1px en un borde cuando un <video> esta dentro de un contenedor con `overflow-hidden`
- *    + esquinas redondeadas (bug de compositing conocido, no es un problema de nuestro CSS de
- *    tamaño). El 3% extra empuja ese borde fuera del area visible recortada, sin notarse como zoom.
+ * Version actual: ya no se adivina nada.
+ * - En pantallas grandes (`lg:` — la fila de video+observaciones queda lado a lado con
+ *   `items-stretch` en RevisarEntregableDialog.tsx), el ESCENARIO mide su alto al 100% de esa
+ *   fila (una medida real, resuelta por el navegador con el espacio que de verdad sobra) y de
+ *   ahi deriva su ancho con `aspect-ratio`. `max-width:100%` es solo un techo de seguridad.
+ * - En pantallas angostas (video y observaciones apilados), no hay una fila con alto definido
+ *   para heredar — ahi se mide al reves: ancho 100% (de columna apilada) con alto derivado,
+ *   topado a `60vh` para no tapar toda la pantalla.
+ * - `min-height` evita que la caja colapse a 0 en cualquier caso raro.
+ * - El <video> usa `h-full w-full object-cover` mas `scale-[1.03]` (3% de "overscan"): Chrome
+ *   puede renderizar una linea de 1px en un borde cuando un <video> esta en un contenedor con
+ *   `overflow-hidden` + esquinas redondeadas (bug de compositing conocido). El 3% extra empuja
+ *   ese borde fuera del area visible recortada, sin notarse como zoom.
  */
+const ESCENARIO_BASE =
+  "relative flex items-center justify-center overflow-hidden bg-black " +
+  "w-full max-h-[60vh] min-h-[180px] " +
+  "lg:h-full lg:w-auto lg:max-w-full lg:max-h-none lg:min-h-[160px]";
 export function DriveVideoPlayer({
   fileId,
   accessToken,
@@ -55,6 +43,7 @@ export function DriveVideoPlayer({
   onError,
   onOrientacion,
   onRatio,
+  onVideoRef,
 }: {
   fileId: string;
   accessToken: string;
@@ -63,10 +52,17 @@ export function DriveVideoPlayer({
   onError?: () => void;
   onOrientacion?: (orientacion: "vertical" | "horizontal") => void;
   onRatio?: (ratio: number) => void;
+  /** Entrega el elemento <video> real al padre — asi el boton "usar minuto actual" puede leer
+   * `currentTime` bajo demanda, sin depender de que el evento `pause` se haya disparado. */
+  onVideoRef?: (video: HTMLVideoElement | null) => void;
 }) {
   const [cargando, setCargando] = useState(true);
   const [ratio, setRatio] = useState<number | null>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const asignarRef = (el: HTMLVideoElement | null) => {
+    videoRef.current = el;
+    onVideoRef?.(el);
+  };
   const src = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&access_token=${encodeURIComponent(accessToken)}`;
 
   // Mientras no se conoce la proporcion real se usa una de referencia segun la orientacion ya
@@ -100,8 +96,8 @@ export function DriveVideoPlayer({
   if (esVertical) {
     return (
       <div
-        className="relative mx-auto flex w-full items-center justify-center overflow-hidden rounded-lg bg-black shadow-card ring-1 ring-black/10"
-        style={{ width: "100%", aspectRatio: String(ratioCaja), maxHeight: ALTO_VISOR, minHeight: "220px" }}
+        className={cn(ESCENARIO_BASE, "mx-auto rounded-lg shadow-card ring-1 ring-black/10")}
+        style={{ aspectRatio: String(ratioCaja) }}
       >
         {cargando && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
@@ -111,7 +107,7 @@ export function DriveVideoPlayer({
         )}
         <video
           key={fileId}
-          ref={videoRef}
+          ref={asignarRef}
           src={src}
           controls
           preload="metadata"
@@ -152,8 +148,8 @@ export function DriveVideoPlayer({
   }
 
   return (
-    <div className="flex w-full flex-col overflow-hidden rounded-lg bg-[#0B0B0C] shadow-card ring-1 ring-black/10">
-      <div className="flex items-center justify-between gap-2 border-b border-white/10 bg-[#141416] px-2.5 py-2">
+    <div className="flex w-full flex-col overflow-hidden rounded-lg bg-[#0B0B0C] shadow-card ring-1 ring-black/10 lg:h-full">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-[#141416] px-2.5 py-2">
         <div className="flex min-w-0 items-center gap-2">
           <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#C1EB1F]" />
           <span className="text-[10px] font-semibold uppercase tracking-[0.09em] text-white/55">Visor</span>
@@ -163,13 +159,8 @@ export function DriveVideoPlayer({
       </div>
 
       <div
-        className="relative flex items-center justify-center bg-black"
-        style={{
-          width: "100%",
-          aspectRatio: String(ratioCaja),
-          maxHeight: ALTO_VISOR,
-          minHeight: "220px",
-        }}
+        className={cn(ESCENARIO_BASE, "lg:min-h-0 lg:flex-1")}
+        style={{ aspectRatio: String(ratioCaja) }}
       >
         {cargando && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
@@ -179,7 +170,7 @@ export function DriveVideoPlayer({
         )}
         <video
           key={fileId}
-          ref={videoRef}
+          ref={asignarRef}
           src={src}
           controls
           preload="metadata"
@@ -204,7 +195,7 @@ export function DriveVideoPlayer({
         />
       </div>
 
-      <div className="flex items-center gap-1.5 border-t border-white/10 bg-[#141416] px-2.5 py-1.5">
+      <div className="flex shrink-0 items-center gap-1.5 border-t border-white/10 bg-[#141416] px-2.5 py-1.5">
         <Clock className="h-3 w-3 shrink-0 text-white/35" />
         <span className="truncate text-[10.5px] leading-tight text-white/45">
           Pausa el video para marcar el minuto de la observacion.

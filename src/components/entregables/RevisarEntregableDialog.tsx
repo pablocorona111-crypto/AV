@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { CheckCircle2, Clock, ExternalLink, RotateCcw, Send, Upload } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { puedeAprobarEntregables, puedeSubirVideos, esGestorRequisiciones } from "@/lib/roles";
@@ -13,7 +13,7 @@ import {
 import { crearNotificacion } from "@/services/notificacionesService";
 import { driveUrlAPreview } from "@/services/entregablesService";
 import { subirArchivoADrive, extraerFileIdDrive } from "@/services/driveService";
-import { DriveVideoPlayer, anchoVisor, ALTO_VISOR } from "@/components/entregables/DriveVideoPlayer";
+import { DriveVideoPlayer, formatoTiempo } from "@/components/entregables/DriveVideoPlayer";
 import { mensajeErrorAuth } from "@/lib/authErrors";
 import { cn } from "@/lib/utils";
 import { ESTADO_ENTREGABLE_BADGE, ESTADO_ENTREGABLE_LABELS, CATEGORIA_CONTENIDO_LABELS } from "@/lib/labels";
@@ -54,6 +54,7 @@ export function RevisarEntregableDialog({
   const [ratioReal, setRatioReal] = useState<number | null>(null);
   const [orientacionSubida, setOrientacionSubida] = useState<"vertical" | "horizontal">("horizontal");
   const inputArchivoRef = useRef<HTMLInputElement>(null);
+  const videoElRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
     setPlayerPropioFallo(false);
@@ -179,21 +180,19 @@ export function RevisarEntregableDialog({
     }
   };
 
-  // La columna se mide a partir de la proporcion real del video: su ancho es exactamente el que
-  // hace que el visor llegue a su alto maximo. Asi un 9:16 queda angosto y alto, y un 16:9 queda
-  // ancho — ninguno de los dos con barras negras. Si el video aun no carga, se usa la proporcion
-  // de referencia de su orientacion etiquetada para no dar un salto al cargar.
+  // Si el video aun no carga, se usa la proporcion de referencia de su orientacion etiquetada
+  // para no dar un salto al cargar.
   const ratioVisor = ratioReal ?? (orientacion === "vertical" ? 9 / 16 : 16 / 9);
-  const estiloColumnaVideo = { "--ancho-visor": anchoVisor(ratioVisor) } as CSSProperties;
 
   const bloqueVideo = (
     <div
-      style={layoutLado ? estiloColumnaVideo : undefined}
       className={cn(
         "space-y-3",
-        // `lg:min-w-0` deja que la columna se encoja si el panel de observaciones necesita su minimo;
-        // el video se sigue viendo completo porque nunca depende del tamaño exacto de su caja.
-        layoutLado && "w-full lg:w-[var(--ancho-visor)] lg:min-w-[220px] lg:max-w-full"
+        // La columna ya NO calcula su ancho con una formula de vh adivinada (eso se desajustaba
+        // en pantallas de otro tamaño/alto). Ahora `lg:items-stretch` en la fila le da una altura
+        // real y definida (la que sobra del dialogo) — de ahi el video deriva su ancho solo con
+        // aspect-ratio. Se adapta a cualquier pantalla porque usa el espacio real, no un numero fijo.
+        layoutLado && "w-full lg:w-auto lg:min-w-[160px]"
       )}
     >
       {modoVisor === "player" && fileIdActual && driveToken && (
@@ -205,6 +204,9 @@ export function RevisarEntregableDialog({
           onError={() => setPlayerPropioFallo(true)}
           onOrientacion={onOrientacionDetectada}
           onRatio={setRatioReal}
+          onVideoRef={(video) => {
+            videoElRef.current = video;
+          }}
         />
       )}
 
@@ -219,8 +221,8 @@ export function RevisarEntregableDialog({
 
       {modoVisor === "preview" && preview && (
         <div
-          className="w-full overflow-hidden rounded-lg bg-black ring-1 ring-black/10"
-          style={{ aspectRatio: String(ratioVisor), maxHeight: ALTO_VISOR, minHeight: "220px" }}
+          className="w-full max-h-[60vh] min-h-[180px] overflow-hidden rounded-lg bg-black ring-1 ring-black/10 lg:h-full lg:w-auto lg:max-w-full lg:max-h-none lg:min-h-[160px]"
+          style={{ aspectRatio: String(ratioVisor) }}
         >
           <iframe
             src={preview}
@@ -346,6 +348,20 @@ export function RevisarEntregableDialog({
                 placeholder="min (ej. 0:45)"
                 className="w-28 shrink-0"
               />
+              {usaPlayerPropio && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 px-2"
+                  title="Usar el minuto donde va el video ahora mismo"
+                  onClick={() => {
+                    if (videoElRef.current) setMomento(formatoTiempo(videoElRef.current.currentTime));
+                  }}
+                >
+                  <Clock className="h-3.5 w-3.5" />
+                </Button>
+              )}
               <Input
                 value={comentario}
                 onChange={(e) => setComentario(e.target.value)}
@@ -362,8 +378,8 @@ export function RevisarEntregableDialog({
               Agregar observacion
             </Button>
             <p className="text-[11px] text-muted-foreground">
-              {fileIdActual && driveToken && !playerPropioFallo
-                ? "El minuto se llena solo al pausar el video. Puedes editarlo si hace falta."
+              {usaPlayerPropio
+                ? "Pausa el video y se llena solo, o dale al reloj para tomar el minuto actual."
                 : "Anota el minuto donde esta el cambio que pides."}
             </p>
           </div>
@@ -392,10 +408,19 @@ export function RevisarEntregableDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {/* layoutLado: el dialogo se ajusta al contenido real (video + panel), ni mas ancho ni
-          mas angosto de lo que necesitan — por eso `w-fit` en vez de un max-w fijo adivinado. */}
-      <DialogContent className={layoutLado ? "w-fit max-w-[95vw]" : "max-w-3xl"}>
-        <DialogHeader>
+      {/* layoutLado: el dialogo se ajusta al contenido real (video + panel), ni mas ancho ni mas
+          angosto de lo que necesitan (`w-fit`). Y en vez de restarle al alto del dialogo un numero
+          de pixeles adivinado para el titulo/subtitulo (eso se desajustaba si el titulo alcanzaba
+          a envolver en 2 lineas en una pantalla mas angosta), el titulo/subtitulo quedan con su
+          alto natural (`shrink-0`) y la fila de abajo toma `flex-1 min-h-0`: lo que sobra de
+          verdad del `max-h-[85vh]` del dialogo, en cualquier pantalla. */}
+      <DialogContent
+        className={cn(
+          "flex flex-col overflow-hidden",
+          layoutLado ? "w-fit max-w-[95vw]" : "max-w-3xl"
+        )}
+      >
+        <DialogHeader className="shrink-0">
           <div className="flex flex-wrap items-center gap-2 pr-8">
             <DialogTitle>{entregable.nombre}</DialogTitle>
             <Badge variant={ESTADO_ENTREGABLE_BADGE[entregable.estado]}>
@@ -404,12 +429,18 @@ export function RevisarEntregableDialog({
           </div>
         </DialogHeader>
 
-        <p className="-mt-2 mb-5 text-xs text-muted-foreground">
+        <p className="-mt-2 mb-5 shrink-0 text-xs text-muted-foreground">
           {nombreProyecto && <>Proyecto: {nombreProyecto} · </>}
           {CATEGORIA_CONTENIDO_LABELS[entregable.tipo]} · Responsable: {nombreResponsable} · v{entregable.version}
         </p>
 
-        <div className={cn(layoutLado ? "flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6" : "space-y-4")}>
+        <div
+          className={cn(
+            layoutLado
+              ? "flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto lg:flex-row lg:items-stretch lg:gap-6 lg:overflow-visible"
+              : "space-y-4 overflow-y-auto"
+          )}
+        >
           {bloqueVideo}
           {bloqueObservaciones}
         </div>
