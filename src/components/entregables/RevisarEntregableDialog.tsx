@@ -13,7 +13,7 @@ import {
 import { crearNotificacion } from "@/services/notificacionesService";
 import { driveUrlAPreview } from "@/services/entregablesService";
 import { subirArchivoADrive, extraerFileIdDrive } from "@/services/driveService";
-import { DriveVideoPlayer, formatoTiempo, type MotivoErrorDrive } from "@/components/entregables/DriveVideoPlayer";
+import { DriveVideoPlayer, type MotivoErrorDrive } from "@/components/entregables/DriveVideoPlayer";
 import { mensajeErrorAuth } from "@/lib/authErrors";
 import { cn } from "@/lib/utils";
 import { ESTADO_ENTREGABLE_BADGE, ESTADO_ENTREGABLE_LABELS, CATEGORIA_CONTENIDO_LABELS } from "@/lib/labels";
@@ -60,7 +60,6 @@ export function RevisarEntregableDialog({
   const [ratioReal, setRatioReal] = useState<number | null>(null);
   const [orientacionSubida, setOrientacionSubida] = useState<"vertical" | "horizontal">("horizontal");
   const inputArchivoRef = useRef<HTMLInputElement>(null);
-  const videoElRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
     // `open` tambien dispara el reset: si el reproductor propio fallo una vez (ej. un hipo de
@@ -213,9 +212,6 @@ export function RevisarEntregableDialog({
           onError={setErrorPlayerPropio}
           onOrientacion={onOrientacionDetectada}
           onRatio={setRatioReal}
-          onVideoRef={(video) => {
-            videoElRef.current = video;
-          }}
         />
       )}
 
@@ -366,20 +362,6 @@ export function RevisarEntregableDialog({
                 placeholder="min (ej. 0:45)"
                 className="w-28 shrink-0"
               />
-              {usaPlayerPropio && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="shrink-0 px-2"
-                  title="Usar el minuto donde va el video ahora mismo"
-                  onClick={() => {
-                    if (videoElRef.current) setMomento(formatoTiempo(videoElRef.current.currentTime));
-                  }}
-                >
-                  <Clock className="h-3.5 w-3.5" />
-                </Button>
-              )}
               <Input
                 value={comentario}
                 onChange={(e) => setComentario(e.target.value)}

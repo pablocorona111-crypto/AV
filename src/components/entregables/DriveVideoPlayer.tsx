@@ -60,7 +60,6 @@ export function DriveVideoPlayer({
   onError,
   onOrientacion,
   onRatio,
-  onVideoRef,
 }: {
   fileId: string;
   orientacion?: "vertical" | "horizontal" | null;
@@ -68,9 +67,6 @@ export function DriveVideoPlayer({
   onError?: (motivo: MotivoErrorDrive) => void;
   onOrientacion?: (orientacion: "vertical" | "horizontal") => void;
   onRatio?: (ratio: number) => void;
-  /** Entrega el elemento <video> real al padre — asi el boton "usar minuto actual" puede leer
-   * `currentTime` bajo demanda, sin depender de que el evento `pause` se haya disparado. */
-  onVideoRef?: (video: HTMLVideoElement | null) => void;
 }) {
   const [cargando, setCargando] = useState(true);
   const [ratio, setRatio] = useState<number | null>(null);
@@ -89,7 +85,6 @@ export function DriveVideoPlayer({
   };
   const asignarRef = (el: HTMLVideoElement | null) => {
     videoRef.current = el;
-    onVideoRef?.(el);
   };
   // El video ya no sale directo de Drive con el token OAuth del usuario (se vencia cada ~1h y
   // fallaba si el archivo no estaba compartido con esa cuenta) — sale del propio dominio,
