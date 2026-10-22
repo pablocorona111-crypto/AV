@@ -10,7 +10,7 @@ const MES_REFERENCIA = new Date("2026-10-14T00:00:00");
 type EventoCalendario = { fecha: string; tipo: "entrega" | "salida" | "requisicion"; titulo: string };
 
 const COLOR_TIPO: Record<EventoCalendario["tipo"], string> = {
-  entrega: "bg-accent",
+  entrega: "bg-emerald-500",
   salida: "bg-blue-400",
   requisicion: "bg-purple-400",
 };
