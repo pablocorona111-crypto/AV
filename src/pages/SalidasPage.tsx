@@ -1,20 +1,75 @@
-import { MapPin, Phone, Truck, ShieldCheck, Clock } from "lucide-react";
+import { useState } from "react";
+import { MapPin, Phone, Truck, ShieldCheck, Clock, CalendarPlus, Check } from "lucide-react";
 import { useSalidas } from "@/hooks/useCatalogos";
 import { useUsuarios } from "@/hooks/useCatalogos";
 import { useAuth } from "@/context/AuthContext";
 import { puedeAsignarEntregables } from "@/lib/roles";
 import { TIPO_ACTIVIDAD_SALIDA_LABELS } from "@/lib/labels";
 import { formatFecha } from "@/lib/utils";
+import { agregarEventoCalendar } from "@/services/calendarService";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { NuevaSalidaDialog } from "@/components/salidas/NuevaSalidaDialog";
 import { DemoBadge } from "@/components/DemoBadge";
+import type { SalidaGrabacion } from "@/types";
 
 const BADGE_AUTORIZACION = {
   pendiente: "warning",
   autorizada: "success",
   rechazada: "danger",
 } as const;
+
+/** Exporta UNA salida al Google Calendar personal de quien le da click — nunca automatico,
+ * cada quien decide cual agregar a su propia agenda (ver `calendarService.ts`). */
+function BotonAgregarCalendar({ salida }: { salida: SalidaGrabacion }) {
+  const { driveToken, conectarDrive } = useAuth();
+  const [estado, setEstado] = useState<"idle" | "cargando" | "ok" | "error">("idle");
+  const [error, setError] = useState<string | null>(null);
+
+  const onClick = async () => {
+    setEstado("cargando");
+    setError(null);
+    try {
+      const token = driveToken ?? (await conectarDrive());
+      if (!token) {
+        setEstado("error");
+        setError("No se pudo conectar con Google.");
+        return;
+      }
+      await agregarEventoCalendar(salida, token);
+      setEstado("ok");
+    } catch (e) {
+      setEstado("error");
+      setError(e instanceof Error ? e.message : "No se pudo agregar el evento.");
+    }
+  };
+
+  if (estado === "ok") {
+    return (
+      <p className="flex items-center gap-1.5 text-xs font-medium text-green-700">
+        <Check className="h-3.5 w-3.5" /> Agregada a tu Google Calendar
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-1">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={onClick}
+        disabled={estado === "cargando"}
+        className="gap-1.5"
+      >
+        <CalendarPlus className="h-3.5 w-3.5" />
+        {estado === "cargando" ? "Agregando..." : "Agregar a mi Google Calendar"}
+      </Button>
+      {error && <p className="text-xs text-destructive">{error}</p>}
+    </div>
+  );
+}
 
 export function SalidasPage() {
   const { usuario } = useAuth();
@@ -111,6 +166,8 @@ export function SalidasPage() {
                 {s.observaciones && (
                   <p className="rounded-md bg-bg-secondary p-2 text-xs text-muted-foreground">{s.observaciones}</p>
                 )}
+
+                <BotonAgregarCalendar salida={s} />
               </CardContent>
             </Card>
           ))}

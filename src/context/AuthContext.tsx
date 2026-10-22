@@ -24,6 +24,9 @@ const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
 // pueda ver videos subidos por otros (compartidos como "cualquiera con el link") hace
 // falta este permiso de lectura mas amplio.
 const DRIVE_READONLY_SCOPE = "https://www.googleapis.com/auth/drive.readonly";
+// Para el boton "Agregar a mi Google Calendar" en cada grabacion — crea el evento en el
+// calendario personal de quien le dio click, no en uno compartido ni automatico.
+const CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.events";
 const DRIVE_TOKEN_KEY = "av-control:drive-token-v2";
 
 interface AuthContextValue {
@@ -35,9 +38,9 @@ interface AuthContextValue {
   logout: () => Promise<void>;
   /** Solo disponible en modo demo — cambia el usuario activo para previsualizar roles. */
   cambiarUsuarioDemo: (usuarioId: string) => void;
-  /** Token de acceso a Drive (expira ~1h). null si hay que reconectar. */
+  /** Token de acceso a Drive y Calendar (expira ~1h, mismo token para ambos scopes). null si hay que reconectar. */
   driveToken: string | null;
-  /** Pide permiso de Drive (si hace falta) y refresca el token. */
+  /** Pide permiso de Drive + Calendar (si hace falta) y refresca el token. */
   conectarDrive: () => Promise<string | null>;
 }
 
@@ -115,6 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const provider = new GoogleAuthProvider();
     provider.addScope(DRIVE_SCOPE);
     provider.addScope(DRIVE_READONLY_SCOPE);
+    provider.addScope(CALENDAR_SCOPE);
     const credential = await signInWithPopup(auth, provider);
 
     if (!db || !credential.user.email) return;
@@ -133,12 +137,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  /** Si el token de Drive expiro o nunca se pidio, reabre el permiso con un popup. */
+  /** Si el token de Drive (y Calendar) expiro o nunca se pidio, reabre el permiso con un popup. */
   const conectarDrive = async (): Promise<string | null> => {
     if (!isFirebaseConfigured || !auth?.currentUser) return null;
     const provider = new GoogleAuthProvider();
     provider.addScope(DRIVE_SCOPE);
     provider.addScope(DRIVE_READONLY_SCOPE);
+    provider.addScope(CALENDAR_SCOPE);
     const result = await reauthenticateWithPopup(auth.currentUser, provider);
     const token = GoogleAuthProvider.credentialFromResult(result)?.accessToken ?? null;
     setDriveToken(token);
