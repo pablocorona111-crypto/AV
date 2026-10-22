@@ -156,43 +156,6 @@ async function compartirArchivo(fileId: string, accessToken: string): Promise<vo
   if (!res.ok) throw new Error("No se pudo compartir el archivo en Drive.");
 }
 
-export type MotivoErrorDrive = "token_expirado" | "sin_permiso" | "no_encontrado" | "desconocido";
-
-/**
- * El <video> del navegador solo avisa "fallo" sin decir por que (401 token vencido, 403 sin
- * permiso, 404 borrado...) — por eso, cuando el reproductor propio se rinde, se pregunta aqui
- * por el motivo real con un fetch normal (que si expone el status HTTP).
- *
- * Caso comun: un video que el dueño ya tenia en su Drive y solo pego el link aqui (a diferencia
- * de uno subido desde la app, que se comparte "cualquiera con el enlace" automaticamente, ver
- * `subirArchivoADrive`). Si el fetch da 403 pero la cuenta es la dueña del archivo, el intento
- * de compartir de abajo lo resuelve solo — sin pedirle al usuario que haga nada en Drive.
- */
-export async function diagnosticarAccesoDrive(
-  fileId: string,
-  accessToken: string
-): Promise<{ ok: boolean; motivo: MotivoErrorDrive; compartidoAhora?: boolean }> {
-  try {
-    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=id`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    if (res.ok) return { ok: true, motivo: "desconocido" };
-    if (res.status === 401) return { ok: false, motivo: "token_expirado" };
-    if (res.status === 404) return { ok: false, motivo: "no_encontrado" };
-    if (res.status === 403) {
-      try {
-        await compartirArchivo(fileId, accessToken);
-        return { ok: false, motivo: "sin_permiso", compartidoAhora: true };
-      } catch {
-        return { ok: false, motivo: "sin_permiso" };
-      }
-    }
-    return { ok: false, motivo: "desconocido" };
-  } catch {
-    return { ok: false, motivo: "desconocido" };
-  }
-}
-
 function linksDe(id: string): ArchivoSubido {
   return {
     id,

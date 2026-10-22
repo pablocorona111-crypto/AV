@@ -1,7 +1,24 @@
 import { useEffect, useRef, useState } from "react";
 import { Clock, Loader2, Maximize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { diagnosticarAccesoDrive, type MotivoErrorDrive } from "@/services/driveService";
+
+export type MotivoErrorDrive = "sin_acceso" | "no_encontrado" | "desconocido";
+
+/**
+ * El <video> del navegador solo avisa "fallo" sin decir por que (403 sin acceso, 404 borrado,
+ * credenciales invalidas...) — antes de rendirse se le pregunta al propio proxy (`/api/drive-video`,
+ * ver ese archivo) el motivo real, leyendo el JSON de error que si expone el status HTTP.
+ */
+async function diagnosticarProxyDrive(fileId: string): Promise<MotivoErrorDrive> {
+  try {
+    const res = await fetch(`/api/drive-video?id=${encodeURIComponent(fileId)}`, { method: "HEAD" });
+    if (res.status === 403) return "sin_acceso";
+    if (res.status === 404) return "no_encontrado";
+    return "desconocido";
+  } catch {
+    return "desconocido";
+  }
+}
 
 export function formatoTiempo(segundos: number): string {
   const m = Math.floor(segundos / 60);
@@ -38,7 +55,6 @@ const ESCENARIO_BASE =
   "lg:h-full lg:w-auto lg:max-w-full lg:max-h-none lg:min-h-[160px]";
 export function DriveVideoPlayer({
   fileId,
-  accessToken,
   orientacion,
   onMomentoPausa,
   onError,
@@ -47,7 +63,6 @@ export function DriveVideoPlayer({
   onVideoRef,
 }: {
   fileId: string;
-  accessToken: string;
   orientacion?: "vertical" | "horizontal" | null;
   onMomentoPausa?: (tiempo: string) => void;
   onError?: (motivo: MotivoErrorDrive) => void;
@@ -61,10 +76,6 @@ export function DriveVideoPlayer({
   const [ratio, setRatio] = useState<number | null>(null);
   const [intento, setIntento] = useState(0);
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  // Tope de un solo intento de auto-reparar permisos por video — sin esto, si compartir "arregla"
-  // el permiso pero el video sigue sin reproducir por otra razon (ej. codec no soportado), se
-  // quedaria reintentando para siempre en vez de avisar el motivo real.
-  const repararIntentadoRef = useRef(false);
   // Solo para no llamar a `onMomentoPausa` en cada frame (timeupdate dispara varias veces por
   // segundo) — se avisa al padre nada mas cuando el segundo ENTERO realmente cambio.
   const ultimoSegundoRef = useRef<number | null>(null);
@@ -80,16 +91,18 @@ export function DriveVideoPlayer({
     videoRef.current = el;
     onVideoRef?.(el);
   };
-  const src = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&access_token=${encodeURIComponent(accessToken)}`;
+  // El video ya no sale directo de Drive con el token OAuth del usuario (se vencia cada ~1h y
+  // fallaba si el archivo no estaba compartido con esa cuenta) — sale del propio dominio,
+  // vía `/api/drive-video`, que lo pide con una cuenta de servicio fija (ver ese archivo).
+  const src = `/api/drive-video?id=${encodeURIComponent(fileId)}`;
 
   // Sin esto, el contador de reintentos de un video anterior se arrastraba al siguiente —
   // un video nuevo con mala suerte se quedaba sin su propio reintento.
   useEffect(() => {
     setIntento(0);
-    repararIntentadoRef.current = false;
   }, [fileId]);
 
-  // Un primer error (ej. un hipo de red pidiendole el video a Drive) no tira la toalla de una:
+  // Un primer error (ej. un hipo de red pidiendole el video al proxy) no tira la toalla de una:
   // se reintenta una vez solita (remontando el <video> con una key distinta) antes de avisarle
   // al padre que use el visor de respaldo. Asi un hipo pasajero no te saca del reproductor propio.
   const manejarError = async () => {
@@ -98,18 +111,7 @@ export function DriveVideoPlayer({
       setCargando(true);
       return;
     }
-    // El <video> no dice POR QUE fallo (401 token vencido, 403 sin permiso, 404 borrado) — antes
-    // de rendirse se pregunta con un fetch normal, que si expone el status HTTP real.
-    const diagnostico = await diagnosticarAccesoDrive(fileId, accessToken);
-    if (diagnostico.compartidoAhora && !repararIntentadoRef.current) {
-      // Era un video pegado a mano (no subido desde la app) que nunca se compartio — como esta
-      // cuenta es la dueña, se pudo compartir ahora mismo. Un ultimo intento con el permiso puesto.
-      repararIntentadoRef.current = true;
-      setIntento(0);
-      setCargando(true);
-      return;
-    }
-    onError?.(diagnostico.ok ? "desconocido" : diagnostico.motivo);
+    onError?.(await diagnosticarProxyDrive(fileId));
   };
 
   // Mientras no se conoce la proporcion real se usa una de referencia segun la orientacion ya

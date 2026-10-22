@@ -12,8 +12,8 @@ import {
 } from "@/hooks/useEntregables";
 import { crearNotificacion } from "@/services/notificacionesService";
 import { driveUrlAPreview } from "@/services/entregablesService";
-import { subirArchivoADrive, extraerFileIdDrive, type MotivoErrorDrive } from "@/services/driveService";
-import { DriveVideoPlayer, formatoTiempo } from "@/components/entregables/DriveVideoPlayer";
+import { subirArchivoADrive, extraerFileIdDrive } from "@/services/driveService";
+import { DriveVideoPlayer, formatoTiempo, type MotivoErrorDrive } from "@/components/entregables/DriveVideoPlayer";
 import { mensajeErrorAuth } from "@/lib/authErrors";
 import { cn } from "@/lib/utils";
 import { ESTADO_ENTREGABLE_BADGE, ESTADO_ENTREGABLE_LABELS, CATEGORIA_CONTENIDO_LABELS } from "@/lib/labels";
@@ -30,8 +30,7 @@ function iniciales(nombre: string) {
 }
 
 const MENSAJE_ERROR_PLAYER: Record<MotivoErrorDrive, string> = {
-  token_expirado: "Tu sesion de Drive expiro — reconecta para volver a verificar el video.",
-  sin_permiso: "No tienes permiso sobre este archivo en Drive (no es tuyo ni esta compartido contigo).",
+  sin_acceso: "La carpeta de Drive con este video no esta compartida con la cuenta de servicio.",
   no_encontrado: "Este archivo ya no existe en Drive (fue borrado o movido).",
   desconocido: "Visor de respaldo: no detecta el minuto solo.",
 };
@@ -88,16 +87,17 @@ export function RevisarEntregableDialog({
   const linkActual = entregable.urlRevision || entregable.urlFinal;
   const preview = linkActual ? driveUrlAPreview(linkActual) : null;
   const fileIdActual = linkActual ? extraerFileIdDrive(linkActual) : null;
-  const usaPlayerPropio = Boolean(fileIdActual && driveToken && !errorPlayerPropio);
-  const modoVisor: "player" | "conectar" | "preview" | "link" | "vacio" = usaPlayerPropio
+  // Ya no hace falta `driveToken` para VER el video — el reproductor propio lo pide via
+  // `/api/drive-video` con una cuenta de servicio fija, no con la sesion de Drive del usuario.
+  // `driveToken` solo sigue haciendo falta para SUBIR videos nuevos (ver `onSeleccionarArchivo`).
+  const usaPlayerPropio = Boolean(fileIdActual && !errorPlayerPropio);
+  const modoVisor: "player" | "preview" | "link" | "vacio" = usaPlayerPropio
     ? "player"
-    : fileIdActual && !driveToken
-      ? "conectar"
-      : preview
-        ? "preview"
-        : linkActual
-          ? "link"
-          : "vacio";
+    : preview
+      ? "preview"
+      : linkActual
+        ? "link"
+        : "vacio";
   // Solo se abre el layout ancho a dos columnas cuando de verdad hay un video que ver.
   // Para un link suelto, un estado vacio o el aviso de conectar Drive, un dialogo angosto se lee mejor.
   const layoutLado = modoVisor === "player" || modoVisor === "preview";
@@ -205,10 +205,9 @@ export function RevisarEntregableDialog({
         layoutLado && "w-full lg:w-auto lg:min-w-[160px]"
       )}
     >
-      {modoVisor === "player" && fileIdActual && driveToken && (
+      {modoVisor === "player" && fileIdActual && (
         <DriveVideoPlayer
           fileId={fileIdActual}
-          accessToken={driveToken}
           orientacion={orientacion}
           onMomentoPausa={setMomento}
           onError={setErrorPlayerPropio}
@@ -220,44 +219,23 @@ export function RevisarEntregableDialog({
         />
       )}
 
-      {modoVisor === "conectar" && (
-        <div className="flex aspect-video w-full flex-col items-center justify-center gap-3 rounded-lg bg-[#0B0B0C] px-4 text-center ring-1 ring-black/10">
-          <p className="text-xs text-white/70">Conecta Drive para ver el video aqui, con marcador de minuto.</p>
-          <Button type="button" variant="outline" size="sm" onClick={() => conectarDrive()}>
-            Conectar Drive
-          </Button>
-        </div>
-      )}
-
       {modoVisor === "preview" && preview && (
         <div className="flex w-full flex-col gap-2 lg:h-full">
           {/* Si se llega aqui es porque el reproductor propio ya diagnostico el motivo real del
-              fallo (token vencido, sin permiso, archivo borrado, u otra cosa) y no lo pudo
-              reparar solo. Este es el visor de Drive de respaldo, y NO puede detectar el minuto
-              al pausar (es un iframe de otro dominio). */}
+              fallo (sin acceso, archivo borrado, u otra cosa) y no lo pudo reparar solo. Este es
+              el visor de Drive de respaldo, y NO puede detectar el minuto al pausar (es un
+              iframe de otro dominio). */}
           <div className="flex w-full shrink-0 items-center justify-between gap-2 rounded-md bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-800 ring-1 ring-amber-200">
             <span>{MENSAJE_ERROR_PLAYER[errorPlayerPropio ?? "desconocido"]}</span>
-            {errorPlayerPropio === "token_expirado" ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-6 shrink-0 px-2 text-[11px]"
-                onClick={() => conectarDrive()}
-              >
-                Reconectar Drive
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-6 shrink-0 px-2 text-[11px]"
-                onClick={() => setErrorPlayerPropio(null)}
-              >
-                Reintentar reproductor propio
-              </Button>
-            )}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-6 shrink-0 px-2 text-[11px]"
+              onClick={() => setErrorPlayerPropio(null)}
+            >
+              Reintentar reproductor propio
+            </Button>
           </div>
           <div
             className="w-full min-h-[180px] max-h-[60vh] overflow-hidden rounded-lg bg-black ring-1 ring-black/10 lg:w-auto lg:max-w-full lg:max-h-none lg:min-h-0 lg:flex-1"

@@ -64,6 +64,10 @@
 - [x] Listado con version y estado
 - [ ] Crear/subir nueva version desde UI (sin sobrescribir anteriores)
 - [ ] Workflow de aprobacion (comentarios, aprobador)
+- [ ] Config pendiente: crear cuenta de servicio de Google (Drive API) y compartirle la carpeta
+      "AV Control" de Drive (rol Lector), luego agregar `GOOGLE_SERVICE_ACCOUNT_EMAIL` y
+      `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` en Vercel (Project Settings > Environment Variables) —
+      sin esto `api/drive-video.ts` (reproductor propio) no puede traer los videos
 
 ## Modulo: Metricas y reportes
 
