@@ -170,7 +170,7 @@ export function DriveVideoPlayer({
   }
 
   return (
-    <div className="flex w-full flex-col overflow-hidden rounded-lg bg-[#0B0B0C] shadow-card ring-1 ring-black/10 lg:h-full">
+    <div className="flex w-full flex-col overflow-hidden rounded-lg bg-[#0B0B0C] shadow-card ring-1 ring-black/10 lg:h-full lg:w-auto">
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-[#141416] px-2.5 py-2">
         <div className="flex min-w-0 items-center gap-2">
           <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#C1EB1F]" />

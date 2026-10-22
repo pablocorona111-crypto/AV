@@ -359,12 +359,18 @@ export function RevisarEntregableDialog({
               <Input
                 value={momento}
                 onChange={(e) => setMomento(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") onComentar();
+                }}
                 placeholder="min (ej. 0:45)"
                 className="w-28 shrink-0"
               />
               <Input
                 value={comentario}
                 onChange={(e) => setComentario(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") onComentar();
+                }}
                 placeholder="Ej. En esta toma, encuadre torcido"
               />
             </div>
@@ -379,7 +385,7 @@ export function RevisarEntregableDialog({
             </Button>
             <p className="text-[11px] text-muted-foreground">
               {usaPlayerPropio
-                ? "Se llena solo mientras reproduces (o dale al reloj para tomar el minuto actual)."
+                ? "Se llena solo mientras reproduces."
                 : "Anota el minuto donde esta el cambio que pides."}
             </p>
           </div>
