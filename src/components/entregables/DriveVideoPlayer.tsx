@@ -136,7 +136,12 @@ export function DriveVideoPlayer({
           controls
           playsInline
           preload="metadata"
-          className={cn("h-full w-full scale-[1.03] object-cover [accent-color:#FB670B]", cargando && "invisible")}
+          className={cn(
+            "h-full w-full scale-[1.03] object-cover [accent-color:#FB670B]",
+            "[&:fullscreen]:scale-100 [&:fullscreen]:object-contain [&:fullscreen]:bg-black",
+            "[&:-webkit-full-screen]:scale-100 [&:-webkit-full-screen]:object-contain [&:-webkit-full-screen]:bg-black",
+            cargando && "invisible"
+          )}
           onError={manejarError}
           onCanPlay={() => setCargando(false)}
           onLoadedMetadata={(e) => {
@@ -194,7 +199,12 @@ export function DriveVideoPlayer({
           controls
           playsInline
           preload="metadata"
-          className={cn("h-full w-full scale-[1.03] object-cover [accent-color:#FB670B]", cargando && "invisible")}
+          className={cn(
+            "h-full w-full scale-[1.03] object-cover [accent-color:#FB670B]",
+            "[&:fullscreen]:scale-100 [&:fullscreen]:object-contain [&:fullscreen]:bg-black",
+            "[&:-webkit-full-screen]:scale-100 [&:-webkit-full-screen]:object-contain [&:-webkit-full-screen]:bg-black",
+            cargando && "invisible"
+          )}
           onError={manejarError}
           // Red de seguridad: si por lo que sea no llego `loadedmetadata`, el video no se queda invisible.
           onCanPlay={() => setCargando(false)}
