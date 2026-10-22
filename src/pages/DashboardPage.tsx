@@ -141,31 +141,33 @@ export function DashboardPage() {
           <CardHeader>
             <CardTitle>Tipo de entregables (mes)</CardTitle>
           </CardHeader>
-          <CardContent className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={TIPO_ENTREGABLES}
-                  dataKey="value"
-                  innerRadius={50}
-                  outerRadius={80}
-                  paddingAngle={2}
-                >
-                  {TIPO_ENTREGABLES.map((entry) => (
-                    <Cell key={entry.name} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+          <CardContent>
+            <div className="h-48">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={TIPO_ENTREGABLES}
+                    dataKey="value"
+                    innerRadius={50}
+                    outerRadius={80}
+                    paddingAngle={2}
+                  >
+                    {TIPO_ENTREGABLES.map((entry) => (
+                      <Cell key={entry.name} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
             <div className="mt-2 space-y-1">
               {TIPO_ENTREGABLES.map((t) => (
-                <div key={t.name} className="flex items-center justify-between text-xs">
-                  <span className="flex items-center gap-1.5">
-                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: t.color }} />
-                    {t.name}
+                <div key={t.name} className="flex items-center justify-between gap-2 text-xs">
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: t.color }} />
+                    <span className="truncate">{t.name}</span>
                   </span>
-                  <span className="font-medium">{t.value}%</span>
+                  <span className="shrink-0 font-medium">{t.value}%</span>
                 </div>
               ))}
             </div>
