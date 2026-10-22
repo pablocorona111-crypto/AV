@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +29,8 @@ function diasDelMes(anio: number, mes: number) {
   return dias;
 }
 
+const ALTO_PANEL_ESTIMADO = 330;
+
 export function DatePicker({
   value,
   onChange,
@@ -42,11 +45,46 @@ export function DatePicker({
   const [open, setOpen] = useState(false);
   const seleccionada = value ? new Date(value + "T00:00:00") : null;
   const [vista, setVista] = useState(() => seleccionada ?? new Date());
-  const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [posicion, setPosicion] = useState<{ top: number; left: number; arriba: boolean } | null>(null);
+
+  // El calendario vive en un <div absolute> hijo del propio componente, asi que un
+  // `DialogContent` con `max-h-[85vh] overflow-y-auto` (el dialogo de "Nuevo entregable", por
+  // ejemplo) lo recortaba cuando se abria cerca del borde inferior. Se saca con un Portal a
+  // document.body y se posiciona en `fixed` a partir de la posicion real del boton — ya no
+  // depende del overflow de ningun ancestro.
+  const recalcularPosicion = () => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    const espacioAbajo = window.innerHeight - rect.bottom;
+    const arriba = espacioAbajo < ALTO_PANEL_ESTIMADO && rect.top > espacioAbajo;
+    setPosicion({
+      left: rect.left,
+      top: arriba ? rect.top - 4 : rect.bottom + 4,
+      arriba,
+    });
+  };
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    recalcularPosicion();
+    const onScrollOrResize = () => recalcularPosicion();
+    window.addEventListener("scroll", onScrollOrResize, true);
+    window.addEventListener("resize", onScrollOrResize);
+    return () => {
+      window.removeEventListener("scroll", onScrollOrResize, true);
+      window.removeEventListener("resize", onScrollOrResize);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   useEffect(() => {
     function onClickFuera(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (triggerRef.current?.contains(target)) return;
+      if (panelRef.current?.contains(target)) return;
+      setOpen(false);
     }
     document.addEventListener("mousedown", onClickFuera);
     return () => document.removeEventListener("mousedown", onClickFuera);
@@ -57,8 +95,9 @@ export function DatePicker({
   hoy.setHours(0, 0, 0, 0);
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative">
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
         className={cn(
@@ -71,61 +110,72 @@ export function DatePicker({
         <CalendarIcon className="h-4 w-4 opacity-60" />
       </button>
 
-      {open && (
-        <div className="absolute z-50 mt-1 w-64 rounded-md border border-border bg-white p-3 shadow-card">
-          <div className="mb-2 flex items-center justify-between">
-            <button
-              type="button"
-              onClick={() => setVista(new Date(vista.getFullYear(), vista.getMonth() - 1, 1))}
-              className="rounded-md p-1 hover:bg-bg-secondary"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <p className="text-sm font-semibold">
-              {MESES[vista.getMonth()]} {vista.getFullYear()}
-            </p>
-            <button
-              type="button"
-              onClick={() => setVista(new Date(vista.getFullYear(), vista.getMonth() + 1, 1))}
-              className="rounded-md p-1 hover:bg-bg-secondary"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
+      {open && posicion &&
+        createPortal(
+          <div
+            ref={panelRef}
+            style={{
+              position: "fixed",
+              top: posicion.arriba ? undefined : posicion.top,
+              bottom: posicion.arriba ? window.innerHeight - posicion.top : undefined,
+              left: posicion.left,
+            }}
+            className="z-50 w-64 rounded-md border border-border bg-white p-3 shadow-card"
+          >
+            <div className="mb-2 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setVista(new Date(vista.getFullYear(), vista.getMonth() - 1, 1))}
+                className="rounded-md p-1 hover:bg-bg-secondary"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <p className="text-sm font-semibold">
+                {MESES[vista.getMonth()]} {vista.getFullYear()}
+              </p>
+              <button
+                type="button"
+                onClick={() => setVista(new Date(vista.getFullYear(), vista.getMonth() + 1, 1))}
+                className="rounded-md p-1 hover:bg-bg-secondary"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
 
-          <div className="grid grid-cols-7 gap-1 text-center text-xs text-muted-foreground">
-            {DIAS_SEMANA.map((d, i) => (
-              <div key={i} className="py-1 font-medium">
-                {d}
-              </div>
-            ))}
-            {dias.map((dia, i) => {
-              if (!dia) return <div key={i} />;
-              const iso = aIso(dia);
-              const esSeleccionado = value === iso;
-              const esPasado = dia < hoy;
-              return (
-                <button
-                  key={i}
-                  type="button"
-                  disabled={esPasado}
-                  onClick={() => {
-                    onChange(iso);
-                    setOpen(false);
-                  }}
-                  className={cn(
-                    "rounded-md py-1.5 text-sm text-text-primary hover:bg-bg-secondary",
-                    esPasado && "cursor-not-allowed text-muted-foreground/40 hover:bg-transparent",
-                    esSeleccionado && "bg-accent text-white hover:brightness-95"
-                  )}
-                >
-                  {dia.getDate()}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
+            <div className="grid grid-cols-7 gap-1 text-center text-xs text-muted-foreground">
+              {DIAS_SEMANA.map((d, i) => (
+                <div key={i} className="py-1 font-medium">
+                  {d}
+                </div>
+              ))}
+              {dias.map((dia, i) => {
+                if (!dia) return <div key={i} />;
+                const iso = aIso(dia);
+                const esSeleccionado = value === iso;
+                const esPasado = dia < hoy;
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    disabled={esPasado}
+                    onClick={() => {
+                      onChange(iso);
+                      setOpen(false);
+                    }}
+                    className={cn(
+                      "rounded-md py-1.5 text-sm text-text-primary hover:bg-bg-secondary",
+                      esPasado && "cursor-not-allowed text-muted-foreground/40 hover:bg-transparent",
+                      esSeleccionado && "bg-accent text-white hover:brightness-95"
+                    )}
+                  >
+                    {dia.getDate()}
+                  </button>
+                );
+              })}
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

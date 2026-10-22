@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DemoBadge } from "@/components/DemoBadge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { NuevoProyectoDialog } from "@/components/proyectos/NuevoProyectoDialog";
@@ -28,19 +29,15 @@ export function ProyectosPage() {
   const { data: entregables = [] } = useEntregables();
   const { data: guiones = [] } = useGuiones();
   const [seleccionado, setSeleccionado] = useState<Proyecto | null>(null);
+  const [aEliminar, setAEliminar] = useState<Proyecto | null>(null);
   const eliminar = useEliminarProyecto();
 
   const nombreDe = (id: string) => usuarios.find((u) => u.id === id)?.nombre ?? id;
 
-  const onEliminar = (p: Proyecto) => {
-    const entregablesLigados = entregables.filter((e) => e.proyectoId === p.id).length;
-    const guionesLigados = guiones.filter((g) => g.proyectoId === p.id).length;
-    const aviso =
-      entregablesLigados || guionesLigados
-        ? `Este proyecto tiene ${guionesLigados} guion(es) y ${entregablesLigados} entregable(s) ligados — se quedaran huerfanos (sin proyecto). `
-        : "";
-    if (!window.confirm(`${aviso}¿Eliminar el proyecto "${p.nombre}"? Esta accion no se puede deshacer.`)) return;
-    eliminar.mutate(p.id);
+  const confirmarEliminar = () => {
+    if (!aEliminar) return;
+    eliminar.mutate(aEliminar.id);
+    setAEliminar(null);
     setSeleccionado(null);
   };
 
@@ -116,7 +113,7 @@ export function ProyectosPage() {
                       variant="outline"
                       size="sm"
                       className="text-destructive hover:bg-red-50"
-                      onClick={() => onEliminar(seleccionado)}
+                      onClick={() => setAEliminar(seleccionado)}
                       disabled={eliminar.isPending}
                     >
                       <Trash2 className="h-3.5 w-3.5" /> Eliminar
@@ -188,6 +185,32 @@ export function ProyectosPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={Boolean(aEliminar)}
+        onOpenChange={(v) => !v && setAEliminar(null)}
+        title={`¿Eliminar el proyecto "${aEliminar?.nombre}"?`}
+        description={
+          aEliminar && (
+            <>
+              {(() => {
+                const entregablesLigados = entregables.filter((e) => e.proyectoId === aEliminar.id).length;
+                const guionesLigados = guiones.filter((g) => g.proyectoId === aEliminar.id).length;
+                return entregablesLigados || guionesLigados ? (
+                  <p>
+                    Tiene {guionesLigados} guion(es) y {entregablesLigados} entregable(s) ligados — se quedaran
+                    huerfanos (sin proyecto).
+                  </p>
+                ) : null;
+              })()}
+              <p className="mt-1">Esta accion no se puede deshacer.</p>
+            </>
+          )
+        }
+        confirmLabel="Eliminar"
+        destructive
+        onConfirm={confirmarEliminar}
+      />
     </div>
   );
 }
