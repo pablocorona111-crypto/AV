@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { obtenerTokenServicio } from "./_lib/driveServiceAccount";
+import { obtenerTokenServicio } from "../server/driveServiceAccount";
 
 /**
  * Igual que `drive-video.ts` pero para la miniatura: antes se pedia con el `driveToken` del

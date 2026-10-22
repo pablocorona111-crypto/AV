@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { obtenerTokenServicio } from "./_lib/driveServiceAccount";
+import { obtenerTokenServicio } from "../server/driveServiceAccount";
 
 /**
  * Sirve el video de Drive desde el propio dominio, con la cuenta de servicio de Google
