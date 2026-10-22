@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { obtenerTokenServicio } from "../server/driveServiceAccount";
+import { GoogleAuth } from "google-auth-library";
 
 /**
  * Sirve el video de Drive desde el propio dominio, con la cuenta de servicio de Google
@@ -9,7 +9,34 @@ import { obtenerTokenServicio } from "../server/driveServiceAccount";
  *
  * Reenvia el header `Range` que manda el <video> al buscar/saltar de posicion, y responde
  * 206 con `Content-Range` — sin esto el navegador no puede saltar a la mitad del video.
+ *
+ * El helper de token esta duplicado aqui y en `drive-thumbnail.ts` (y no importado desde un
+ * archivo compartido): Vercel no empaqueta imports relativos fuera de `api/` en runtime ESM
+ * ("type":"module" en package.json) — probado, truena con ERR_MODULE_NOT_FOUND en produccion.
  */
+
+let tokenCacheado: { token: string; vence: number } | null = null;
+
+async function obtenerTokenServicio(): Promise<string> {
+  if (tokenCacheado && tokenCacheado.vence > Date.now() + 60_000) return tokenCacheado.token;
+
+  const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+  const clavePrivada = (process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY ?? "").replace(/\\n/g, "\n");
+  if (!email || !clavePrivada) {
+    throw new Error("Faltan las variables GOOGLE_SERVICE_ACCOUNT_EMAIL / GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY.");
+  }
+
+  const auth = new GoogleAuth({
+    credentials: { client_email: email, private_key: clavePrivada },
+    scopes: ["https://www.googleapis.com/auth/drive.readonly"],
+  });
+  const cliente = await auth.getClient();
+  const { token } = await cliente.getAccessToken();
+  if (!token) throw new Error("Google no entrego token para la cuenta de servicio.");
+
+  tokenCacheado = { token, vence: Date.now() + 55 * 60 * 1000 };
+  return token;
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const fileId = typeof req.query.id === "string" ? req.query.id : null;
