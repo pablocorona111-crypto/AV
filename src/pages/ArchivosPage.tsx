@@ -111,6 +111,7 @@ export function ArchivosPage() {
         onOpenChange={(open) => !open && setSeleccionadoId(null)}
         nombreResponsable={seleccionado ? nombreDe(seleccionado.responsableId) : ""}
         nombreProyecto={seleccionado ? proyectoDe(seleccionado.proyectoId) : undefined}
+        nombreAprobador={seleccionado?.aprobadorId ? nombreDe(seleccionado.aprobadorId) : undefined}
       />
     </div>
   );
