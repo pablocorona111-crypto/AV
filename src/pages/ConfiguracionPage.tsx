@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
+import { AlertTriangle } from "lucide-react";
 import { useActualizarGestorRequisiciones, useActualizarRolUsuario, useUsuarios } from "@/hooks/useCatalogos";
 import { useAuth } from "@/context/AuthContext";
 import { ROLE_LABELS } from "@/lib/roles";
+import { vaciarTodaLaInfo } from "@/services/resetService";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DemoBadge } from "@/components/DemoBadge";
 import { InvitarUsuarioDialog } from "@/components/configuracion/InvitarUsuarioDialog";
 import type { GestorRequisicionesPermisos } from "@/types";
@@ -30,6 +33,23 @@ export function ConfiguracionPage() {
   const [permisos, setPermisos] = useState<GestorRequisicionesPermisos | undefined>();
   const actualizarGestor = useActualizarGestorRequisiciones();
   const actualizarRol = useActualizarRolUsuario();
+  const [confirmarReset, setConfirmarReset] = useState(false);
+  const [reseteando, setReseteando] = useState(false);
+  const [errorReset, setErrorReset] = useState<string | null>(null);
+
+  const onVaciarTodo = async () => {
+    setReseteando(true);
+    setErrorReset(null);
+    try {
+      await vaciarTodaLaInfo();
+      setConfirmarReset(false);
+      window.location.reload();
+    } catch (e) {
+      setErrorReset(e instanceof Error ? e.message : "No se pudo vaciar la informacion.");
+    } finally {
+      setReseteando(false);
+    }
+  };
 
   // usuarios llega de forma asincrona (Firestore/demo) — sincronizar cuando este disponible.
   useEffect(() => {
@@ -148,6 +168,48 @@ export function ConfiguracionPage() {
           </CardFooter>
         </Card>
       )}
+
+      {usuarioActual?.rol === "superadmin" && (
+        <Card className="border-destructive/40">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" /> Zona de peligro
+            </CardTitle>
+            <CardDescription>
+              Borra requisiciones, proyectos, entregables, guiones, salidas, notificaciones, equipo
+              AV, colaboradores e invitaciones — deja la app como recien instalada. No toca la
+              lista de usuarios/cuentas (para que nadie, incluido tu, se quede sin acceso).
+            </CardDescription>
+          </CardHeader>
+          <CardFooter>
+            <Button variant="outline" className="text-destructive hover:bg-red-50" onClick={() => setConfirmarReset(true)}>
+              Vaciar toda la info de la app
+            </Button>
+          </CardFooter>
+        </Card>
+      )}
+
+      <ConfirmDialog
+        open={confirmarReset}
+        onOpenChange={(v) => {
+          setConfirmarReset(v);
+          if (!v) setErrorReset(null);
+        }}
+        title="¿Vaciar toda la informacion de la app?"
+        description={
+          <>
+            <p>
+              Esto borra para siempre requisiciones, proyectos, entregables, guiones, salidas,
+              notificaciones, equipo AV, colaboradores e invitaciones. No se puede deshacer.
+            </p>
+            {errorReset && <p className="mt-2 font-medium text-destructive">{errorReset}</p>}
+          </>
+        }
+        confirmLabel={reseteando ? "Borrando..." : "Borrar todo"}
+        destructive
+        confirmarTexto="BORRAR TODO"
+        onConfirm={onVaciarTodo}
+      />
     </div>
   );
 }

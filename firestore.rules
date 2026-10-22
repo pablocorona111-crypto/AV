@@ -128,7 +128,8 @@ service cloud.firestore {
         allow read: if usuarioAutenticado();
         allow create: if puedeAprobar() || esGestorRequisiciones() ||
           get(/databases/$(database)/documents/entregables/$(entregableId)).data.responsableId == request.auth.uid;
-        allow update, delete: if false;
+        allow update: if false;
+        allow delete: if esSuperadmin();
       }
     }
 
@@ -152,7 +153,8 @@ service cloud.firestore {
         allow read: if usuarioAutenticado();
         allow create: if puedeAprobar() || esGestorRequisiciones() ||
           get(/databases/$(database)/documents/guiones/$(guionId)).data.responsableId == request.auth.uid;
-        allow update, delete: if false;
+        allow update: if false;
+        allow delete: if esSuperadmin();
       }
     }
 
@@ -172,7 +174,9 @@ service cloud.firestore {
       // Solo el dueño la marca como leida, y solo ese campo.
       allow update: if usuarioAutenticado() && resource.data.paraUsuarioId == request.auth.uid &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['leida']);
-      allow delete: if false;
+      // El dueño nunca borra (serian sus propias notificaciones) — solo el superadmin, y solo
+      // para el boton de "vaciar toda la info" en Configuracion.
+      allow delete: if esSuperadmin();
     }
 
     match /audit_log/{entryId} {
