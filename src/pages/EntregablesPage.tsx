@@ -44,7 +44,8 @@ export function EntregablesPage() {
   const seleccionado = entregables.find((e) => e.id === seleccionadoId) ?? null;
   const guionSeleccionado = guiones.find((g) => g.id === guionSeleccionadoId) ?? null;
 
-  const proyectoDe = (id: string) => proyectos.find((p) => p.id === id)?.nombre ?? "Proyecto eliminado";
+  const proyectoDe = (id: string | undefined) =>
+    id ? proyectos.find((p) => p.id === id)?.nombre ?? "Proyecto eliminado" : "Sin proyecto";
   const nombreDe = (id: string) => usuarios.find((u) => u.id === id)?.nombre ?? id;
 
   return (

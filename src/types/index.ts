@@ -162,7 +162,9 @@ export type EstadoEntregable =
 
 export interface Entregable {
   id: string;
-  proyectoId: string;
+  /** Sin valor cuando el lider lo crea directo, sin requisicion/proyecto previo (ej. un cambio
+   * de pagina web que le asignaron de palabra). */
+  proyectoId?: string;
   nombre: string;
   tipo: CategoriaContenido;
   formato?: string;
@@ -178,6 +180,8 @@ export interface Entregable {
   urlFinal?: string;
   aprobadorId?: string;
   creadoEn: string;
+  /** Cuando `estado` paso a "entregado" — para agrupar entregas por mes en la grafica del lider. */
+  fechaEntregado?: string;
 }
 
 export type TipoActividadSalida =

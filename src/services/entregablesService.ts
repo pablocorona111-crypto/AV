@@ -76,7 +76,10 @@ export async function solicitarCorrecciones(id: string): Promise<void> {
 }
 
 export async function marcarEntregado(id: string): Promise<void> {
-  await actualizarEntregable(id, { estado: "entregado" as EstadoEntregable });
+  await actualizarEntregable(id, {
+    estado: "entregado" as EstadoEntregable,
+    fechaEntregado: new Date().toISOString(),
+  });
 }
 
 /** Deja marcar la orientacion a mano cuando no se detecto sola (ej. video viejo sin etiqueta). */

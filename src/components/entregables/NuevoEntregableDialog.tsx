@@ -23,6 +23,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DatePicker } from "@/components/ui/date-picker";
 import type { CategoriaContenido } from "@/types";
 
+/** Sentinel del Select — Radix no acepta value="" en un SelectItem. Se convierte a
+ * `undefined` (sin proyecto/requisicion) justo antes de crear el entregable. */
+const SIN_PROYECTO = "sin-proyecto";
+
 const schema = z.object({
   nombre: z.string().min(3, "Minimo 3 caracteres"),
   proyectoId: z.string().min(1, "Requerido"),
@@ -46,7 +50,7 @@ export function NuevoEntregableDialog() {
     control,
     reset,
     formState: { errors },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) });
+  } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { proyectoId: SIN_PROYECTO } });
 
   const colaboradores = usuarios.filter(
     (u) => u.rol === "colaborador_audiovisual" || u.rol === "lider_audiovisual" || u.rol === "superadmin"
@@ -57,12 +61,12 @@ export function NuevoEntregableDialog() {
     try {
       await crear.mutateAsync({
         nombre: values.nombre,
-        proyectoId: values.proyectoId,
+        ...(values.proyectoId !== SIN_PROYECTO ? { proyectoId: values.proyectoId } : {}),
         responsableId: values.responsableId,
         tipo: values.tipo,
         fechaCompromiso: values.fechaCompromiso,
       });
-      reset();
+      reset({ proyectoId: SIN_PROYECTO });
       setOpen(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo crear el entregable.");
@@ -90,7 +94,7 @@ export function NuevoEntregableDialog() {
           </div>
 
           <div className="space-y-1.5">
-            <Label>Proyecto</Label>
+            <Label>Proyecto (opcional)</Label>
             <Controller
               control={control}
               name="proyectoId"
@@ -100,6 +104,7 @@ export function NuevoEntregableDialog() {
                     <SelectValue placeholder="Selecciona proyecto" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value={SIN_PROYECTO}>Sin proyecto (trabajo directo)</SelectItem>
                     {proyectos.map((p) => (
                       <SelectItem key={p.id} value={p.id}>
                         {p.nombre}

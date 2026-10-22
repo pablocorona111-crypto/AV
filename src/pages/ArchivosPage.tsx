@@ -20,7 +20,8 @@ export function ArchivosPage() {
   const [filtroEstado, setFiltroEstado] = useState<EstadoEntregable | "todos">("todos");
 
   const seleccionado = entregables.find((e) => e.id === seleccionadoId) ?? null;
-  const proyectoDe = (id: string) => proyectos.find((p) => p.id === id)?.nombre ?? "Proyecto eliminado";
+  const proyectoDe = (id: string | undefined) =>
+    id ? proyectos.find((p) => p.id === id)?.nombre ?? "Proyecto eliminado" : "Sin proyecto";
   const nombreDe = (id: string) => usuarios.find((u) => u.id === id)?.nombre ?? id;
 
   const terminoBusqueda = busqueda.trim().toLowerCase();
@@ -68,7 +69,6 @@ export function ArchivosPage() {
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
         {referencias.map((e) => {
-          const proyecto = proyectos.find((p) => p.id === e.proyectoId);
           return (
             <Card
               key={e.id}
@@ -81,7 +81,7 @@ export function ArchivosPage() {
                   <p className="truncate text-xs font-medium">{e.nombre}</p>
                   <Badge variant="outline" className="shrink-0 text-[10px]">{e.version}</Badge>
                 </div>
-                <p className="truncate text-[11px] text-muted-foreground">{proyecto?.nombre ?? "Proyecto eliminado"}</p>
+                <p className="truncate text-[11px] text-muted-foreground">{proyectoDe(e.proyectoId)}</p>
                 <div className="flex flex-wrap items-center gap-1">
                   <Badge variant={ESTADO_ENTREGABLE_BADGE[e.estado]} className="text-[10px]">
                     {ESTADO_ENTREGABLE_LABELS[e.estado]}
