@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { CheckCircle2, Clock, ExternalLink, RotateCcw, Send, Upload } from "lucide-react";
+import { CheckCircle2, Clock, Download, ExternalLink, RotateCcw, Send, Upload } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { puedeAprobarEntregables, puedeSubirVideos, esGestorRequisiciones } from "@/lib/roles";
 import {
@@ -432,6 +432,14 @@ export function RevisarEntregableDialog({
             <Badge variant={ESTADO_ENTREGABLE_BADGE[entregable.estado]}>
               {ESTADO_ENTREGABLE_LABELS[entregable.estado]}
             </Badge>
+            {fileIdActual && (entregable.estado === "aprobado" || entregable.estado === "entregado") && (
+              <a
+                href={`/api/drive-video?id=${encodeURIComponent(fileIdActual)}&download=1&nombre=${encodeURIComponent(entregable.nombre)}`}
+                className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs font-medium hover:bg-bg-secondary"
+              >
+                <Download className="h-3.5 w-3.5" /> Descargar
+              </a>
+            )}
           </div>
         </DialogHeader>
 

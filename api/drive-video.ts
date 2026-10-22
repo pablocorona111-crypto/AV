@@ -60,6 +60,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   res.setHeader("Cache-Control", "private, max-age=3600");
 
+  // Boton "Descargar" de la community (RevisarEntregableDialog.tsx) — con esto el navegador
+  // guarda el archivo en vez de intentar reproducirlo inline, sin salir de la app ni pasar por Drive.
+  if (req.query.download) {
+    const nombreArchivo =
+      typeof req.query.nombre === "string" && req.query.nombre.trim()
+        ? req.query.nombre.replace(/["\r\n]/g, "")
+        : fileId;
+    res.setHeader("Content-Disposition", `attachment; filename="${nombreArchivo}"`);
+  }
+
   // HEAD es solo para diagnostico (ver `diagnosticarProxyDrive` en DriveVideoPlayer.tsx) — no
   // tiene sentido bajar el archivo completo nada mas para confirmar que si hay acceso.
   if (req.method === "HEAD" || !driveRes.body) {
