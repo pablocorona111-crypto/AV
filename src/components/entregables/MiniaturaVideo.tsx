@@ -1,7 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { FileVideo, Play, Smartphone, Monitor } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
-import { extraerFileIdDrive, obtenerMiniaturaDrive } from "@/services/driveService";
+import { extraerFileIdDrive } from "@/services/driveService";
 import { cn } from "@/lib/utils";
 
 /**
@@ -20,16 +19,9 @@ export function MiniaturaVideo({
   orientacion?: "vertical" | "horizontal";
   className?: string;
 }) {
-  const { driveToken } = useAuth();
+  const [fallo, setFallo] = useState(false);
   const fileId = url ? extraerFileIdDrive(url) : null;
-
-  const { data: miniatura } = useQuery({
-    queryKey: ["miniaturaDrive", fileId],
-    queryFn: () => obtenerMiniaturaDrive(fileId as string, driveToken as string),
-    enabled: Boolean(fileId && driveToken),
-    staleTime: 60 * 60 * 1000,
-    retry: false,
-  });
+  const miniatura = fileId && !fallo ? `/api/drive-thumbnail?id=${encodeURIComponent(fileId)}` : null;
 
   const forma = orientacion === "vertical" ? "aspect-[3/4]" : "aspect-video";
   const IconoOrientacion = orientacion === "vertical" ? Smartphone : Monitor;
@@ -41,6 +33,7 @@ export function MiniaturaVideo({
           src={miniatura}
           alt=""
           loading="lazy"
+          onError={() => setFallo(true)}
           className="h-full w-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.04]"
         />
       ) : (

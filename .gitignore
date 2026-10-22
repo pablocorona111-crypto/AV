@@ -7,3 +7,6 @@ dist
 .firebase
 *.tsbuildinfo
 .vercel
+*-firebase-adminsdk-*.json
+av-control-*.json
+*.serviceaccount.json
