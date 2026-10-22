@@ -12,7 +12,7 @@ import {
 } from "@/hooks/useEntregables";
 import { crearNotificacion } from "@/services/notificacionesService";
 import { driveUrlAPreview } from "@/services/entregablesService";
-import { subirArchivoADrive, extraerFileIdDrive } from "@/services/driveService";
+import { subirArchivoADrive, extraerFileIdDrive, type MotivoErrorDrive } from "@/services/driveService";
 import { DriveVideoPlayer, formatoTiempo } from "@/components/entregables/DriveVideoPlayer";
 import { mensajeErrorAuth } from "@/lib/authErrors";
 import { cn } from "@/lib/utils";
@@ -28,6 +28,13 @@ import type { Entregable } from "@/types";
 function iniciales(nombre: string) {
   return nombre.split(" ").slice(0, 2).map((p) => p[0]).join("").toUpperCase();
 }
+
+const MENSAJE_ERROR_PLAYER: Record<MotivoErrorDrive, string> = {
+  token_expirado: "Tu sesion de Drive expiro — reconecta para volver a verificar el video.",
+  sin_permiso: "No tienes permiso sobre este archivo en Drive (no es tuyo ni esta compartido contigo).",
+  no_encontrado: "Este archivo ya no existe en Drive (fue borrado o movido).",
+  desconocido: "Visor de respaldo: no detecta el minuto solo.",
+};
 
 export function RevisarEntregableDialog({
   entregable,
@@ -49,7 +56,7 @@ export function RevisarEntregableDialog({
   const [subiendo, setSubiendo] = useState(false);
   const [progreso, setProgreso] = useState(0);
   const [errorSubida, setErrorSubida] = useState<string | null>(null);
-  const [playerPropioFallo, setPlayerPropioFallo] = useState(false);
+  const [errorPlayerPropio, setErrorPlayerPropio] = useState<MotivoErrorDrive | null>(null);
   const [orientacion, setOrientacion] = useState<"vertical" | "horizontal" | null>(null);
   const [ratioReal, setRatioReal] = useState<number | null>(null);
   const [orientacionSubida, setOrientacionSubida] = useState<"vertical" | "horizontal">("horizontal");
@@ -60,7 +67,7 @@ export function RevisarEntregableDialog({
     // `open` tambien dispara el reset: si el reproductor propio fallo una vez (ej. un hipo de
     // red al pedir el video a Drive), sin esto se quedaba en modo "link" para siempre en esa
     // sesion, aunque el motivo haya sido pasajero. Reabrir el dialogo le da otra oportunidad.
-    setPlayerPropioFallo(false);
+    setErrorPlayerPropio(null);
     setRatioReal(null);
     // Si ya quedo etiquetado al subirlo, se usa de una vez — sin esperar a que cargue el video (sin parpadeo).
     setOrientacion(entregable?.orientacionVideo ?? null);
@@ -81,7 +88,7 @@ export function RevisarEntregableDialog({
   const linkActual = entregable.urlRevision || entregable.urlFinal;
   const preview = linkActual ? driveUrlAPreview(linkActual) : null;
   const fileIdActual = linkActual ? extraerFileIdDrive(linkActual) : null;
-  const usaPlayerPropio = Boolean(fileIdActual && driveToken && !playerPropioFallo);
+  const usaPlayerPropio = Boolean(fileIdActual && driveToken && !errorPlayerPropio);
   const modoVisor: "player" | "conectar" | "preview" | "link" | "vacio" = usaPlayerPropio
     ? "player"
     : fileIdActual && !driveToken
@@ -204,7 +211,7 @@ export function RevisarEntregableDialog({
           accessToken={driveToken}
           orientacion={orientacion}
           onMomentoPausa={setMomento}
-          onError={() => setPlayerPropioFallo(true)}
+          onError={setErrorPlayerPropio}
           onOrientacion={onOrientacionDetectada}
           onRatio={setRatioReal}
           onVideoRef={(video) => {
@@ -224,20 +231,33 @@ export function RevisarEntregableDialog({
 
       {modoVisor === "preview" && preview && (
         <div className="flex w-full flex-col gap-2 lg:h-full">
-          {/* Si se llega aqui es porque el reproductor propio fallo una vez (ej. un hipo de
-              red) — este es el visor de Drive de respaldo, y NO puede detectar el minuto al
-              pausar (es un iframe de otro dominio). Reintentar vuelve al reproductor propio. */}
+          {/* Si se llega aqui es porque el reproductor propio ya diagnostico el motivo real del
+              fallo (token vencido, sin permiso, archivo borrado, u otra cosa) y no lo pudo
+              reparar solo. Este es el visor de Drive de respaldo, y NO puede detectar el minuto
+              al pausar (es un iframe de otro dominio). */}
           <div className="flex w-full shrink-0 items-center justify-between gap-2 rounded-md bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-800 ring-1 ring-amber-200">
-            <span>Visor de respaldo: no detecta el minuto solo.</span>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-6 shrink-0 px-2 text-[11px]"
-              onClick={() => setPlayerPropioFallo(false)}
-            >
-              Reintentar reproductor propio
-            </Button>
+            <span>{MENSAJE_ERROR_PLAYER[errorPlayerPropio ?? "desconocido"]}</span>
+            {errorPlayerPropio === "token_expirado" ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-6 shrink-0 px-2 text-[11px]"
+                onClick={() => conectarDrive()}
+              >
+                Reconectar Drive
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-6 shrink-0 px-2 text-[11px]"
+                onClick={() => setErrorPlayerPropio(null)}
+              >
+                Reintentar reproductor propio
+              </Button>
+            )}
           </div>
           <div
             className="w-full min-h-[180px] max-h-[60vh] overflow-hidden rounded-lg bg-black ring-1 ring-black/10 lg:w-auto lg:max-w-full lg:max-h-none lg:min-h-0 lg:flex-1"

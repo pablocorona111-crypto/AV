@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Clock, Loader2, Maximize2, Monitor, Smartphone } from "lucide-react";
+import { Clock, Loader2, Maximize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { diagnosticarAccesoDrive, type MotivoErrorDrive } from "@/services/driveService";
 
 export function formatoTiempo(segundos: number): string {
   const m = Math.floor(segundos / 60);
@@ -49,7 +50,7 @@ export function DriveVideoPlayer({
   accessToken: string;
   orientacion?: "vertical" | "horizontal" | null;
   onMomentoPausa?: (tiempo: string) => void;
-  onError?: () => void;
+  onError?: (motivo: MotivoErrorDrive) => void;
   onOrientacion?: (orientacion: "vertical" | "horizontal") => void;
   onRatio?: (ratio: number) => void;
   /** Entrega el elemento <video> real al padre — asi el boton "usar minuto actual" puede leer
@@ -60,6 +61,10 @@ export function DriveVideoPlayer({
   const [ratio, setRatio] = useState<number | null>(null);
   const [intento, setIntento] = useState(0);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  // Tope de un solo intento de auto-reparar permisos por video — sin esto, si compartir "arregla"
+  // el permiso pero el video sigue sin reproducir por otra razon (ej. codec no soportado), se
+  // quedaria reintentando para siempre en vez de avisar el motivo real.
+  const repararIntentadoRef = useRef(false);
   // Solo para no llamar a `onMomentoPausa` en cada frame (timeupdate dispara varias veces por
   // segundo) — se avisa al padre nada mas cuando el segundo ENTERO realmente cambio.
   const ultimoSegundoRef = useRef<number | null>(null);
@@ -81,32 +86,40 @@ export function DriveVideoPlayer({
   // un video nuevo con mala suerte se quedaba sin su propio reintento.
   useEffect(() => {
     setIntento(0);
+    repararIntentadoRef.current = false;
   }, [fileId]);
 
   // Un primer error (ej. un hipo de red pidiendole el video a Drive) no tira la toalla de una:
   // se reintenta una vez solita (remontando el <video> con una key distinta) antes de avisarle
   // al padre que use el visor de respaldo. Asi un hipo pasajero no te saca del reproductor propio.
-  const manejarError = () => {
+  const manejarError = async () => {
     if (intento < 1) {
       setIntento((n) => n + 1);
       setCargando(true);
-    } else {
-      onError?.();
+      return;
     }
+    // El <video> no dice POR QUE fallo (401 token vencido, 403 sin permiso, 404 borrado) — antes
+    // de rendirse se pregunta con un fetch normal, que si expone el status HTTP real.
+    const diagnostico = await diagnosticarAccesoDrive(fileId, accessToken);
+    if (diagnostico.compartidoAhora && !repararIntentadoRef.current) {
+      // Era un video pegado a mano (no subido desde la app) que nunca se compartio — como esta
+      // cuenta es la dueña, se pudo compartir ahora mismo. Un ultimo intento con el permiso puesto.
+      repararIntentadoRef.current = true;
+      setIntento(0);
+      setCargando(true);
+      return;
+    }
+    onError?.(diagnostico.ok ? "desconocido" : diagnostico.motivo);
   };
 
   // Mientras no se conoce la proporcion real se usa una de referencia segun la orientacion ya
   // etiquetada — asi la caja no da un salto grande cuando el video carga.
   const esVertical = ratio != null ? ratio < 1 : orientacion === "vertical";
-  const ratioCaja = ratio ?? (esVertical ? 9 / 16 : 16 / 9);
-  const IconoOrientacion = esVertical ? Smartphone : Monitor;
-
-  const formatoChip = (
-    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-white/70">
-      <IconoOrientacion className="h-3 w-3" />
-      {esVertical ? "9:16" : "16:9"}
-    </span>
-  );
+  const ratioDetectado = ratio ?? (esVertical ? 9 / 16 : 16 / 9);
+  // En vertical, la proporcion real (9:16) deja la caja muy angosta. Se pone un piso mas ancho
+  // a proposito — el `object-cover` del <video> ya recorta para llenar la caja, asi que esto
+  // solo significa un poco mas de recorte a los lados a cambio de una caja mas grande.
+  const ratioCaja = esVertical ? Math.max(ratioDetectado, 0.72) : ratioDetectado;
 
   const botonFullscreen = (
     <button
@@ -140,6 +153,7 @@ export function DriveVideoPlayer({
           ref={asignarRef}
           src={src}
           controls
+          playsInline
           preload="metadata"
           className={cn("h-full w-full scale-[1.03] object-cover", cargando && "invisible")}
           onError={manejarError}
@@ -161,10 +175,7 @@ export function DriveVideoPlayer({
         />
 
         <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between gap-2 bg-gradient-to-b from-black/70 to-transparent px-2.5 pb-5 pt-2">
-          <div className="flex min-w-0 items-center gap-2">
-            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#C1EB1F]" />
-            {formatoChip}
-          </div>
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#C1EB1F]" />
           <div className="pointer-events-auto">{botonFullscreen}</div>
         </div>
 
@@ -184,7 +195,6 @@ export function DriveVideoPlayer({
         <div className="flex min-w-0 items-center gap-2">
           <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#C1EB1F]" />
           <span className="text-[10px] font-semibold uppercase tracking-[0.09em] text-white/55">Visor</span>
-          {formatoChip}
         </div>
         {botonFullscreen}
       </div>
@@ -204,6 +214,7 @@ export function DriveVideoPlayer({
           ref={asignarRef}
           src={src}
           controls
+          playsInline
           preload="metadata"
           className={cn("h-full w-full scale-[1.03] object-cover", cargando && "invisible")}
           onError={manejarError}
