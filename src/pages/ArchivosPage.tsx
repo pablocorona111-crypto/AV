@@ -9,7 +9,10 @@ import { DemoBadge } from "@/components/DemoBadge";
 import { RevisarEntregableDialog } from "@/components/entregables/RevisarEntregableDialog";
 import { MiniaturaVideo } from "@/components/entregables/MiniaturaVideo";
 import { ESTADO_ENTREGABLE_BADGE, ESTADO_ENTREGABLE_LABELS } from "@/lib/labels";
+import { dentroDelPeriodo, type Periodo } from "@/lib/periodo";
 import type { EstadoEntregable } from "@/types";
+
+type FiltroPeriodo = Periodo | "todos";
 
 export function ArchivosPage() {
   const { data: proyectos = [] } = useProyectos();
@@ -18,6 +21,7 @@ export function ArchivosPage() {
   const [seleccionadoId, setSeleccionadoId] = useState<string | null>(null);
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState<EstadoEntregable | "todos">("todos");
+  const [filtroPeriodo, setFiltroPeriodo] = useState<FiltroPeriodo>("todos");
 
   const seleccionado = entregables.find((e) => e.id === seleccionadoId) ?? null;
   const proyectoDe = (id: string | undefined) =>
@@ -28,6 +32,7 @@ export function ArchivosPage() {
   const referencias = entregables.filter((e) => {
     if (!(e.urlRevision || e.urlFinal)) return false;
     if (filtroEstado !== "todos" && e.estado !== filtroEstado) return false;
+    if (!dentroDelPeriodo(e.fechaEntregado ?? e.creadoEn, filtroPeriodo)) return false;
     if (!terminoBusqueda) return true;
     const nombreProyecto = proyectoDe(e.proyectoId).toLowerCase();
     return e.nombre.toLowerCase().includes(terminoBusqueda) || nombreProyecto.includes(terminoBusqueda);
@@ -65,6 +70,16 @@ export function ArchivosPage() {
             ))}
           </SelectContent>
         </Select>
+        <Select value={filtroPeriodo} onValueChange={(v) => setFiltroPeriodo(v as FiltroPeriodo)}>
+          <SelectTrigger className="sm:w-44">
+            <SelectValue placeholder="Periodo" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todo el tiempo</SelectItem>
+            <SelectItem value="semana">Esta semana</SelectItem>
+            <SelectItem value="mes">Este mes</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
@@ -98,7 +113,7 @@ export function ArchivosPage() {
         })}
         {referencias.length === 0 && (
           <p className="col-span-full py-8 text-center text-sm text-muted-foreground">
-            {busqueda || filtroEstado !== "todos"
+            {busqueda || filtroEstado !== "todos" || filtroPeriodo !== "todos"
               ? "Sin resultados para ese filtro."
               : "Sin referencias de archivo registradas."}
           </p>
