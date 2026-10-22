@@ -116,7 +116,7 @@ export function DriveVideoPlayer({
   // En vertical, la proporcion real (9:16) deja la caja muy angosta. Se pone un piso mas ancho
   // a proposito — el `object-cover` del <video> ya recorta para llenar la caja, asi que esto
   // solo significa un poco mas de recorte a los lados a cambio de una caja mas grande.
-  const ratioCaja = esVertical ? Math.max(ratioDetectado, 0.72) : ratioDetectado;
+  const ratioCaja = esVertical ? Math.max(ratioDetectado, 0.85) : ratioDetectado;
 
   const botonFullscreen = (
     <button
