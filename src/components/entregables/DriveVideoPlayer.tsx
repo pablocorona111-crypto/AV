@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Clock, Loader2, Maximize2 } from "lucide-react";
+import { Clock, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type MotivoErrorDrive = "sin_acceso" | "no_encontrado" | "desconocido";
@@ -71,7 +71,6 @@ export function DriveVideoPlayer({
   const [cargando, setCargando] = useState(true);
   const [ratio, setRatio] = useState<number | null>(null);
   const [intento, setIntento] = useState(0);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
   // Solo para no llamar a `onMomentoPausa` en cada frame (timeupdate dispara varias veces por
   // segundo) — se avisa al padre nada mas cuando el segundo ENTERO realmente cambio.
   const ultimoSegundoRef = useRef<number | null>(null);
@@ -82,9 +81,6 @@ export function DriveVideoPlayer({
       ultimoSegundoRef.current = segundo;
       onMomentoPausa?.(formatoTiempo(v.currentTime));
     }
-  };
-  const asignarRef = (el: HTMLVideoElement | null) => {
-    videoRef.current = el;
   };
   // El video ya no sale directo de Drive con el token OAuth del usuario (se vencia cada ~1h y
   // fallaba si el archivo no estaba compartido con esa cuenta) — sale del propio dominio,
@@ -118,17 +114,6 @@ export function DriveVideoPlayer({
   // solo significa un poco mas de recorte a los lados a cambio de una caja mas grande.
   const ratioCaja = esVertical ? Math.max(ratioDetectado, 0.65) : ratioDetectado;
 
-  const botonFullscreen = (
-    <button
-      type="button"
-      title="Pantalla completa"
-      onClick={() => videoRef.current?.requestFullscreen?.()}
-      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-white/70 transition-colors hover:bg-white/10 hover:text-white"
-    >
-      <Maximize2 className="h-3.5 w-3.5" />
-    </button>
-  );
-
   // En vertical, header y pie eran barras solidas separadas del video — en una columna angosta
   // se leian como si fueran bandas negras (letterbox) encima del propio video. Aqui en cambio
   // van flotando SOBRE el video (degradado, sin fondo solido), como en cualquier app de reels:
@@ -147,7 +132,6 @@ export function DriveVideoPlayer({
         )}
         <video
           key={`${fileId}-${intento}`}
-          ref={asignarRef}
           src={src}
           controls
           playsInline
@@ -171,9 +155,8 @@ export function DriveVideoPlayer({
           }}
         />
 
-        <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between gap-2 bg-gradient-to-b from-black/70 to-transparent px-2.5 pb-5 pt-2">
+        <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center gap-2 bg-gradient-to-b from-black/70 to-transparent px-2.5 pb-5 pt-2">
           <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#C1EB1F]" />
-          <div className="pointer-events-auto">{botonFullscreen}</div>
         </div>
 
         <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center gap-1.5 bg-gradient-to-t from-black/70 to-transparent px-2.5 pb-2 pt-5">
@@ -193,7 +176,6 @@ export function DriveVideoPlayer({
           <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#C1EB1F]" />
           <span className="text-[10px] font-semibold uppercase tracking-[0.09em] text-white/55">Visor</span>
         </div>
-        {botonFullscreen}
       </div>
 
       <div
@@ -208,7 +190,6 @@ export function DriveVideoPlayer({
         )}
         <video
           key={`${fileId}-${intento}`}
-          ref={asignarRef}
           src={src}
           controls
           playsInline
