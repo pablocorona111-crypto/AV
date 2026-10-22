@@ -399,7 +399,7 @@ export function RevisarEntregableDialog({
             </Button>
             <p className="text-[11px] text-muted-foreground">
               {usaPlayerPropio
-                ? "Pausa el video y se llena solo, o dale al reloj para tomar el minuto actual."
+                ? "Se llena solo mientras reproduces (o dale al reloj para tomar el minuto actual)."
                 : "Anota el minuto donde esta el cambio que pides."}
             </p>
           </div>

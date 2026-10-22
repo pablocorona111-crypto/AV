@@ -60,6 +60,17 @@ export function DriveVideoPlayer({
   const [ratio, setRatio] = useState<number | null>(null);
   const [intento, setIntento] = useState(0);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  // Solo para no llamar a `onMomentoPausa` en cada frame (timeupdate dispara varias veces por
+  // segundo) — se avisa al padre nada mas cuando el segundo ENTERO realmente cambio.
+  const ultimoSegundoRef = useRef<number | null>(null);
+  const alActualizarTiempo = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+    const v = e.currentTarget;
+    const segundo = Math.floor(v.currentTime);
+    if (segundo !== ultimoSegundoRef.current) {
+      ultimoSegundoRef.current = segundo;
+      onMomentoPausa?.(formatoTiempo(v.currentTime));
+    }
+  };
   const asignarRef = (el: HTMLVideoElement | null) => {
     videoRef.current = el;
     onVideoRef?.(el);
@@ -142,6 +153,7 @@ export function DriveVideoPlayer({
             onOrientacion?.(r < 1 ? "vertical" : "horizontal");
             onRatio?.(r);
           }}
+          onTimeUpdate={alActualizarTiempo}
           onPause={(e) => {
             const v = e.currentTarget;
             if (onMomentoPausa && !v.ended) onMomentoPausa(formatoTiempo(v.currentTime));
@@ -159,7 +171,7 @@ export function DriveVideoPlayer({
         <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center gap-1.5 bg-gradient-to-t from-black/70 to-transparent px-2.5 pb-2 pt-5">
           <Clock className="h-3 w-3 shrink-0 text-white/50" />
           <span className="truncate text-[10.5px] leading-tight text-white/60">
-            Pausa el video para marcar el minuto.
+            El minuto se sigue solo mientras reproduces.
           </span>
         </div>
       </div>
@@ -207,6 +219,7 @@ export function DriveVideoPlayer({
             onOrientacion?.(r < 1 ? "vertical" : "horizontal");
             onRatio?.(r);
           }}
+          onTimeUpdate={alActualizarTiempo}
           onPause={(e) => {
             const v = e.currentTarget;
             if (onMomentoPausa && !v.ended) onMomentoPausa(formatoTiempo(v.currentTime));
@@ -217,7 +230,7 @@ export function DriveVideoPlayer({
       <div className="flex shrink-0 items-center gap-1.5 border-t border-white/10 bg-[#141416] px-2.5 py-1.5">
         <Clock className="h-3 w-3 shrink-0 text-white/35" />
         <span className="truncate text-[10.5px] leading-tight text-white/45">
-          Pausa el video para marcar el minuto de la observacion.
+          El minuto se sigue solo mientras reproduces, segundo a segundo.
         </span>
       </div>
     </div>
