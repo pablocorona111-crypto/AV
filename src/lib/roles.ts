@@ -62,9 +62,15 @@ export function puedeSubirVideos(usuario: Usuario | null): boolean {
   );
 }
 
-/** Mismos roles que aprueban requisiciones aprueban entregables. */
+/**
+ * Quien aprueba el VIDEO final (entregable) es la community (gestor de requisiciones) — es
+ * quien lo publica despues, igual que ya pasa con `puedeAprobarGuion`. No es lo mismo que
+ * aprobar la REQUISICION (esa es una etapa distinta, antes de producir, de lider/aprobador
+ * departamental) — por eso NO comparte logica con `puedeAprobarRequisiciones`.
+ */
 export function puedeAprobarEntregables(usuario: Usuario | null): boolean {
-  return puedeAprobarRequisiciones(usuario);
+  if (!usuario) return false;
+  return usuario.rol === "superadmin" || esGestorRequisiciones(usuario);
 }
 
 /**

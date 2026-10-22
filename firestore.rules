@@ -114,9 +114,11 @@ service cloud.firestore {
       allow read: if usuarioAutenticado();
       allow create: if esSuperadmin() || esLiderAudiovisual();
 
-      // El responsable puede actualizar su entregable (ej. subir link de Drive,
-      // mandar a revision) pero nunca puede aprobarse a si mismo.
-      allow update: if puedeAprobar() ||
+      // Quien aprueba el VIDEO final es la community (gestor de requisiciones) — no es lo
+      // mismo que aprobar la requisicion (`puedeAprobar()`, etapa previa de lider/aprobador
+      // departamental). El responsable puede actualizar su entregable (ej. subir link de
+      // Drive, mandar a revision) pero nunca puede aprobarse a si mismo.
+      allow update: if esSuperadmin() || esGestorRequisiciones() ||
         (resource.data.responsableId == request.auth.uid && request.resource.data.estado != 'aprobado' &&
           rol() in ['superadmin', 'lider_audiovisual', 'colaborador_audiovisual']);
 
