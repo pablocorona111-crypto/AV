@@ -322,11 +322,11 @@ export function RevisarEntregableDialog({
     </div>
   );
 
-  // `lg:min-w-[320px]` es el piso del panel: sin el, un video 16:9 ancho aplastaba esta columna
-  // hasta desbordar el dialogo. `lg:max-w-sm` evita que se estire de mas cuando el dialogo es
+  // `lg:min-w-[360px]` es el piso del panel: sin el, un video 16:9 ancho aplastaba esta columna
+  // hasta desbordar el dialogo. `lg:max-w-md` evita que se estire de mas cuando el dialogo es
   // ancho — la columna de comentarios no necesita todo el espacio sobrante.
   const bloqueObservaciones = (
-    <div className={cn("space-y-4", layoutLado && "min-w-0 flex-1 lg:min-w-[320px] lg:max-w-sm")}>
+    <div className={cn("space-y-4", layoutLado && "min-w-0 flex-1 lg:min-w-[360px] lg:max-w-md")}>
       <div className="space-y-2">
         <Label>Observaciones</Label>
         <div
