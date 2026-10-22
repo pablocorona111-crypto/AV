@@ -21,6 +21,7 @@ import {
   Film,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { puedeVerMetricasGlobales } from "@/lib/roles";
 import { useRequisiciones } from "@/hooks/useRequisiciones";
 import { useProyectos } from "@/hooks/useProyectos";
 import { useColaboradores, useEntregables, useSalidas } from "@/hooks/useCatalogos";
@@ -85,6 +86,21 @@ export function DashboardPage() {
   const cumplimiento = entregables.length
     ? Math.round((entregablesFinalizados / entregables.length) * 100)
     : 94;
+
+  // Solo para lider/superadmin (`puedeVerMetricasGlobales`) — total de trabajos entregados,
+  // agrupado por mes real de entrega (`fechaEntregado`), no por fecha compromiso.
+  const entregadosPorMesMap = new Map<string, number>();
+  entregables.forEach((e) => {
+    if (e.estado !== "entregado" || !e.fechaEntregado) return;
+    const clave = e.fechaEntregado.slice(0, 7); // "2026-10"
+    entregadosPorMesMap.set(clave, (entregadosPorMesMap.get(clave) ?? 0) + 1);
+  });
+  const entregadosPorMes = [...entregadosPorMesMap.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([clave, total]) => ({
+      mes: new Date(`${clave}-02T00:00:00`).toLocaleDateString("es-MX", { month: "short" }),
+      total,
+    }));
 
   return (
     <div className="space-y-6">
@@ -174,6 +190,31 @@ export function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {puedeVerMetricasGlobales(usuario) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Trabajos entregados por mes</CardTitle>
+          </CardHeader>
+          <CardContent className="h-56">
+            {entregadosPorMes.length === 0 ? (
+              <p className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                Aun no hay entregables marcados como entregados.
+              </p>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={entregadosPorMes}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+                  <XAxis dataKey="mes" tickLine={false} axisLine={false} fontSize={12} />
+                  <YAxis tickLine={false} axisLine={false} fontSize={12} allowDecimals={false} />
+                  <Tooltip cursor={{ fill: "#F6F8FB" }} />
+                  <Bar dataKey="total" name="Entregados" fill="#C1EB1F" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
