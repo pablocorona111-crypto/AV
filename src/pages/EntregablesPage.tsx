@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DemoBadge } from "@/components/DemoBadge";
 import { NuevoEntregableDialog } from "@/components/entregables/NuevoEntregableDialog";
+import { CargarEntregableHistoricoDialog } from "@/components/entregables/CargarEntregableHistoricoDialog";
 import { RevisarEntregableDialog } from "@/components/entregables/RevisarEntregableDialog";
 import { NuevoGuionDialog } from "@/components/guiones/NuevoGuionDialog";
 import { RevisarGuionDialog } from "@/components/guiones/RevisarGuionDialog";
@@ -115,7 +116,10 @@ export function EntregablesPage() {
         </TabsContent>
 
         <TabsContent value="entregables" className="space-y-4">
-          <div className="flex justify-end">{puedeAsignarEntregables(usuario) && <NuevoEntregableDialog />}</div>
+          <div className="flex justify-end gap-2">
+            {usuario?.rol === "superadmin" && <CargarEntregableHistoricoDialog />}
+            {puedeAsignarEntregables(usuario) && <NuevoEntregableDialog />}
+          </div>
           {isLoading ? (
             <p className="text-sm text-muted-foreground">Cargando...</p>
           ) : (

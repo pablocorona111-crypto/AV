@@ -54,6 +54,29 @@ export async function actualizarEntregable(id: string, cambios: Partial<Entregab
   await updateDoc(doc(db, COLECCION, id), cambios);
 }
 
+/**
+ * Carga historica (superadmin) — para meter de una vez un video/trabajo que ya estaba
+ * confirmado (de hace una semana, un mes, etc.) y que nunca se registro en el sistema. A
+ * diferencia de crearEntregable(), que siempre nace "pendiente", este nace YA en el estado
+ * final (aprobado o entregado) con la fecha real que el superadmin elija — no "hoy" — para que
+ * el control/las graficas reflejen cuando de verdad paso.
+ */
+export async function crearEntregableHistorico(
+  data: Omit<Entregable, "id" | "version" | "estado" | "creadoEn" | "urlFinal" | "aprobadorId" | "fechaAprobado" | "fechaEntregado">,
+  opciones: { estadoFinal: "aprobado" | "entregado"; fecha: string; urlFinal: string; aprobadorId: string }
+): Promise<Entregable> {
+  const nuevo = await crearEntregable(data);
+  const cambios: Partial<Entregable> = {
+    estado: opciones.estadoFinal,
+    urlFinal: opciones.urlFinal,
+    aprobadorId: opciones.aprobadorId,
+    fechaAprobado: opciones.fecha,
+    ...(opciones.estadoFinal === "entregado" ? { fechaEntregado: opciones.fecha } : {}),
+  };
+  await actualizarEntregable(nuevo.id, cambios);
+  return { ...nuevo, ...cambios };
+}
+
 /** Envia a revision: guarda el link de Drive y mueve el estado. */
 export async function enviarARevision(
   id: string,

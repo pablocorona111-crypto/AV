@@ -3,6 +3,7 @@ import {
   agregarComentario,
   aprobarEntregable,
   crearEntregable,
+  crearEntregableHistorico,
   enviarARevision,
   etiquetarOrientacion,
   listarComentarios,
@@ -15,6 +16,20 @@ export function useCrearEntregable() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: Omit<Entregable, "id" | "version" | "estado" | "creadoEn">) => crearEntregable(data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["entregables"] }),
+  });
+}
+
+export function useCrearEntregableHistorico() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      data,
+      opciones,
+    }: {
+      data: Parameters<typeof crearEntregableHistorico>[0];
+      opciones: Parameters<typeof crearEntregableHistorico>[1];
+    }) => crearEntregableHistorico(data, opciones),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["entregables"] }),
   });
 }
