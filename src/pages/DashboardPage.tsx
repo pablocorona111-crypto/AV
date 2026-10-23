@@ -139,7 +139,7 @@ export function DashboardPage() {
     .slice(0, 5);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold">¡Hola, {usuario?.nombre?.split(" ")[0] ?? "de nuevo"}!</h1>
@@ -175,7 +175,7 @@ export function DashboardPage() {
           <CardHeader>
             <CardTitle>Produccion semanal</CardTitle>
           </CardHeader>
-          <CardContent className="h-64">
+          <CardContent className="h-56">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={produccionSemanal}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
@@ -194,7 +194,7 @@ export function DashboardPage() {
             <CardTitle>Tipo de entregables (mes)</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-48">
+            <div className="h-44">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -232,7 +232,7 @@ export function DashboardPage() {
           <CardHeader>
             <CardTitle>Trabajos cumplidos por mes</CardTitle>
           </CardHeader>
-          <CardContent className="h-56">
+          <CardContent className="h-48">
             {entregadosPorMes.length === 0 ? (
               <p className="flex h-full items-center justify-center text-sm text-muted-foreground">
                 Aun no hay entregables marcados como entregados.
