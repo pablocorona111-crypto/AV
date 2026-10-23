@@ -243,7 +243,7 @@ export function EntregablesPage() {
                                   url={e.urlRevision || e.urlFinal}
                                   orientacion={e.orientacionVideo}
                                   llenarAlto
-                                  className="h-12 w-12 shrink-0 rounded"
+                                  className="h-20 w-20 shrink-0 rounded"
                                 />
                                 <div className="min-w-0 flex-1 overflow-hidden">
                                   <p className="truncate font-medium text-text-primary">{e.nombre}</p>

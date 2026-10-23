@@ -1,7 +1,13 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FileVideo, Play, Smartphone, Monitor } from "lucide-react";
 import { extraerFileIdDrive } from "@/services/driveService";
 import { cn } from "@/lib/utils";
+
+// Un video recien subido tarda un rato en que Drive le genere la miniatura (thumbnailLink no
+// existe todavia) — antes, al primer fallo, se quedaba en "Sin vista previa" para siempre en
+// esa sesion aunque la miniatura ya estuviera lista segundos despues. Reintenta unas veces con
+// espera creciente antes de rendirse de verdad.
+const RETRASOS_REINTENTO_MS = [4000, 8000, 15000, 30000];
 
 /**
  * Miniatura real del video (la que ya genera Drive) para usar en tarjetas/listas.
@@ -23,9 +29,30 @@ export function MiniaturaVideo({
    * de el padre — para columnas tipo Kanban que achican las cards en vez de hacer scroll. */
   llenarAlto?: boolean;
 }) {
-  const [fallo, setFallo] = useState(false);
+  const [intento, setIntento] = useState(0);
+  const [visible, setVisible] = useState(true);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+  }, []);
+
   const fileId = url ? extraerFileIdDrive(url) : null;
-  const miniatura = fileId && !fallo ? `/api/drive-thumbnail?id=${encodeURIComponent(fileId)}` : null;
+  const agotado = intento >= RETRASOS_REINTENTO_MS.length;
+  const miniatura =
+    fileId && !agotado && visible ? `/api/drive-thumbnail?id=${encodeURIComponent(fileId)}&r=${intento}` : null;
+
+  const onError = () => {
+    setVisible(false);
+    if (intento >= RETRASOS_REINTENTO_MS.length - 1) {
+      setIntento(RETRASOS_REINTENTO_MS.length);
+      return;
+    }
+    timeoutRef.current = setTimeout(() => {
+      setIntento((i) => i + 1);
+      setVisible(true);
+    }, RETRASOS_REINTENTO_MS[intento]);
+  };
 
   const forma = llenarAlto ? "h-full" : orientacion === "vertical" ? "aspect-[3/4]" : "aspect-video";
   const IconoOrientacion = orientacion === "vertical" ? Smartphone : Monitor;
@@ -37,13 +64,15 @@ export function MiniaturaVideo({
           src={miniatura}
           alt=""
           loading="lazy"
-          onError={() => setFallo(true)}
+          onError={onError}
           className="h-full w-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.04]"
         />
       ) : (
         <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-bg-secondary">
           <FileVideo className="h-5 w-5 text-text-primary/30" />
-          <span className="text-[10px] font-medium text-muted-foreground">Sin vista previa</span>
+          <span className="text-[10px] font-medium text-muted-foreground">
+            {agotado ? "Sin vista previa" : "Procesando..."}
+          </span>
         </div>
       )}
 
