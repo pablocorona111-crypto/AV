@@ -13,7 +13,7 @@ import {
   YAxis,
   CartesianGrid,
 } from "recharts";
-import { FileSpreadsheet, FileDown, Loader2, Film, FolderKanban, CheckCircle2, Users } from "lucide-react";
+import { FileDown, Loader2, Film, FolderKanban, CheckCircle2, Users } from "lucide-react";
 import { useProyectos } from "@/hooks/useProyectos";
 import { useRequisiciones } from "@/hooks/useRequisiciones";
 import { useEntregables, useUsuarios } from "@/hooks/useCatalogos";
@@ -25,12 +25,6 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DemoBadge } from "@/components/DemoBadge";
 import type { Entregable } from "@/types";
-
-const REPORTES_PENDIENTES = [
-  { id: "r2", nombre: "Requisiciones por departamento", descripcion: "Volumen y estado por departamento solicitante." },
-  { id: "r3", nombre: "Cumplimiento de entregables", descripcion: "Entregas a tiempo vs atrasadas por proyecto." },
-  { id: "r4", nombre: "Jornadas de grabacion por planta", descripcion: "Historico de salidas y horas de campo." },
-];
 
 const COLORES_TIPO = ["#C1EB1F", "#93C5FD", "#86EFAC", "#C4B5FD", "#FDBA74", "#FCA5A5", "#67E8F9"];
 
@@ -356,31 +350,6 @@ export function ReportesPage() {
       </div>
 
       <ReporteDeContenido />
-
-      <Card className="border-dashed">
-        <CardContent className="p-4 text-xs text-muted-foreground">
-          Los reportes de abajo son la interfaz final; falta conectar su contenido real — ver BACKLOG.md.
-        </CardContent>
-      </Card>
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {REPORTES_PENDIENTES.map((r) => (
-          <Card key={r.id}>
-            <CardHeader>
-              <CardTitle>{r.nombre}</CardTitle>
-              <CardDescription>{r.descripcion}</CardDescription>
-            </CardHeader>
-            <CardContent className="flex gap-2">
-              <Button variant="outline" size="sm" disabled>
-                <FileDown className="h-3.5 w-3.5" /> PDF
-              </Button>
-              <Button variant="outline" size="sm" disabled>
-                <FileSpreadsheet className="h-3.5 w-3.5" /> Excel
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
     </div>
   );
 }
