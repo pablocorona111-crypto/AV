@@ -42,6 +42,8 @@ interface AuthContextValue {
   driveToken: string | null;
   /** Pide permiso de Drive + Calendar (si hace falta) y refresca el token. */
   conectarDrive: () => Promise<string | null>;
+  /** Borra el token guardado (ej. tras un error 401/403 al subir) para forzar reconexion en el siguiente intento. */
+  limpiarDriveToken: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -169,6 +171,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUsuario(demoUser);
   };
 
+  // El token de Drive (~1h de vida) se guardaba pero nunca se limpiaba solo al vencer — un
+  // upload fallaba con 401/403 y se quedaba ATORADO ahi para siempre, porque `driveToken ??
+  // conectarDrive()` en los dialogos de subida nunca vuelve a pedir permiso mientras el token
+  // siga presente (aunque ya este vencido). Esto lo borra para que el SIGUIENTE intento de
+  // subir dispare la reconexion sola.
+  const limpiarDriveToken = () => {
+    setDriveToken(null);
+    sessionStorage.removeItem(DRIVE_TOKEN_KEY);
+  };
+
   const value = useMemo(
     () => ({
       usuario,
@@ -179,6 +191,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       cambiarUsuarioDemo,
       driveToken,
       conectarDrive,
+      limpiarDriveToken,
     }),
     [usuario, cargando, driveToken]
   );

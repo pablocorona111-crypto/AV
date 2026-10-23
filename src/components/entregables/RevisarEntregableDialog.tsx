@@ -52,7 +52,7 @@ export function RevisarEntregableDialog({
   nombreProyecto?: string;
   nombreAprobador?: string;
 }) {
-  const { usuario, driveToken, conectarDrive } = useAuth();
+  const { usuario, driveToken, conectarDrive, limpiarDriveToken } = useAuth();
   const { data: usuarios = [] } = useUsuarios();
   const [linkDraft, setLinkDraft] = useState("");
   const [comentario, setComentario] = useState("");
@@ -168,7 +168,9 @@ export function RevisarEntregableDialog({
         `${nombreResponsable} ${yaHabiaVideo ? "actualizo" : "agrego"} el video de "${entregable.nombre}".`
       );
     } catch (err) {
-      setErrorSubida(mensajeErrorAuth(err));
+      const mensaje = mensajeErrorAuth(err);
+      if (/sesion de Drive expiro|403/.test(mensaje)) limpiarDriveToken();
+      setErrorSubida(mensaje);
     } finally {
       setSubiendo(false);
     }

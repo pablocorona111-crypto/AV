@@ -14,6 +14,29 @@ export function extraerFileIdDrive(url: string): string | null {
 }
 
 
+/** Arma un mensaje de error util a partir de la respuesta de la API de Drive — antes se tiraba
+ * siempre el mismo texto generico ("No se pudo buscar/crear la carpeta en Drive"), sin decir
+ * POR QUE, asi que un token vencido, un scope insuficiente o un error real de Google se veian
+ * identicos y no se podian diagnosticar. */
+async function errorDrive(res: Response, accion: string): Promise<Error> {
+  if (res.status === 401) {
+    return new Error("Tu sesion de Drive expiro. Dale subir otra vez — va a pedir permiso de Google de nuevo.");
+  }
+  let detalle = "";
+  try {
+    const data = await res.json();
+    detalle = data?.error?.message ?? "";
+  } catch {
+    // respuesta sin JSON — se deja sin detalle, el status ya dice algo.
+  }
+  if (res.status === 403) {
+    return new Error(
+      `No se pudo ${accion} en Drive: permiso insuficiente (403).${detalle ? ` ${detalle}` : ""} Dale subir otra vez — va a pedir permiso de Google de nuevo.`
+    );
+  }
+  return new Error(`No se pudo ${accion} en Drive (codigo ${res.status}).${detalle ? ` ${detalle}` : ""}`);
+}
+
 async function buscarCarpeta(nombre: string, accessToken: string, parentId: string | null): Promise<string | null> {
   const escapado = nombre.replace(/'/g, "\\'");
   const condiciones = [
@@ -26,7 +49,7 @@ async function buscarCarpeta(nombre: string, accessToken: string, parentId: stri
   const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id)`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
-  if (!res.ok) throw new Error("No se pudo buscar la carpeta en Drive.");
+  if (!res.ok) throw await errorDrive(res, "buscar la carpeta");
   const data = await res.json();
   return data.files?.[0]?.id ?? null;
 }
@@ -41,7 +64,7 @@ async function crearCarpeta(nombre: string, accessToken: string, parentId: strin
       ...(parentId ? { parents: [parentId] } : {}),
     }),
   });
-  if (!res.ok) throw new Error("No se pudo crear la carpeta en Drive.");
+  if (!res.ok) throw await errorDrive(res, "crear la carpeta");
   const data = await res.json();
   return data.id;
 }

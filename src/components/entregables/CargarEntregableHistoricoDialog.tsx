@@ -48,7 +48,7 @@ type FormValues = z.infer<typeof schema>;
  * graficas reflejen cuando de verdad paso.
  */
 export function CargarEntregableHistoricoDialog() {
-  const { usuario, driveToken, conectarDrive } = useAuth();
+  const { usuario, driveToken, conectarDrive, limpiarDriveToken } = useAuth();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [subiendo, setSubiendo] = useState(false);
@@ -105,7 +105,11 @@ export function CargarEntregableHistoricoDialog() {
       });
       setValue("urlFinal", subido.previewUrl, { shouldValidate: true });
     } catch (err) {
-      setError(mensajeErrorAuth(err));
+      const mensaje = mensajeErrorAuth(err);
+      // Token vencido/sin permiso (401/403) — se borra para que el siguiente intento de subir
+      // dispare la reconexion sola, en vez de quedar atorado con el mismo token invalido.
+      if (/sesion de Drive expiro|403/.test(mensaje)) limpiarDriveToken();
+      setError(mensaje);
     } finally {
       setSubiendo(false);
     }
