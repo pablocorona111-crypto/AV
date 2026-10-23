@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -47,12 +47,26 @@ export function NuevoGuionDialog() {
     handleSubmit,
     control,
     reset,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { proyectoId: SIN_PROYECTO } });
 
   const colaboradores = usuarios.filter(
     (u) => u.rol === "colaborador_audiovisual" || u.rol === "lider_audiovisual" || u.rol === "superadmin"
   );
+
+  const proyectoIdActual = watch("proyectoId");
+
+  // Al elegir proyecto, se llena solo el Objetivo con el de la requisicion de origen (si tiene)
+  // — asi no hay que retipear lo mismo que ya se escribio al pedir el contenido. Se puede
+  // editar despues si hace falta ajustarlo para el guion.
+  useEffect(() => {
+    if (!proyectoIdActual || proyectoIdActual === SIN_PROYECTO) return;
+    const proyecto = proyectos.find((p) => p.id === proyectoIdActual);
+    const requisicion = requisiciones.find((r) => proyecto?.requisicionesVinculadas?.includes(r.id));
+    if (requisicion?.objetivo) setValue("objetivo", requisicion.objetivo);
+  }, [proyectoIdActual, proyectos, requisiciones, setValue]);
 
   const onSubmit = async (values: FormValues) => {
     const proyecto = proyectos.find((p) => p.id === values.proyectoId);

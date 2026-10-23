@@ -84,6 +84,17 @@ export function puedeAprobarGuion(usuario: Usuario | null): boolean {
 }
 
 /**
+ * Quien comenta/observa el dialogo de un guion — a proposito MAS estricto que
+ * `puedeAprobarGuion()`: solo el rol "community" (y superadmin), nunca el permiso delegado de
+ * "gestor de requisiciones" ni el redactor del guion. El colaborador que escribe el guion solo
+ * lo manda a revision y ve si quedo aprobado — comentar sobre el dialogo es trabajo de community.
+ */
+export function puedeComentarGuion(usuario: Usuario | null): boolean {
+  if (!usuario) return false;
+  return usuario.rol === "superadmin" || usuario.rol === "community";
+}
+
+/**
  * Mapa unico de que rol ve que ruta. null = visible para cualquier rol autenticado.
  * Usado por el Sidebar (ocultar links) y por RutaProtegida (bloquear navegacion directa).
  */

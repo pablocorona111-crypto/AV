@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { CheckCircle2, RotateCcw, Send } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { puedeAprobarGuion } from "@/lib/roles";
+import { puedeAprobarGuion, puedeComentarGuion } from "@/lib/roles";
 import {
   useAgregarComentarioGuion,
   useAprobarGuion,
@@ -44,6 +44,7 @@ export function RevisarGuionDialog({
 
   const esResponsable = guion.responsableId === usuario.id;
   const esAprobador = puedeAprobarGuion(usuario);
+  const puedeComentar = puedeComentarGuion(usuario);
 
   const onComentar = async () => {
     if (!comentario.trim()) return;
@@ -85,7 +86,7 @@ export function RevisarGuionDialog({
                 </div>
               ))}
             </div>
-            {esAprobador && (
+            {puedeComentar && (
               <div className="flex gap-2">
                 <Input
                   value={comentario}
