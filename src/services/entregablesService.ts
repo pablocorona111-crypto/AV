@@ -27,6 +27,13 @@ export interface ComentarioEntregable {
   creadoEn: string;
 }
 
+/** Catalogosservice.listarEntregables() lee este mismo arreglo en modo demo — si no, lo creado
+ * aqui (crearEntregable/crearEntregableHistorico) nunca aparecia en la lista (cada archivo tenia
+ * su propia copia de DEMO_ENTREGABLES, desincronizadas). */
+export function demoEntregablesActuales(): Entregable[] {
+  return demoStore;
+}
+
 export async function crearEntregable(
   data: Omit<Entregable, "id" | "version" | "estado" | "creadoEn">
 ): Promise<Entregable> {

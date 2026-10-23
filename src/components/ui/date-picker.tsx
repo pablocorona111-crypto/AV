@@ -124,6 +124,10 @@ export function DatePicker({
               top: posicion.arriba ? undefined : posicion.top,
               bottom: posicion.arriba ? window.innerHeight - posicion.top : undefined,
               left: posicion.left,
+              // Dialog modal de Radix pone pointer-events:none en <body> mientras esta abierto
+              // (para bloquear todo lo que no sea su contenido) — este panel vive en su propio
+              // portal fuera del Dialog, hereda ese "none" y se ve pero no se puede clickear.
+              pointerEvents: "auto",
             }}
             className="z-50 w-64 rounded-md border border-border bg-white p-3 shadow-card"
           >

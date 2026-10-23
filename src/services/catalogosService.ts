@@ -3,11 +3,11 @@ import { db, isFirebaseConfigured } from "@/lib/firebase";
 import { siguienteFolio } from "@/lib/folio";
 import {
   DEMO_COLABORADORES,
-  DEMO_ENTREGABLES,
   DEMO_EQUIPO_AV,
   DEMO_SALIDAS,
   DEMO_USUARIOS,
 } from "@/data/demoData";
+import { demoEntregablesActuales } from "@/services/entregablesService";
 import type { Colaborador, Entregable, EquipoAV, SalidaGrabacion, Usuario } from "@/types";
 
 async function listar<T>(coleccion: string, demo: T[]): Promise<T[]> {
@@ -56,7 +56,7 @@ export async function crearSalida(
   return { ...data, id: ref.id, folio, estadoAutorizacion: "pendiente", creadoEn: new Date().toISOString() };
 }
 
-export const listarEntregables = () => listar<Entregable>("entregables", DEMO_ENTREGABLES);
+export const listarEntregables = () => listar<Entregable>("entregables", demoEntregablesActuales());
 export const listarEquipoAV = () => listar<EquipoAV>("equipo_av", DEMO_EQUIPO_AV);
 export const listarUsuarios = () => listar<Usuario>("usuarios", DEMO_USUARIOS);
 
