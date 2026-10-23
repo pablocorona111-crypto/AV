@@ -1,4 +1,30 @@
-import type { Entregable } from "@/types";
+import { aFecha, inicioDeSemana } from "@/lib/periodo";
+import type { Entregable, Requisicion } from "@/types";
+
+const DIAS_SEMANA = ["Lun", "Mar", "Mie", "Jue", "Vie"];
+
+function mismoDia(a: Date, b: Date) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+/** Entregas y requisiciones reales por dia (Lun-Vie) de la semana de `ahora` — compartido entre
+ * DashboardPage y ReportesPage para no duplicar el calculo. Nunca sale vacio (son 5 dias fijos). */
+export function produccionSemanal(
+  entregables: Entregable[],
+  requisiciones: Requisicion[],
+  ahora: Date = new Date()
+): { dia: string; entregados: number; solicitudes: number }[] {
+  const inicioSemana = inicioDeSemana(ahora);
+  return DIAS_SEMANA.map((dia, i) => {
+    const fechaDia = new Date(inicioSemana);
+    fechaDia.setDate(fechaDia.getDate() + i);
+    return {
+      dia,
+      entregados: entregables.filter((e) => e.fechaEntregado && mismoDia(aFecha(e.fechaEntregado), fechaDia)).length,
+      solicitudes: requisiciones.filter((r) => mismoDia(aFecha(r.creadoEn), fechaDia)).length,
+    };
+  });
+}
 
 /** Agrupa entregables "cumplidos" (aprobado o entregado) por mes real — usa fechaEntregado y,
  * si aun no se marca entregado, fechaAprobado (una vez aprobado ya cuenta como cumplido).

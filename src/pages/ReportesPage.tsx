@@ -15,9 +15,10 @@ import {
 } from "recharts";
 import { FileSpreadsheet, FileDown, Loader2, Film, FolderKanban, CheckCircle2, Users } from "lucide-react";
 import { useProyectos } from "@/hooks/useProyectos";
+import { useRequisiciones } from "@/hooks/useRequisiciones";
 import { useEntregables, useUsuarios } from "@/hooks/useCatalogos";
 import { dentroDelPeriodo, etiquetaPeriodo, type Periodo } from "@/lib/periodo";
-import { cumplidosPorMes, mesesVacios } from "@/lib/metricas";
+import { cumplidosPorMes, mesesVacios, produccionSemanal } from "@/lib/metricas";
 import { CATEGORIA_CONTENIDO_LABELS } from "@/lib/labels";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,13 +32,13 @@ const REPORTES_PENDIENTES = [
   { id: "r4", nombre: "Jornadas de grabacion por planta", descripcion: "Historico de salidas y horas de campo." },
 ];
 
-const PX_A_MM = 0.2645833333;
 const COLORES_TIPO = ["#C1EB1F", "#93C5FD", "#86EFAC", "#C4B5FD", "#FDBA74", "#FCA5A5", "#67E8F9"];
 
-/** Captura el nodo del reporte a PNG (html-to-image) y lo mete como imagen en un PDF de una
- * sola pagina (jsPDF) — mismo patron que ya se usa en el proyecto GO2026 para sus reportes
- * ejecutivos: 100% en el navegador, sin backend ni Cloud Function. El tamano de pagina sale
- * directo del tamano real del nodo (aqui ancho fijo tipo slide) — por eso da landscape solo.*/
+/** Captura el nodo del reporte a PNG (html-to-image) y lo mete en un PDF de una sola pagina
+ * (jsPDF) — mismo patron que el "slide ejecutivo ancho" de GO2026 (ChangelogTab.jsx,
+ * handlePresentationPDF): pagina en PIXELES (`unit:"px"`), landscape explicito, y la imagen se
+ * carga en un <img> real antes de `addImage` (no se le pasa el dataURL crudo directo) — asi
+ * jsPDF siempre recibe una imagen ya completamente decodificada, nunca a medias. */
 async function descargarComoPdf(nodo: HTMLElement, nombreArchivo: string) {
   const cssW = Math.round(nodo.scrollWidth);
   const cssH = Math.round(nodo.scrollHeight);
@@ -48,10 +49,16 @@ async function descargarComoPdf(nodo: HTMLElement, nombreArchivo: string) {
     height: cssH,
     style: { width: `${cssW}px`, height: `${cssH}px`, transform: "none" },
   });
-  const wMm = cssW * PX_A_MM;
-  const hMm = cssH * PX_A_MM;
-  const pdf = new jsPDF({ unit: "mm", format: [wMm, hMm] });
-  pdf.addImage(dataUrl, "PNG", 0, 0, wMm, hMm, "", "FAST");
+  const pdf = new jsPDF({ orientation: "landscape", unit: "px", format: [cssW, cssH] });
+  await new Promise<void>((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      pdf.addImage(img, "PNG", 0, 0, cssW, cssH, "", "FAST");
+      resolve();
+    };
+    img.onerror = () => reject(new Error("No se pudo cargar la imagen capturada del reporte."));
+    img.src = dataUrl;
+  });
   pdf.save(nombreArchivo);
 }
 
@@ -83,6 +90,7 @@ type DatosReporte = {
   periodo: Periodo;
   entregadosEnPeriodo: Entregable[];
   datosDonut: { name: string; value: number; color: string }[];
+  produccion: { dia: string; entregados: number; solicitudes: number }[];
   cumplidos: { mes: string; total: number }[];
   proyectosDistintos: number;
   responsablesDistintos: number;
@@ -100,6 +108,7 @@ function ContenidoSlide({ datos }: { datos: DatosReporte }) {
     periodo,
     entregadosEnPeriodo,
     datosDonut,
+    produccion,
     cumplidos,
     proyectosDistintos,
     responsablesDistintos,
@@ -125,6 +134,24 @@ function ContenidoSlide({ datos }: { datos: DatosReporte }) {
         <SlideStat icon={FolderKanban} label="Proyectos con entrega" value={proyectosDistintos} iconBg="bg-blue-100" />
         <SlideStat icon={Users} label="Colaboradores que entregaron" value={responsablesDistintos} iconBg="bg-purple-100" />
         <SlideStat icon={Film} label="Tipos de contenido distintos" value={tiposDistintos} iconBg="bg-orange-100" />
+      </div>
+
+      <div className="rounded-lg border border-border p-4">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Produccion de esta semana
+        </p>
+        <div className="h-36">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={produccion}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+              <XAxis dataKey="dia" tickLine={false} axisLine={false} fontSize={11} />
+              <YAxis tickLine={false} axisLine={false} fontSize={11} allowDecimals={false} />
+              <Tooltip />
+              <Bar dataKey="entregados" name="Entregados" fill="#C1EB1F" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="solicitudes" name="Solicitudes" fill="#CBD5E1" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
       <div className="rounded-lg border border-border p-4">
@@ -217,6 +244,7 @@ function ContenidoSlide({ datos }: { datos: DatosReporte }) {
 
 function ReporteDeContenido() {
   const { data: proyectos = [] } = useProyectos();
+  const { data: requisiciones = [] } = useRequisiciones();
   const { data: entregables = [] } = useEntregables();
   const { data: usuarios = [] } = useUsuarios();
   const [periodo, setPeriodo] = useState<Periodo>("semana");
@@ -248,11 +276,15 @@ function ReporteDeContenido() {
   // el periodo elegido arriba, es la tendencia historica completa.
   const cumplidosReal = cumplidosPorMes(entregables);
   const cumplidos = cumplidosReal.length > 0 ? cumplidosReal : mesesVacios(6);
+  // Misma grafica que "Produccion semanal" de Inicio — siempre son 5 dias fijos (Lun-Vie),
+  // nunca sale vacia.
+  const produccion = produccionSemanal(entregables, requisiciones);
 
   const datos: DatosReporte = {
     periodo,
     entregadosEnPeriodo,
     datosDonut,
+    produccion,
     cumplidos,
     proyectosDistintos,
     responsablesDistintos,

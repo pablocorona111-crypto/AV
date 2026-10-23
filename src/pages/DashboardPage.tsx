@@ -39,16 +39,11 @@ import {
   CATEGORIA_CONTENIDO_LABELS,
 } from "@/lib/labels";
 import { formatFecha } from "@/lib/utils";
-import { aFecha, inicioDeSemana } from "@/lib/periodo";
-import { cumplidosPorMes, mesesVacios } from "@/lib/metricas";
+import { aFecha } from "@/lib/periodo";
+import { cumplidosPorMes, mesesVacios, produccionSemanal as calcularProduccionSemanal } from "@/lib/metricas";
 import type { Entregable } from "@/types";
 
-const DIAS_SEMANA = ["Lun", "Mar", "Mie", "Jue", "Vie"];
 const COLORES_TIPO = ["#C1EB1F", "#93C5FD", "#86EFAC", "#C4B5FD", "#FDBA74", "#FCA5A5", "#67E8F9"];
-
-function mismoDia(a: Date, b: Date) {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-}
 
 export function DashboardPage() {
   const { usuario } = useAuth();
@@ -80,18 +75,8 @@ export function DashboardPage() {
     ? Math.round((entregablesFinalizados / entregables.length) * 100)
     : 94;
 
-  // Produccion real de la semana en curso (ya no datos de ejemplo fijos): por cada dia Lun-Vie,
-  // cuantos entregables se entregaron ese dia y cuantas requisiciones se crearon ese dia.
-  const inicioSemana = inicioDeSemana(ahora);
-  const produccionSemanal = DIAS_SEMANA.map((dia, i) => {
-    const fechaDia = new Date(inicioSemana);
-    fechaDia.setDate(fechaDia.getDate() + i);
-    return {
-      dia,
-      entregados: entregables.filter((e) => e.fechaEntregado && mismoDia(aFecha(e.fechaEntregado), fechaDia)).length,
-      solicitudes: requisiciones.filter((r) => mismoDia(aFecha(r.creadoEn), fechaDia)).length,
-    };
-  });
+  // Produccion real de la semana en curso (ya no datos de ejemplo fijos).
+  const produccionSemanal = calcularProduccionSemanal(entregables, requisiciones, ahora);
 
   // Tipo de entregables del mes en curso, real — si no hay nada todavia, un placeholder gris
   // para que la dona siga mostrando su forma (y no desaparezca el bloque completo).

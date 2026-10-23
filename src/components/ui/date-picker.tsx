@@ -36,11 +36,15 @@ export function DatePicker({
   onChange,
   placeholder = "Selecciona fecha",
   className,
+  permitirPasado = false,
 }: {
   value?: string;
   onChange: (iso: string) => void;
   placeholder?: string;
   className?: string;
+  /** Por defecto bloquea dias anteriores a hoy (ej. "Fecha compromiso": un compromiso no puede
+   * ser en el pasado). Para carga historica (videos/trabajos de antes) hace falta lo contrario. */
+  permitirPasado?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const seleccionada = value ? new Date(value + "T00:00:00") : null;
@@ -153,7 +157,7 @@ export function DatePicker({
                 if (!dia) return <div key={i} />;
                 const iso = aIso(dia);
                 const esSeleccionado = value === iso;
-                const esPasado = dia < hoy;
+                const esPasado = !permitirPasado && dia < hoy;
                 return (
                   <button
                     key={i}

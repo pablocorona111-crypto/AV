@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useRef, useState, type ChangeEvent } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { History } from "lucide-react";
+import { History, Upload } from "lucide-react";
 import { useProyectos } from "@/hooks/useProyectos";
 import { useUsuarios } from "@/hooks/useCatalogos";
 import { useCrearEntregableHistorico } from "@/hooks/useEntregables";
 import { useAuth } from "@/context/AuthContext";
+import { subirArchivoADrive } from "@/services/driveService";
+import { mensajeErrorAuth } from "@/lib/authErrors";
 import { CATEGORIA_CONTENIDO_LABELS } from "@/lib/labels";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,9 +48,12 @@ type FormValues = z.infer<typeof schema>;
  * graficas reflejen cuando de verdad paso.
  */
 export function CargarEntregableHistoricoDialog() {
-  const { usuario } = useAuth();
+  const { usuario, driveToken, conectarDrive } = useAuth();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [subiendo, setSubiendo] = useState(false);
+  const [progreso, setProgreso] = useState(0);
+  const inputArchivoRef = useRef<HTMLInputElement>(null);
   const { data: proyectos = [] } = useProyectos();
   const { data: usuarios = [] } = useUsuarios();
   const crear = useCrearEntregableHistorico();
@@ -58,6 +63,8 @@ export function CargarEntregableHistoricoDialog() {
     handleSubmit,
     control,
     reset,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -67,6 +74,32 @@ export function CargarEntregableHistoricoDialog() {
   const colaboradores = usuarios.filter(
     (u) => u.rol === "colaborador_audiovisual" || u.rol === "lider_audiovisual" || u.rol === "superadmin"
   );
+
+  const onSeleccionarArchivo = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setError(null);
+    setSubiendo(true);
+    setProgreso(0);
+    try {
+      const token = driveToken ?? (await conectarDrive());
+      if (!token) {
+        setError("No se pudo conectar con Drive.");
+        return;
+      }
+      const subido = await subirArchivoADrive(file, token, {
+        nombre: watch("nombre") || `Historico-${Date.now()}`,
+        nombreCarpeta: "Historico",
+        onProgress: setProgreso,
+      });
+      setValue("urlFinal", subido.previewUrl, { shouldValidate: true });
+    } catch (err) {
+      setError(mensajeErrorAuth(err));
+    } finally {
+      setSubiendo(false);
+    }
+  };
 
   const onSubmit = async (values: FormValues) => {
     if (!usuario) return;
@@ -211,7 +244,9 @@ export function CargarEntregableHistoricoDialog() {
               <Controller
                 control={control}
                 name="fecha"
-                render={({ field }) => <DatePicker value={field.value} onChange={field.onChange} />}
+                render={({ field }) => (
+                  <DatePicker value={field.value} onChange={field.onChange} permitirPasado />
+                )}
               />
               {errors.fecha && <p className="text-xs text-destructive">{errors.fecha.message}</p>}
             </div>
@@ -219,7 +254,31 @@ export function CargarEntregableHistoricoDialog() {
 
           <div className="space-y-1.5">
             <Label htmlFor="urlFinal">Link del video (Drive, ya confirmado)</Label>
-            <Input id="urlFinal" {...register("urlFinal")} placeholder="https://drive.google.com/file/d/..." />
+            <div className="flex gap-2">
+              <Input
+                id="urlFinal"
+                {...register("urlFinal")}
+                placeholder="https://drive.google.com/file/d/... o sube el archivo"
+              />
+              <input
+                ref={inputArchivoRef}
+                type="file"
+                accept="video/*"
+                className="hidden"
+                onChange={onSeleccionarArchivo}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                className="shrink-0"
+                onClick={() => inputArchivoRef.current?.click()}
+                disabled={subiendo}
+              >
+                <Upload className="h-4 w-4" />
+                {subiendo ? `${progreso}%` : "Subir video"}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">Pega el link si ya lo tienes en Drive, o sube el archivo directo.</p>
             {errors.urlFinal && <p className="text-xs text-destructive">{errors.urlFinal.message}</p>}
           </div>
 
@@ -229,7 +288,7 @@ export function CargarEntregableHistoricoDialog() {
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={crear.isPending}>
+            <Button type="submit" disabled={crear.isPending || subiendo}>
               {crear.isPending ? "Cargando..." : "Cargar al historico"}
             </Button>
           </DialogFooter>

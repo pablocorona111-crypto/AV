@@ -71,6 +71,10 @@ export async function crearEntregableHistorico(
     urlFinal: opciones.urlFinal,
     aprobadorId: opciones.aprobadorId,
     fechaAprobado: opciones.fecha,
+    // crearEntregable() siempre pone creadoEn = ahora — para carga historica eso es incorrecto:
+    // donde sea que se agrupe/muestre por creadoEn (la dona de "Tipo de entregables" del mes,
+    // "Actividad reciente") tiene que caer en la fecha real elegida, no en hoy.
+    creadoEn: opciones.fecha,
     ...(opciones.estadoFinal === "entregado" ? { fechaEntregado: opciones.fecha } : {}),
   };
   await actualizarEntregable(nuevo.id, cambios);
