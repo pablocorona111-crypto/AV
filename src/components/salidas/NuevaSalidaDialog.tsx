@@ -44,6 +44,7 @@ type FormValues = z.infer<typeof schema>;
 
 export function NuevaSalidaDialog() {
   const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { usuario } = useAuth();
   const crear = useCrearSalida();
   const {
@@ -56,29 +57,40 @@ export function NuevaSalidaDialog() {
 
   const onSubmit = async (values: FormValues) => {
     if (!usuario) return;
-    await crear.mutateAsync({
-      nombreJornada: values.nombreJornada,
-      proyectosRelacionados: [],
-      tipoActividad: values.tipoActividad,
-      planta: values.planta,
-      direccion: values.direccion,
-      contactoPlanta: values.contactoPlanta,
-      telefonoContacto: values.telefonoContacto,
-      fecha: values.fecha,
-      horaSalida: values.horaSalida,
-      horaEstimadaLlegada: values.horaEstimadaLlegada,
-      personalAsignado: [usuario.id],
-      responsableProduccionId: usuario.id,
-      equipoRequerido: [],
-      transporte: values.transporte,
-      observaciones: values.observaciones,
-    });
-    reset();
-    setOpen(false);
+    setError(null);
+    try {
+      await crear.mutateAsync({
+        nombreJornada: values.nombreJornada,
+        proyectosRelacionados: [],
+        tipoActividad: values.tipoActividad,
+        planta: values.planta,
+        direccion: values.direccion,
+        contactoPlanta: values.contactoPlanta,
+        telefonoContacto: values.telefonoContacto,
+        fecha: values.fecha,
+        horaSalida: values.horaSalida,
+        horaEstimadaLlegada: values.horaEstimadaLlegada,
+        personalAsignado: [usuario.id],
+        responsableProduccionId: usuario.id,
+        equipoRequerido: [],
+        transporte: values.transporte,
+        observaciones: values.observaciones,
+      });
+      reset();
+      setOpen(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo crear la salida.");
+    }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        setOpen(v);
+        if (!v) setError(null);
+      }}
+    >
       <DialogTrigger asChild>
         <Button>
           <Plus className="h-4 w-4" /> Nueva salida
@@ -186,6 +198,8 @@ export function NuevaSalidaDialog() {
             <Label htmlFor="observaciones">Observaciones / seguridad</Label>
             <Textarea id="observaciones" {...register("observaciones")} rows={2} />
           </div>
+
+          {error && <p className="text-xs text-destructive">{error}</p>}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
