@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   actualizarGestorRequisiciones,
   actualizarRolUsuario,
+  crearColaborador,
   crearSalida,
   listarColaboradores,
   listarEntregables,
@@ -10,7 +11,7 @@ import {
   listarUsuarios,
 } from "@/services/catalogosService";
 import { crearInvitacion } from "@/services/invitacionesService";
-import type { Invitacion, SalidaGrabacion, Usuario } from "@/types";
+import type { Colaborador, Invitacion, SalidaGrabacion, Usuario } from "@/types";
 
 export const useSalidas = () => useQuery({ queryKey: ["salidas"], queryFn: listarSalidas });
 
@@ -25,6 +26,16 @@ export function useCrearSalida() {
 export const useEntregables = () => useQuery({ queryKey: ["entregables"], queryFn: listarEntregables });
 export const useEquipoAV = () => useQuery({ queryKey: ["equipo_av"], queryFn: listarEquipoAV });
 export const useColaboradores = () => useQuery({ queryKey: ["colaboradores"], queryFn: listarColaboradores });
+
+export function useCrearColaborador() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (
+      data: Omit<Colaborador, "id" | "tareasPendientes" | "cargaEstimada" | "cargaReal" | "proyectosAsignados">
+    ) => crearColaborador(data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["colaboradores"] }),
+  });
+}
 export const useUsuarios = () => useQuery({ queryKey: ["usuarios"], queryFn: listarUsuarios });
 
 export function useInvitarUsuario() {

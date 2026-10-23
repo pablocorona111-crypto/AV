@@ -1,10 +1,13 @@
 import { useEquipoAV, useColaboradores } from "@/hooks/useCatalogos";
+import { useAuth } from "@/context/AuthContext";
+import { puedeGestionarUsuarios } from "@/lib/roles";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DemoBadge } from "@/components/DemoBadge";
+import { NuevoColaboradorDialog } from "@/components/equipo/NuevoColaboradorDialog";
 import type { EstadoEquipo } from "@/types";
 
 const ESTADO_EQUIPO_LABELS: Record<EstadoEquipo, string> = {
@@ -28,6 +31,7 @@ const DISPONIBILIDAD_LABELS = {
 } as const;
 
 export function EquipoPage() {
+  const { usuario } = useAuth();
   const { data: equipoAV = [], isLoading: cargandoEquipo } = useEquipoAV();
   const { data: colaboradores = [], isLoading: cargandoColaboradores } = useColaboradores();
 
@@ -38,7 +42,10 @@ export function EquipoPage() {
           <h1 className="text-xl font-bold">Equipo</h1>
           <p className="text-sm text-muted-foreground">Inventario audiovisual y equipo humano del departamento.</p>
         </div>
-        <DemoBadge />
+        <div className="flex items-center gap-3">
+          <DemoBadge />
+          {puedeGestionarUsuarios(usuario) && <NuevoColaboradorDialog />}
+        </div>
       </div>
 
       <Tabs defaultValue="humano">
@@ -88,6 +95,11 @@ export function EquipoPage() {
                     ))}
                   </TableBody>
                 </Table>
+              )}
+              {!cargandoColaboradores && colaboradores.length === 0 && (
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  Sin colaboradores registrados — usa "Nuevo colaborador" para empezar a llevar su carga de trabajo.
+                </p>
               )}
             </CardContent>
           </Card>

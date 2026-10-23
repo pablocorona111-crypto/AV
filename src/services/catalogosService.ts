@@ -58,8 +58,31 @@ export async function crearSalida(
 
 export const listarEntregables = () => listar<Entregable>("entregables", DEMO_ENTREGABLES);
 export const listarEquipoAV = () => listar<EquipoAV>("equipo_av", DEMO_EQUIPO_AV);
-export const listarColaboradores = () => listar<Colaborador>("colaboradores", DEMO_COLABORADORES);
 export const listarUsuarios = () => listar<Usuario>("usuarios", DEMO_USUARIOS);
+
+let demoColaboradores: Colaborador[] = [...DEMO_COLABORADORES];
+
+export const listarColaboradores = async (): Promise<Colaborador[]> => {
+  if (!isFirebaseConfigured || !db) return demoColaboradores;
+  const snap = await getDocs(collection(db, "colaboradores"));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Colaborador);
+};
+
+/** No existia ninguna forma de dar de alta un colaborador — por eso la carga del equipo en
+ * Inicio/Equipo se quedaba siempre en 0 en cuentas reales (la coleccion "colaboradores" nunca
+ * se llenaba, a diferencia de modo demo que trae datos de muestra fijos). */
+export async function crearColaborador(
+  data: Omit<Colaborador, "id" | "tareasPendientes" | "cargaEstimada" | "cargaReal" | "proyectosAsignados">
+): Promise<Colaborador> {
+  const nuevo = { ...data, tareasPendientes: 0, cargaEstimada: 0, cargaReal: 0, proyectosAsignados: [] };
+  if (!isFirebaseConfigured || !db) {
+    const conId: Colaborador = { ...nuevo, id: `col-${Date.now()}` };
+    demoColaboradores = [conId, ...demoColaboradores];
+    return conId;
+  }
+  const ref = await addDoc(collection(db, "colaboradores"), nuevo);
+  return { ...nuevo, id: ref.id };
+}
 
 export async function actualizarGestorRequisiciones(
   usuarioId: string,
