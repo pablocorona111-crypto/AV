@@ -169,7 +169,9 @@ service cloud.firestore {
     }
 
     match /notificaciones/{notifId} {
-      allow read: if usuarioAutenticado() && resource.data.paraUsuarioId == request.auth.uid;
+      // El superadmin tambien puede leer TODAS (no solo las propias) — lo necesita el boton
+      // "vaciar toda la info" de Configuracion para poder listar y borrar la coleccion completa.
+      allow read: if usuarioAutenticado() && (resource.data.paraUsuarioId == request.auth.uid || esSuperadmin());
       allow create: if usuarioAutenticado();
       // Solo el dueño la marca como leida, y solo ese campo.
       allow update: if usuarioAutenticado() && resource.data.paraUsuarioId == request.auth.uid &&
