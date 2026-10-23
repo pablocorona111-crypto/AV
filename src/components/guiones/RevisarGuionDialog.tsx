@@ -76,29 +76,31 @@ export function RevisarGuionDialog({
             </Button>
           )}
 
-          <div className="space-y-2">
-            <Label>Observaciones</Label>
-            <div className="max-h-40 space-y-2 overflow-y-auto rounded-md border border-border p-3">
-              {comentarios.length === 0 && <p className="text-xs text-muted-foreground">Sin observaciones aun.</p>}
-              {comentarios.map((c) => (
-                <div key={c.id} className="text-sm">
-                  <span className="font-medium">{c.autorNombre}:</span> {c.texto}
-                </div>
-              ))}
-            </div>
-            {puedeComentar && (
-              <div className="flex gap-2">
-                <Input
-                  value={comentario}
-                  onChange={(e) => setComentario(e.target.value)}
-                  placeholder="Ej. Cambiar el gancho de la primera linea"
-                />
-                <Button type="button" variant="outline" onClick={onComentar} disabled={agregarComentario.isPending}>
-                  Comentar
-                </Button>
+          {guion.estado !== "aprobado" && (
+            <div className="space-y-2">
+              <Label>Observaciones</Label>
+              <div className="max-h-40 space-y-2 overflow-y-auto rounded-md border border-border p-3">
+                {comentarios.length === 0 && <p className="text-xs text-muted-foreground">Sin observaciones aun.</p>}
+                {comentarios.map((c) => (
+                  <div key={c.id} className="text-sm">
+                    <span className="font-medium">{c.autorNombre}:</span> {c.texto}
+                  </div>
+                ))}
               </div>
-            )}
-          </div>
+              {puedeComentar && (
+                <div className="flex gap-2">
+                  <Input
+                    value={comentario}
+                    onChange={(e) => setComentario(e.target.value)}
+                    placeholder="Ej. Cambiar el gancho de la primera linea"
+                  />
+                  <Button type="button" variant="outline" onClick={onComentar} disabled={agregarComentario.isPending}>
+                    Comentar
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
 
           {esAprobador && guion.estado === "en_revision" && (
             <div className="flex justify-end gap-2 border-t border-border pt-4">
