@@ -1,11 +1,23 @@
 import { useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { jsPDF } from "jspdf";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+} from "recharts";
 import { FileSpreadsheet, FileDown, Loader2, Film, FolderKanban, CheckCircle2, Users } from "lucide-react";
 import { useProyectos } from "@/hooks/useProyectos";
 import { useEntregables, useUsuarios } from "@/hooks/useCatalogos";
 import { dentroDelPeriodo, etiquetaPeriodo, type Periodo } from "@/lib/periodo";
+import { cumplidosPorMes } from "@/lib/metricas";
 import { CATEGORIA_CONTENIDO_LABELS } from "@/lib/labels";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -97,6 +109,9 @@ function ReporteDeContenido() {
 
   const proyectosDistintos = new Set(entregadosEnPeriodo.map((e) => e.proyectoId).filter(Boolean)).size;
   const responsablesDistintos = new Set(entregadosEnPeriodo.map((e) => e.responsableId)).size;
+  // Misma grafica que "Trabajos cumplidos por mes" del Dashboard de Inicio — no se filtra por
+  // el periodo elegido arriba, es la tendencia historica completa.
+  const cumplidos = cumplidosPorMes(entregables);
 
   const onDescargar = async () => {
     if (!reporteRef.current) return;
@@ -151,6 +166,29 @@ function ReporteDeContenido() {
             <SlideStat icon={FolderKanban} label="Proyectos con entrega" value={proyectosDistintos} iconBg="bg-blue-100" />
             <SlideStat icon={Users} label="Colaboradores que entregaron" value={responsablesDistintos} iconBg="bg-purple-100" />
             <SlideStat icon={Film} label="Tipos de contenido distintos" value={porTipo.size} iconBg="bg-orange-100" />
+          </div>
+
+          <div className="rounded-lg border border-border p-4">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Trabajos cumplidos por mes
+            </p>
+            <div className="h-36">
+              {cumplidos.length === 0 ? (
+                <p className="flex h-full items-center justify-center text-xs text-muted-foreground">
+                  Aun no hay entregables cumplidos.
+                </p>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={cumplidos}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+                    <XAxis dataKey="mes" tickLine={false} axisLine={false} fontSize={11} />
+                    <YAxis tickLine={false} axisLine={false} fontSize={11} allowDecimals={false} />
+                    <Tooltip />
+                    <Bar dataKey="total" name="Cumplidos" fill="#C1EB1F" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-3 gap-4">

@@ -114,6 +114,7 @@ export function DatePicker({
         createPortal(
           <div
             ref={panelRef}
+            data-datepicker-panel
             style={{
               position: "fixed",
               top: posicion.arriba ? undefined : posicion.top,

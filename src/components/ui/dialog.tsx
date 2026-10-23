@@ -7,14 +7,32 @@ export const Dialog = DialogPrimitive.Root;
 export const DialogTrigger = DialogPrimitive.Trigger;
 export const DialogClose = DialogPrimitive.Close;
 
+/** El calendario de `DatePicker` sale por su propio Portal a `document.body` (para no
+ * recortarse dentro de este Dialog) — eso lo deja FUERA del DOM de `DialogPrimitive.Content`.
+ * Radix detecta un click ahi como "afuera" del dialogo y lo cierra solo, aunque visualmente el
+ * usuario este clickeando un dia del calendario que abrio el propio dialogo. Se ignoran los
+ * clicks que caen dentro de ese panel (marcado con `data-datepicker-panel`). */
+function esClickEnDatePicker(event: Event) {
+  const target = (event as CustomEvent<{ originalEvent: PointerEvent | FocusEvent }>).detail?.originalEvent?.target;
+  return target instanceof Element && Boolean(target.closest("[data-datepicker-panel]"));
+}
+
 export const DialogContent = forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
+>(({ className, children, onPointerDownOutside, onInteractOutside, ...props }, ref) => (
   <DialogPrimitive.Portal>
     <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/40" />
     <DialogPrimitive.Content
       ref={ref}
+      onPointerDownOutside={(e) => {
+        if (esClickEnDatePicker(e)) e.preventDefault();
+        onPointerDownOutside?.(e);
+      }}
+      onInteractOutside={(e) => {
+        if (esClickEnDatePicker(e)) e.preventDefault();
+        onInteractOutside?.(e);
+      }}
       className={cn(
         "fixed left-1/2 top-1/2 z-50 w-[95vw] max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-white p-6 shadow-card max-h-[85vh] overflow-y-auto",
         className

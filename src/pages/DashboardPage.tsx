@@ -36,6 +36,7 @@ import {
   CATEGORIA_CONTENIDO_LABELS,
 } from "@/lib/labels";
 import { formatFecha } from "@/lib/utils";
+import { cumplidosPorMes } from "@/lib/metricas";
 
 const PRODUCCION_SEMANAL = [
   { dia: "Lun", entregados: 11, solicitudes: 8 },
@@ -87,22 +88,8 @@ export function DashboardPage() {
     ? Math.round((entregablesFinalizados / entregables.length) * 100)
     : 94;
 
-  // Solo para lider/superadmin (`puedeVerMetricasGlobales`) — total de trabajos cumplidos,
-  // agrupado por mes real (fechaEntregado o, si aun no se marca "entregado", fechaAprobado —
-  // una vez aprobado ya cuenta como cumplido, no hace falta esperar a que se publique).
-  const entregadosPorMesMap = new Map<string, number>();
-  entregables.forEach((e) => {
-    const fecha = e.fechaEntregado ?? e.fechaAprobado;
-    if (!fecha || (e.estado !== "entregado" && e.estado !== "aprobado")) return;
-    const clave = fecha.slice(0, 7); // "2026-10"
-    entregadosPorMesMap.set(clave, (entregadosPorMesMap.get(clave) ?? 0) + 1);
-  });
-  const entregadosPorMes = [...entregadosPorMesMap.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([clave, total]) => ({
-      mes: new Date(`${clave}-02T00:00:00`).toLocaleDateString("es-MX", { month: "short" }),
-      total,
-    }));
+  // Solo para lider/superadmin (`puedeVerMetricasGlobales`).
+  const entregadosPorMes = cumplidosPorMes(entregables);
 
   return (
     <div className="space-y-6">
