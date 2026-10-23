@@ -63,7 +63,7 @@ export function DashboardPage() {
   ).length;
   const entregablesFinalizados = entregables.filter((e) => e.estado === "entregado" || e.estado === "aprobado").length;
   const entregasAtrasadas = entregables.filter(
-    (e) => aFecha(e.fechaCompromiso) < ahora && e.estado !== "entregado"
+    (e) => aFecha(e.fechaCompromiso) < ahora && e.estado !== "entregado" && e.estado !== "aprobado"
   ).length;
   // "Colaboradores" se cuenta de las cuentas reales (usuarios) por rol — la coleccion aparte
   // "colaboradores" (carga de trabajo/disponibilidad en Equipo) casi nunca esta poblada todavia.
