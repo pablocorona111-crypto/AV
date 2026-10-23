@@ -153,10 +153,11 @@ service cloud.firestore {
 
       allow delete: if esSuperadmin() || esLiderAudiovisual();
 
+      // Solo quien aprueba el guion comenta (community/superadmin) — el redactor (colaborador)
+      // solo escribe y manda a revision, no puede comentar su propio guion.
       match /comentarios/{comentarioId} {
         allow read: if usuarioAutenticado();
-        allow create: if puedeAprobar() || esGestorRequisiciones() ||
-          get(/databases/$(database)/documents/guiones/$(guionId)).data.responsableId == request.auth.uid;
+        allow create: if esSuperadmin() || esGestorRequisiciones();
         allow update: if false;
         allow delete: if esSuperadmin();
       }

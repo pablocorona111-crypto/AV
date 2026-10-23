@@ -85,7 +85,7 @@ export function RevisarGuionDialog({
                 </div>
               ))}
             </div>
-            {(esAprobador || esResponsable) && (
+            {esAprobador && (
               <div className="flex gap-2">
                 <Input
                   value={comentario}
