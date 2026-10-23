@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import {
   FileText,
-  Video,
+  Upload,
   CheckCircle2,
   Clock,
   Camera,
@@ -20,11 +20,13 @@ import {
   AlertTriangle,
   Film,
 } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { es } from "date-fns/locale";
 import { useAuth } from "@/context/AuthContext";
 import { puedeVerMetricasGlobales } from "@/lib/roles";
 import { useRequisiciones } from "@/hooks/useRequisiciones";
 import { useProyectos } from "@/hooks/useProyectos";
-import { useColaboradores, useEntregables, useSalidas } from "@/hooks/useCatalogos";
+import { useColaboradores, useEntregables, useSalidas, useUsuarios } from "@/hooks/useCatalogos";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -36,31 +38,16 @@ import {
   CATEGORIA_CONTENIDO_LABELS,
 } from "@/lib/labels";
 import { formatFecha } from "@/lib/utils";
-import { cumplidosPorMes } from "@/lib/metricas";
+import { aFecha, inicioDeSemana } from "@/lib/periodo";
+import { cumplidosPorMes, mesesVacios } from "@/lib/metricas";
+import type { Entregable } from "@/types";
 
-const PRODUCCION_SEMANAL = [
-  { dia: "Lun", entregados: 11, solicitudes: 8 },
-  { dia: "Mar", entregados: 15, solicitudes: 13 },
-  { dia: "Mie", entregados: 10, solicitudes: 14 },
-  { dia: "Jue", entregados: 17, solicitudes: 9 },
-  { dia: "Vie", entregados: 13, solicitudes: 10 },
-];
+const DIAS_SEMANA = ["Lun", "Mar", "Mie", "Jue", "Vie"];
+const COLORES_TIPO = ["#C1EB1F", "#93C5FD", "#86EFAC", "#C4B5FD", "#FDBA74", "#FCA5A5", "#67E8F9"];
 
-const TIPO_ENTREGABLES = [
-  { name: "Video / Edicion", value: 40, color: "#C1EB1F" },
-  { name: "Fotografia", value: 20, color: "#93C5FD" },
-  { name: "Diseño grafico", value: 15, color: "#86EFAC" },
-  { name: "Animacion", value: 15, color: "#C4B5FD" },
-  { name: "Cobertura de evento", value: 10, color: "#FDBA74" },
-];
-
-const ACTIVIDAD_RECIENTE = [
-  { icono: Camera, texto: "Mariana Lopez subio nuevos archivos", detalle: "Fotografia de producto · AV-1022", hace: "hace 2 h" },
-  { icono: CheckCircle2, texto: "Carlos Mendez cambio el estatus a En revision", detalle: "Animacion Stretch Film · AV-1021", hace: "hace 4 h" },
-  { icono: FileText, texto: "Luis Ramirez comento en la requisicion", detalle: '"Primera version lista para revision"', hace: "hace 5 h" },
-  { icono: Video, texto: "Nuevo comentario de Marketing", detalle: "Video institucional planta · AV-1023", hace: "hace 6 h" },
-  { icono: CheckCircle2, texto: "Sofia Herrera marco como entregado", detalle: "Adaptacion redes sociales · AV-1019", hace: "hace 1 dia" },
-];
+function mismoDia(a: Date, b: Date) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
 
 export function DashboardPage() {
   const { usuario } = useAuth();
@@ -69,7 +56,9 @@ export function DashboardPage() {
   const { data: colaboradores = [] } = useColaboradores();
   const { data: entregables = [] } = useEntregables();
   const { data: salidas = [] } = useSalidas();
+  const { data: usuarios = [] } = useUsuarios();
 
+  const ahora = new Date();
   const pendientesAprobacion = requisiciones.filter(
     (r) => r.estado === "enviada" || r.estado === "en_evaluacion"
   ).length;
@@ -78,9 +67,11 @@ export function DashboardPage() {
   ).length;
   const entregablesFinalizados = entregables.filter((e) => e.estado === "entregado" || e.estado === "aprobado").length;
   const entregasAtrasadas = entregables.filter(
-    (e) => new Date(e.fechaCompromiso) < new Date("2026-10-14") && e.estado !== "entregado"
+    (e) => aFecha(e.fechaCompromiso) < ahora && e.estado !== "entregado"
   ).length;
-  const colaboradoresDisponibles = colaboradores.filter((c) => c.disponibilidad === "disponible").length;
+  // "Colaboradores" se cuenta de las cuentas reales (usuarios) por rol — la coleccion aparte
+  // "colaboradores" (carga de trabajo/disponibilidad en Equipo) casi nunca esta poblada todavia.
+  const colaboradoresDelEquipo = usuarios.filter((u) => u.rol === "colaborador_audiovisual");
   const proyectosAtencion = proyectos.filter(
     (p) => (p.prioridad === "critica" || p.prioridad === "alta") && !["entregado", "cerrado"].includes(p.etapaActual)
   ).length;
@@ -88,8 +79,64 @@ export function DashboardPage() {
     ? Math.round((entregablesFinalizados / entregables.length) * 100)
     : 94;
 
+  // Produccion real de la semana en curso (ya no datos de ejemplo fijos): por cada dia Lun-Vie,
+  // cuantos entregables se entregaron ese dia y cuantas requisiciones se crearon ese dia.
+  const inicioSemana = inicioDeSemana(ahora);
+  const produccionSemanal = DIAS_SEMANA.map((dia, i) => {
+    const fechaDia = new Date(inicioSemana);
+    fechaDia.setDate(fechaDia.getDate() + i);
+    return {
+      dia,
+      entregados: entregables.filter((e) => e.fechaEntregado && mismoDia(aFecha(e.fechaEntregado), fechaDia)).length,
+      solicitudes: requisiciones.filter((r) => mismoDia(aFecha(r.creadoEn), fechaDia)).length,
+    };
+  });
+
+  // Tipo de entregables del mes en curso, real — si no hay nada todavia, un placeholder gris
+  // para que la dona siga mostrando su forma (y no desaparezca el bloque completo).
+  const porTipoMap = new Map<Entregable["tipo"], number>();
+  entregables
+    .filter((e) => {
+      const creado = aFecha(e.creadoEn);
+      return creado.getFullYear() === ahora.getFullYear() && creado.getMonth() === ahora.getMonth();
+    })
+    .forEach((e) => porTipoMap.set(e.tipo, (porTipoMap.get(e.tipo) ?? 0) + 1));
+  const totalTipoMes = [...porTipoMap.values()].reduce((a, b) => a + b, 0);
+  const tipoEntregables =
+    totalTipoMes > 0
+      ? [...porTipoMap.entries()].map(([tipo, cantidad], i) => ({
+          name: CATEGORIA_CONTENIDO_LABELS[tipo],
+          value: Math.round((cantidad / totalTipoMes) * 100),
+          color: COLORES_TIPO[i % COLORES_TIPO.length],
+        }))
+      : [{ name: "Sin datos este mes", value: 100, color: "#E5E7EB" }];
+
   // Solo para lider/superadmin (`puedeVerMetricasGlobales`).
-  const entregadosPorMes = cumplidosPorMes(entregables);
+  const entregadosPorMesReal = cumplidosPorMes(entregables);
+  const entregadosPorMes = entregadosPorMesReal.length > 0 ? entregadosPorMesReal : mesesVacios(6, ahora);
+
+  const nombreDe = (id: string) => usuarios.find((u) => u.id === id)?.nombre ?? id;
+  const proyectoDe = (id: string | undefined) => (id ? proyectos.find((p) => p.id === id)?.nombre : undefined);
+
+  // Actividad real (ya no nombres de ejemplo fijos) — un renglon por cada cambio de estado con
+  // fecha conocida (creado/aprobado/entregado), el mas reciente de cada entregable primero.
+  const actividadReciente = entregables
+    .flatMap((e) => {
+      const eventos: { icono: typeof Film; texto: string; cuando: Date }[] = [];
+      if (e.fechaEntregado) {
+        eventos.push({ icono: CheckCircle2, texto: `${nombreDe(e.responsableId)} marco "${e.nombre}" como entregado`, cuando: aFecha(e.fechaEntregado) });
+      }
+      if (e.fechaAprobado) {
+        eventos.push({ icono: CheckCircle2, texto: `Se aprobo "${e.nombre}"`, cuando: aFecha(e.fechaAprobado) });
+      }
+      if (e.creadoEn) {
+        eventos.push({ icono: Upload, texto: `${nombreDe(e.responsableId)} creo el entregable "${e.nombre}"`, cuando: aFecha(e.creadoEn) });
+      }
+      const proyecto = proyectoDe(e.proyectoId);
+      return eventos.map((ev) => ({ ...ev, detalle: `${CATEGORIA_CONTENIDO_LABELS[e.tipo]}${proyecto ? ` · ${proyecto}` : ""}` }));
+    })
+    .sort((a, b) => b.cuando.getTime() - a.cuando.getTime())
+    .slice(0, 5);
 
   return (
     <div className="space-y-6">
@@ -101,15 +148,15 @@ export function DashboardPage() {
         <DemoBadge />
       </div>
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <StatCard icon={FileText} label="Requisiciones" value={requisiciones.length} hint="Este mes" trend={{ value: "12%", positive: true }} />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard icon={FileText} label="Requisiciones" value={requisiciones.length} hint="Este mes" />
         <StatCard icon={Clock} label="Pendientes aprobacion" value={pendientesAprobacion} hint="Requieren revision" />
-        <StatCard icon={Film} label="En postproduccion" value={enPostproduccion} hint="Proyectos activos" trend={{ value: "8%", positive: false }} />
-        <StatCard icon={CheckCircle2} label="Entregados" value={entregablesFinalizados} hint="Este mes" trend={{ value: "28%", positive: true }} />
+        <StatCard icon={Film} label="En postproduccion" value={enPostproduccion} hint="Proyectos activos" />
+        <StatCard icon={CheckCircle2} label="Entregados" value={entregablesFinalizados} hint="Este mes" />
         <StatCard icon={AlertTriangle} label="Entregas atrasadas" value={entregasAtrasadas} hint="Requieren atencion" iconBg="bg-red-100" />
-        <StatCard icon={Clock} label="Cumplimiento" value={`${cumplimiento}%`} hint="A tiempo" trend={{ value: "6%", positive: true }} />
+        <StatCard icon={Clock} label="Cumplimiento" value={`${cumplimiento}%`} hint="A tiempo" />
         <StatCard icon={Camera} label="Salidas programadas" value={salidas.length} hint="Proximos 7 dias" />
-        <StatCard icon={Users} label="Colaboradores disponibles" value={colaboradoresDisponibles} hint={`de ${colaboradores.length} totales`} />
+        <StatCard icon={Users} label="Colaboradores" value={colaboradoresDelEquipo.length} hint="Audiovisuales en el equipo" />
       </div>
 
       {proyectosAtencion > 0 && (
@@ -130,7 +177,7 @@ export function DashboardPage() {
           </CardHeader>
           <CardContent className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={PRODUCCION_SEMANAL}>
+              <BarChart data={produccionSemanal}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
                 <XAxis dataKey="dia" tickLine={false} axisLine={false} fontSize={12} />
                 <YAxis tickLine={false} axisLine={false} fontSize={12} />
@@ -151,13 +198,13 @@ export function DashboardPage() {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={TIPO_ENTREGABLES}
+                    data={tipoEntregables}
                     dataKey="value"
                     innerRadius={50}
                     outerRadius={80}
                     paddingAngle={2}
                   >
-                    {TIPO_ENTREGABLES.map((entry) => (
+                    {tipoEntregables.map((entry) => (
                       <Cell key={entry.name} fill={entry.color} />
                     ))}
                   </Pie>
@@ -166,7 +213,7 @@ export function DashboardPage() {
               </ResponsiveContainer>
             </div>
             <div className="mt-2 space-y-1">
-              {TIPO_ENTREGABLES.map((t) => (
+              {tipoEntregables.map((t) => (
                 <div key={t.name} className="flex items-center justify-between gap-2 text-xs">
                   <span className="flex min-w-0 items-center gap-1.5">
                     <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: t.color }} />
@@ -245,6 +292,11 @@ export function DashboardPage() {
             <CardTitle>Carga de trabajo del equipo</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
+            {colaboradores.length === 0 && (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                Sin colaboradores registrados en Equipo todavia.
+              </p>
+            )}
             {colaboradores.map((c) => (
               <div key={c.id} className="space-y-1">
                 <div className="flex items-center justify-between text-xs">
@@ -263,7 +315,10 @@ export function DashboardPage() {
           <CardTitle>Actividad reciente</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {ACTIVIDAD_RECIENTE.map((a, i) => (
+          {actividadReciente.length === 0 && (
+            <p className="py-6 text-center text-sm text-muted-foreground">Sin actividad registrada todavia.</p>
+          )}
+          {actividadReciente.map((a, i) => (
             <div key={i} className="flex items-start gap-3">
               <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-bg-secondary">
                 <a.icono className="h-3.5 w-3.5 text-text-primary/70" />
@@ -272,7 +327,9 @@ export function DashboardPage() {
                 <p className="text-sm">{a.texto}</p>
                 <p className="text-xs text-muted-foreground">{a.detalle}</p>
               </div>
-              <span className="shrink-0 text-xs text-muted-foreground">{a.hace}</span>
+              <span className="shrink-0 text-xs text-muted-foreground">
+                {formatDistanceToNow(a.cuando, { addSuffix: true, locale: es })}
+              </span>
             </div>
           ))}
         </CardContent>

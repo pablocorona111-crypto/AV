@@ -18,3 +18,14 @@ export function cumplidosPorMes(entregables: Entregable[]): { mes: string; total
       total,
     }));
 }
+
+/** Para cuando todavia no hay ni un solo cumplido — sin esto la grafica desaparecia por
+ * completo (array vacio) en vez de mostrar su estructura (ejes, meses) para ver el diseño. */
+export function mesesVacios(cantidad: number, ahora: Date = new Date()): { mes: string; total: number }[] {
+  const meses: { mes: string; total: number }[] = [];
+  for (let i = cantidad - 1; i >= 0; i--) {
+    const d = new Date(ahora.getFullYear(), ahora.getMonth() - i, 2);
+    meses.push({ mes: d.toLocaleDateString("es-MX", { month: "short" }), total: 0 });
+  }
+  return meses;
+}

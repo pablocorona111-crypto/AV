@@ -17,7 +17,7 @@ import { FileSpreadsheet, FileDown, Loader2, Film, FolderKanban, CheckCircle2, U
 import { useProyectos } from "@/hooks/useProyectos";
 import { useEntregables, useUsuarios } from "@/hooks/useCatalogos";
 import { dentroDelPeriodo, etiquetaPeriodo, type Periodo } from "@/lib/periodo";
-import { cumplidosPorMes } from "@/lib/metricas";
+import { cumplidosPorMes, mesesVacios } from "@/lib/metricas";
 import { CATEGORIA_CONTENIDO_LABELS } from "@/lib/labels";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -101,17 +101,21 @@ function ReporteDeContenido() {
 
   const porTipo = new Map<Entregable["tipo"], number>();
   for (const e of entregadosEnPeriodo) porTipo.set(e.tipo, (porTipo.get(e.tipo) ?? 0) + 1);
-  const datosDonut = [...porTipo.entries()].map(([tipo, total], i) => ({
+  const datosDonutReal = [...porTipo.entries()].map(([tipo, total], i) => ({
     name: CATEGORIA_CONTENIDO_LABELS[tipo],
     value: total,
     color: COLORES_TIPO[i % COLORES_TIPO.length],
   }));
+  // Sin esto la dona desaparecia por completo (array vacio) en vez de mostrar su forma — un
+  // placeholder gris deja ver la estructura del slide aunque el periodo no tenga entregas.
+  const datosDonut = datosDonutReal.length > 0 ? datosDonutReal : [{ name: "Sin datos", value: 1, color: "#E5E7EB" }];
 
   const proyectosDistintos = new Set(entregadosEnPeriodo.map((e) => e.proyectoId).filter(Boolean)).size;
   const responsablesDistintos = new Set(entregadosEnPeriodo.map((e) => e.responsableId)).size;
   // Misma grafica que "Trabajos cumplidos por mes" del Dashboard de Inicio — no se filtra por
   // el periodo elegido arriba, es la tendencia historica completa.
-  const cumplidos = cumplidosPorMes(entregables);
+  const cumplidosReal = cumplidosPorMes(entregables);
+  const cumplidos = cumplidosReal.length > 0 ? cumplidosReal : mesesVacios(6);
 
   const onDescargar = async () => {
     if (!reporteRef.current) return;
@@ -173,21 +177,15 @@ function ReporteDeContenido() {
               Trabajos cumplidos por mes
             </p>
             <div className="h-36">
-              {cumplidos.length === 0 ? (
-                <p className="flex h-full items-center justify-center text-xs text-muted-foreground">
-                  Aun no hay entregables cumplidos.
-                </p>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={cumplidos}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
-                    <XAxis dataKey="mes" tickLine={false} axisLine={false} fontSize={11} />
-                    <YAxis tickLine={false} axisLine={false} fontSize={11} allowDecimals={false} />
-                    <Tooltip />
-                    <Bar dataKey="total" name="Cumplidos" fill="#C1EB1F" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={cumplidos}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+                  <XAxis dataKey="mes" tickLine={false} axisLine={false} fontSize={11} />
+                  <YAxis tickLine={false} axisLine={false} fontSize={11} allowDecimals={false} />
+                  <Tooltip />
+                  <Bar dataKey="total" name="Cumplidos" fill="#C1EB1F" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </div>
 
@@ -196,37 +194,29 @@ function ReporteDeContenido() {
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Tipo de entregables
               </p>
-              {datosDonut.length === 0 ? (
-                <p className="flex h-40 items-center justify-center text-center text-xs text-muted-foreground">
-                  Sin entregas en este periodo.
-                </p>
-              ) : (
-                <>
-                  <div className="h-36">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie data={datosDonut} dataKey="value" innerRadius={35} outerRadius={55} paddingAngle={2}>
-                          {datosDonut.map((d) => (
-                            <Cell key={d.name} fill={d.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                      </PieChart>
-                    </ResponsiveContainer>
+              <div className="h-36">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={datosDonut} dataKey="value" innerRadius={35} outerRadius={55} paddingAngle={2}>
+                      {datosDonut.map((d) => (
+                        <Cell key={d.name} fill={d.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="mt-2 space-y-1">
+                {datosDonut.map((d) => (
+                  <div key={d.name} className="flex items-center justify-between text-xs">
+                    <span className="flex items-center gap-1.5">
+                      <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: d.color }} />
+                      <span className="truncate">{d.name}</span>
+                    </span>
+                    <span className="shrink-0 font-medium">{d.value}</span>
                   </div>
-                  <div className="mt-2 space-y-1">
-                    {datosDonut.map((d) => (
-                      <div key={d.name} className="flex items-center justify-between text-xs">
-                        <span className="flex items-center gap-1.5">
-                          <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: d.color }} />
-                          <span className="truncate">{d.name}</span>
-                        </span>
-                        <span className="shrink-0 font-medium">{d.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
+                ))}
+              </div>
             </div>
 
             <div className="col-span-2 rounded-lg border border-border p-4">

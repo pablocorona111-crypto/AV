@@ -20,7 +20,7 @@ export function inicioDePeriodo(periodo: Periodo, ahora: Date = new Date()): Dat
  * un objeto `Timestamp` (con `.toDate()`), no como el string ISO que se guardo localmente al
  * crearlo. `new Date(timestamp)` da fecha invalida y el filtro de periodo fallaba siempre
  * (nunca entraba nada a "esta semana"/"este mes"). Acepta cualquiera de las dos formas. */
-function aFecha(valor: unknown): Date {
+export function aFecha(valor: unknown): Date {
   if (valor instanceof Date) return valor;
   if (typeof valor === "string" || typeof valor === "number") return new Date(valor);
   if (valor && typeof valor === "object" && "toDate" in valor && typeof (valor as { toDate: unknown }).toDate === "function") {
