@@ -68,7 +68,10 @@ export function NuevoColaboradorDialog() {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Nuevo colaborador</DialogTitle>
-          <DialogDescription>Para control de carga de trabajo y disponibilidad del equipo.</DialogDescription>
+          <DialogDescription>
+            Solo para alguien externo sin cuenta en el sistema — los colaboradores con cuenta
+            (rol Colaborador Audiovisual) ya salen solos aqui.
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

@@ -26,7 +26,8 @@ import { useAuth } from "@/context/AuthContext";
 import { puedeVerMetricasGlobales } from "@/lib/roles";
 import { useRequisiciones } from "@/hooks/useRequisiciones";
 import { useProyectos } from "@/hooks/useProyectos";
-import { useColaboradores, useEntregables, useSalidas, useUsuarios } from "@/hooks/useCatalogos";
+import { useEntregables, useSalidas, useUsuarios } from "@/hooks/useCatalogos";
+import { useColaboradoresDelEquipo } from "@/hooks/useColaboradoresDelEquipo";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -53,7 +54,7 @@ export function DashboardPage() {
   const { usuario } = useAuth();
   const { data: requisiciones = [] } = useRequisiciones();
   const { data: proyectos = [] } = useProyectos();
-  const { data: colaboradores = [] } = useColaboradores();
+  const { data: colaboradores = [] } = useColaboradoresDelEquipo();
   const { data: entregables = [] } = useEntregables();
   const { data: salidas = [] } = useSalidas();
   const { data: usuarios = [] } = useUsuarios();

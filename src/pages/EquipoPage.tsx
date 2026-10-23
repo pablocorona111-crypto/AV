@@ -1,4 +1,5 @@
-import { useEquipoAV, useColaboradores } from "@/hooks/useCatalogos";
+import { useEquipoAV } from "@/hooks/useCatalogos";
+import { useColaboradoresDelEquipo } from "@/hooks/useColaboradoresDelEquipo";
 import { useAuth } from "@/context/AuthContext";
 import { puedeGestionarUsuarios } from "@/lib/roles";
 import { Card, CardContent } from "@/components/ui/card";
@@ -33,7 +34,7 @@ const DISPONIBILIDAD_LABELS = {
 export function EquipoPage() {
   const { usuario } = useAuth();
   const { data: equipoAV = [], isLoading: cargandoEquipo } = useEquipoAV();
-  const { data: colaboradores = [], isLoading: cargandoColaboradores } = useColaboradores();
+  const { data: colaboradores = [], isLoading: cargandoColaboradores } = useColaboradoresDelEquipo();
 
   return (
     <div className="space-y-6">
@@ -98,7 +99,8 @@ export function EquipoPage() {
               )}
               {!cargandoColaboradores && colaboradores.length === 0 && (
                 <p className="py-8 text-center text-sm text-muted-foreground">
-                  Sin colaboradores registrados — usa "Nuevo colaborador" para empezar a llevar su carga de trabajo.
+                  Sin colaboradores audiovisuales todavia (ninguna cuenta con ese rol). Usa
+                  "Nuevo colaborador" solo para dar de alta a alguien externo sin cuenta en el sistema.
                 </p>
               )}
             </CardContent>
