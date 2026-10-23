@@ -41,16 +41,12 @@ const COLORES_TIPO = ["#C1EB1F", "#93C5FD", "#86EFAC", "#C4B5FD", "#FDBA74", "#F
 async function descargarComoPdf(nodo: HTMLElement, nombreArchivo: string) {
   const cssW = Math.round(nodo.scrollWidth);
   const cssH = Math.round(nodo.scrollHeight);
-  // html-to-image clona el nodo fuera del flujo normal del documento antes de rasterizarlo —
-  // si el ancho real (1200px) solo viene de una clase de Tailwind, el clon a veces se
-  // "reacomoda" angosto (como si no tuviera ese ancho) y el reporte sale alto y angosto en vez
-  // de horizontal. Forzar el width/height como estilo inline en la propia captura evita eso.
   const dataUrl = await toPng(nodo, {
     pixelRatio: 2,
     backgroundColor: "#ffffff",
     width: cssW,
     height: cssH,
-    style: { width: `${cssW}px`, height: `${cssH}px` },
+    style: { width: `${cssW}px`, height: `${cssH}px`, transform: "none" },
   });
   const wMm = cssW * PX_A_MM;
   const hMm = cssH * PX_A_MM;
@@ -78,6 +74,142 @@ function SlideStat({
       <div className="min-w-0">
         <p className="text-xl font-bold leading-tight">{value}</p>
         <p className="truncate text-xs text-muted-foreground">{label}</p>
+      </div>
+    </div>
+  );
+}
+
+type DatosReporte = {
+  periodo: Periodo;
+  entregadosEnPeriodo: Entregable[];
+  datosDonut: { name: string; value: number; color: string }[];
+  cumplidos: { mes: string; total: number }[];
+  proyectosDistintos: number;
+  responsablesDistintos: number;
+  tiposDistintos: number;
+  nombreDe: (id: string) => string;
+  proyectoDe: (id: string | undefined) => string;
+};
+
+/** El contenido del slide en si — se monta DOS veces: una version visible y responsiva (se ve
+ * completa en cualquier pantalla, sin cortarse ni necesitar scroll lateral) y, oculta fuera de
+ * pantalla, una version a ancho fijo de 1200px que es la que de verdad se captura para el PDF
+ * (asi el PDF siempre sale landscape nitido, sin depender de que tan ancha sea la ventana). */
+function ContenidoSlide({ datos }: { datos: DatosReporte }) {
+  const {
+    periodo,
+    entregadosEnPeriodo,
+    datosDonut,
+    cumplidos,
+    proyectosDistintos,
+    responsablesDistintos,
+    tiposDistintos,
+    nombreDe,
+    proyectoDe,
+  } = datos;
+
+  return (
+    <div className="space-y-4 bg-white p-6">
+      <div className="flex flex-col gap-1 border-b border-border pb-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Grupo Ortiz · Audiovisual
+          </p>
+          <h2 className="text-xl font-bold">Reporte de contenido</h2>
+        </div>
+        <p className="text-sm text-muted-foreground">{etiquetaPeriodo(periodo)}</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <SlideStat icon={CheckCircle2} label="Entregados en el periodo" value={entregadosEnPeriodo.length} />
+        <SlideStat icon={FolderKanban} label="Proyectos con entrega" value={proyectosDistintos} iconBg="bg-blue-100" />
+        <SlideStat icon={Users} label="Colaboradores que entregaron" value={responsablesDistintos} iconBg="bg-purple-100" />
+        <SlideStat icon={Film} label="Tipos de contenido distintos" value={tiposDistintos} iconBg="bg-orange-100" />
+      </div>
+
+      <div className="rounded-lg border border-border p-4">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Trabajos cumplidos por mes
+        </p>
+        <div className="h-36">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={cumplidos}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+              <XAxis dataKey="mes" tickLine={false} axisLine={false} fontSize={11} />
+              <YAxis tickLine={false} axisLine={false} fontSize={11} allowDecimals={false} />
+              <Tooltip />
+              <Bar dataKey="total" name="Cumplidos" fill="#C1EB1F" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="rounded-lg border border-border p-4 lg:col-span-1">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Tipo de entregables
+          </p>
+          <div className="h-36">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={datosDonut} dataKey="value" innerRadius={35} outerRadius={55} paddingAngle={2}>
+                  {datosDonut.map((d) => (
+                    <Cell key={d.name} fill={d.color} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="mt-2 space-y-1">
+            {datosDonut.map((d) => (
+              <div key={d.name} className="flex items-center justify-between text-xs">
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: d.color }} />
+                  <span className="truncate">{d.name}</span>
+                </span>
+                <span className="shrink-0 font-medium">{d.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="overflow-x-auto rounded-lg border border-border p-4 lg:col-span-2">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Detalle</p>
+          {entregadosEnPeriodo.length === 0 ? (
+            <p className="py-10 text-center text-sm text-muted-foreground">
+              Sin entregables marcados como entregados en este periodo.
+            </p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                  <th className="py-1.5 font-medium">Entregable</th>
+                  <th className="py-1.5 font-medium">Proyecto</th>
+                  <th className="py-1.5 font-medium">Responsable</th>
+                  <th className="py-1.5 font-medium">Entregado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {entregadosEnPeriodo.slice(0, 10).map((e) => (
+                  <tr key={e.id} className="border-b border-border last:border-0">
+                    <td className="py-1.5">{e.nombre}</td>
+                    <td className="py-1.5 text-muted-foreground">{proyectoDe(e.proyectoId)}</td>
+                    <td className="py-1.5 text-muted-foreground">{nombreDe(e.responsableId)}</td>
+                    <td className="py-1.5 text-muted-foreground">
+                      {new Date(e.fechaEntregado!).toLocaleDateString("es-MX")}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          {entregadosEnPeriodo.length > 10 && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              +{entregadosEnPeriodo.length - 10} mas (no caben en el slide).
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -117,6 +249,18 @@ function ReporteDeContenido() {
   const cumplidosReal = cumplidosPorMes(entregables);
   const cumplidos = cumplidosReal.length > 0 ? cumplidosReal : mesesVacios(6);
 
+  const datos: DatosReporte = {
+    periodo,
+    entregadosEnPeriodo,
+    datosDonut,
+    cumplidos,
+    proyectosDistintos,
+    responsablesDistintos,
+    tiposDistintos: porTipo.size,
+    nombreDe,
+    proyectoDe,
+  };
+
   const onDescargar = async () => {
     if (!reporteRef.current) return;
     setDescargando(true);
@@ -151,113 +295,19 @@ function ReporteDeContenido() {
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="overflow-x-auto">
-        {/* Ancho fijo tipo slide (como el Dashboard de Inicio) — por eso el PDF sale horizontal,
-            no una hoja vertical tipo carta. En pantallas angostas esta card hace scroll lateral. */}
-        <div ref={reporteRef} className="w-[1200px] space-y-4 bg-white p-6">
-          <div className="flex items-end justify-between border-b border-border pb-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Grupo Ortiz · Audiovisual
-              </p>
-              <h2 className="text-xl font-bold">Reporte de contenido</h2>
-            </div>
-            <p className="text-sm text-muted-foreground">{etiquetaPeriodo(periodo)}</p>
-          </div>
-
-          <div className="grid grid-cols-4 gap-3">
-            <SlideStat icon={CheckCircle2} label="Entregados en el periodo" value={entregadosEnPeriodo.length} />
-            <SlideStat icon={FolderKanban} label="Proyectos con entrega" value={proyectosDistintos} iconBg="bg-blue-100" />
-            <SlideStat icon={Users} label="Colaboradores que entregaron" value={responsablesDistintos} iconBg="bg-purple-100" />
-            <SlideStat icon={Film} label="Tipos de contenido distintos" value={porTipo.size} iconBg="bg-orange-100" />
-          </div>
-
-          <div className="rounded-lg border border-border p-4">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Trabajos cumplidos por mes
-            </p>
-            <div className="h-36">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={cumplidos}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
-                  <XAxis dataKey="mes" tickLine={false} axisLine={false} fontSize={11} />
-                  <YAxis tickLine={false} axisLine={false} fontSize={11} allowDecimals={false} />
-                  <Tooltip />
-                  <Bar dataKey="total" name="Cumplidos" fill="#C1EB1F" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <div className="col-span-1 rounded-lg border border-border p-4">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Tipo de entregables
-              </p>
-              <div className="h-36">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={datosDonut} dataKey="value" innerRadius={35} outerRadius={55} paddingAngle={2}>
-                      {datosDonut.map((d) => (
-                        <Cell key={d.name} fill={d.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="mt-2 space-y-1">
-                {datosDonut.map((d) => (
-                  <div key={d.name} className="flex items-center justify-between text-xs">
-                    <span className="flex items-center gap-1.5">
-                      <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: d.color }} />
-                      <span className="truncate">{d.name}</span>
-                    </span>
-                    <span className="shrink-0 font-medium">{d.value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="col-span-2 rounded-lg border border-border p-4">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Detalle</p>
-              {entregadosEnPeriodo.length === 0 ? (
-                <p className="py-10 text-center text-sm text-muted-foreground">
-                  Sin entregables marcados como entregados en este periodo.
-                </p>
-              ) : (
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                      <th className="py-1.5 font-medium">Entregable</th>
-                      <th className="py-1.5 font-medium">Proyecto</th>
-                      <th className="py-1.5 font-medium">Responsable</th>
-                      <th className="py-1.5 font-medium">Entregado</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {entregadosEnPeriodo.slice(0, 10).map((e) => (
-                      <tr key={e.id} className="border-b border-border last:border-0">
-                        <td className="py-1.5">{e.nombre}</td>
-                        <td className="py-1.5 text-muted-foreground">{proyectoDe(e.proyectoId)}</td>
-                        <td className="py-1.5 text-muted-foreground">{nombreDe(e.responsableId)}</td>
-                        <td className="py-1.5 text-muted-foreground">
-                          {new Date(e.fechaEntregado!).toLocaleDateString("es-MX")}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-              {entregadosEnPeriodo.length > 10 && (
-                <p className="mt-2 text-xs text-muted-foreground">
-                  +{entregadosEnPeriodo.length - 10} mas (no caben en el slide).
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
+      <CardContent>
+        {/* Version visible: responsiva, se ve completa en cualquier pantalla sin cortarse. */}
+        <ContenidoSlide datos={datos} />
       </CardContent>
+
+      {/* Version oculta a ancho fijo (1200px, como un slide/el Dashboard de Inicio) — nunca se
+          ve, solo existe para que el PDF siempre salga horizontal y nitido sin importar el
+          ancho real de la ventana del usuario. */}
+      <div aria-hidden className="pointer-events-none fixed left-0 top-0 -z-50 h-0 w-0 overflow-hidden opacity-0">
+        <div ref={reporteRef} className="w-[1200px]">
+          <ContenidoSlide datos={datos} />
+        </div>
+      </div>
     </Card>
   );
 }
