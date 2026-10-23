@@ -144,6 +144,8 @@ export interface Guion {
   /** Sin valor para contenido recurrente sin proyecto formal (ej. guion semanal de redes). */
   proyectoId?: string;
   titulo: string;
+  /** Para la vista previa con diseño de marca — que debe lograr este guion. */
+  objetivo: string;
   contenido: string;
   responsableId: string;
   /** Gestor de requisiciones autorizado a aprobar (heredado de la requisicion vinculada al proyecto). */

@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { VistaPreviaGuion } from "@/components/guiones/VistaPreviaGuion";
 import type { Guion } from "@/types";
 
 export function RevisarGuionDialog({
@@ -52,7 +53,7 @@ export function RevisarGuionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-2">
             <DialogTitle>{guion.titulo}</DialogTitle>
@@ -66,9 +67,7 @@ export function RevisarGuionDialog({
             {nombreProyecto && <> · Proyecto: {nombreProyecto}</>} · Redactor: {nombreResponsable}
           </p>
 
-          <div className="max-h-64 overflow-y-auto whitespace-pre-wrap rounded-md border border-border bg-bg-secondary p-4 text-sm">
-            {guion.contenido}
-          </div>
+          <VistaPreviaGuion guion={guion} />
 
           {esResponsable && guion.estado !== "aprobado" && guion.estado !== "en_revision" && (
             <Button type="button" onClick={() => enviarARevision.mutate(guion.id)} disabled={enviarARevision.isPending}>

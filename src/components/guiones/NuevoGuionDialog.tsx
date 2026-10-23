@@ -28,6 +28,7 @@ const schema = z.object({
   titulo: z.string().min(3, "Minimo 3 caracteres"),
   proyectoId: z.string().min(1, "Requerido"),
   responsableId: z.string().min(1, "Requerido"),
+  objetivo: z.string().min(5, "Describe que debe lograr este guion"),
   contenido: z.string().min(10, "Describe el guion con mas detalle"),
 });
 
@@ -65,6 +66,7 @@ export function NuevoGuionDialog() {
         titulo: values.titulo,
         ...(values.proyectoId !== SIN_PROYECTO ? { proyectoId: values.proyectoId } : {}),
         responsableId: values.responsableId,
+        objetivo: values.objetivo,
         contenido: values.contenido,
         ...(requisicionConGestor ? { gestorResponsableId: requisicionConGestor.responsableVentaId } : {}),
       });
@@ -143,6 +145,17 @@ export function NuevoGuionDialog() {
               />
               {errors.responsableId && <p className="text-xs text-destructive">{errors.responsableId.message}</p>}
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="objetivo">Objetivo</Label>
+            <Textarea
+              id="objetivo"
+              {...register("objetivo")}
+              rows={2}
+              placeholder="Ej. Comunicar los beneficios del producto, destacando precio y calidad."
+            />
+            {errors.objetivo && <p className="text-xs text-destructive">{errors.objetivo.message}</p>}
           </div>
 
           <div className="space-y-1.5">
