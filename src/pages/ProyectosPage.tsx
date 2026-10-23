@@ -125,7 +125,9 @@ export function ProyectosPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <p className="text-xs text-muted-foreground">Responsable principal</p>
-                    <p className="font-medium">{nombreDe(seleccionado.responsablePrincipalId)}</p>
+                    <p className="font-medium">
+                      {seleccionado.responsablePrincipalId ? nombreDe(seleccionado.responsablePrincipalId) : "Sin asignar"}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Departamento</p>

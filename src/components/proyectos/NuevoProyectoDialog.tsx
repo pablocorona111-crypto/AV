@@ -28,10 +28,10 @@ const SIN_REQUISICION = "ninguna";
 const schema = z.object({
   nombre: z.string().min(3, "Minimo 3 caracteres"),
   requisicionId: z.string().min(1, "Requerido"),
-  responsablePrincipalId: z.string().min(1, "Requerido"),
+  responsablePrincipalId: z.string().optional(),
   prioridad: z.custom<Prioridad>((v) => typeof v === "string" && v.length > 0, "Requerido"),
-  fechaInicio: z.string().min(1, "Requerido"),
-  fechaCompromiso: z.string().min(1, "Requerido"),
+  fechaInicio: z.string().optional(),
+  fechaCompromiso: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -63,12 +63,12 @@ export function NuevoProyectoDialog() {
       await crear.mutateAsync({
         nombre: values.nombre,
         requisicionesVinculadas: requisicion ? [requisicion.id] : [],
-        responsablePrincipalId: values.responsablePrincipalId,
-        colaboradoresIds: [values.responsablePrincipalId],
+        ...(values.responsablePrincipalId ? { responsablePrincipalId: values.responsablePrincipalId } : {}),
+        colaboradoresIds: values.responsablePrincipalId ? [values.responsablePrincipalId] : [],
         departamentoSolicitante: requisicion?.departamentoSolicitante ?? "Marketing",
         prioridad: values.prioridad,
-        fechaInicio: values.fechaInicio,
-        fechaCompromiso: values.fechaCompromiso,
+        ...(values.fechaInicio ? { fechaInicio: values.fechaInicio } : {}),
+        ...(values.fechaCompromiso ? { fechaCompromiso: values.fechaCompromiso } : {}),
       });
       reset();
       setOpen(false);
@@ -128,14 +128,14 @@ export function NuevoProyectoDialog() {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Responsable principal</Label>
+              <Label>Responsable principal (opcional)</Label>
               <Controller
                 control={control}
                 name="responsablePrincipalId"
                 render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Asignar a" />
+                      <SelectValue placeholder="Sin asignar de momento" />
                     </SelectTrigger>
                     <SelectContent>
                       {equipo.map((u) => (
@@ -147,9 +147,6 @@ export function NuevoProyectoDialog() {
                   </Select>
                 )}
               />
-              {errors.responsablePrincipalId && (
-                <p className="text-xs text-destructive">{errors.responsablePrincipalId.message}</p>
-              )}
             </div>
             <div className="space-y-1.5">
               <Label>Prioridad</Label>
@@ -177,24 +174,26 @@ export function NuevoProyectoDialog() {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Fecha inicio</Label>
+              <Label>Fecha inicio (opcional)</Label>
               <Controller
                 control={control}
                 name="fechaInicio"
                 render={({ field }) => <DatePicker value={field.value} onChange={field.onChange} />}
               />
-              {errors.fechaInicio && <p className="text-xs text-destructive">{errors.fechaInicio.message}</p>}
             </div>
             <div className="space-y-1.5">
-              <Label>Fecha compromiso</Label>
+              <Label>Fecha compromiso (opcional)</Label>
               <Controller
                 control={control}
                 name="fechaCompromiso"
                 render={({ field }) => <DatePicker value={field.value} onChange={field.onChange} />}
               />
-              {errors.fechaCompromiso && <p className="text-xs text-destructive">{errors.fechaCompromiso.message}</p>}
             </div>
           </div>
+          <p className="-mt-2 text-xs text-muted-foreground">
+            Deja responsable y fechas en blanco para contenido recurrente sin dueño fijo ni plazo unico
+            (ej. videos semanales de redes).
+          </p>
 
           {error && <p className="text-xs text-destructive">{error}</p>}
 

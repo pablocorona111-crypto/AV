@@ -110,12 +110,14 @@ export interface Proyecto {
   folio: string;
   nombre: string;
   requisicionesVinculadas: string[];
-  responsablePrincipalId: string;
+  /** Sin valor para proyectos recurrentes sin un dueño fijo (ej. "Videos de redes semanales"). */
+  responsablePrincipalId?: string;
   colaboradoresIds: string[];
   departamentoSolicitante: string;
   prioridad: Prioridad;
-  fechaInicio: string;
-  fechaCompromiso: string;
+  /** Sin valor para proyectos recurrentes — no tienen un inicio/fin de ciclo unico, se repiten cada semana. */
+  fechaInicio?: string;
+  fechaCompromiso?: string;
   etapaActual: EtapaProyecto;
   etapasOmitidas?: EtapaProyecto[];
   porcentajeAvance: number;

@@ -15,6 +15,7 @@ import {
 import { formatFecha } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DemoBadge } from "@/components/DemoBadge";
 import { NuevoEntregableDialog } from "@/components/entregables/NuevoEntregableDialog";
@@ -36,6 +37,40 @@ function etiquetaSemana(inicio: Date): string {
   fin.setDate(fin.getDate() + 6);
   const fmt = (d: Date) => d.toLocaleDateString("es-MX", { day: "numeric", month: "short" });
   return `${fmt(inicio)} – ${fmt(fin)}`;
+}
+
+type FiltroPeriodoEntregables = "semana" | "semana_pasada" | "mes" | "mes_pasado" | "todos";
+
+const FILTRO_PERIODO_LABELS: Record<FiltroPeriodoEntregables, string> = {
+  semana: "Esta semana",
+  semana_pasada: "Semana pasada",
+  mes: "Este mes",
+  mes_pasado: "Mes pasado",
+  todos: "Todo",
+};
+
+function inicioSemanaConOffset(ahora: Date, semanasAtras: number): Date {
+  const base = new Date(ahora);
+  base.setDate(base.getDate() - semanasAtras * 7);
+  return inicioDeSemana(base);
+}
+
+/** Lo aprobado/entregado se acumula mes tras mes (sobre todo con historico cargado) — sin esto
+ * la vista siempre muestra TODO desde el inicio de los tiempos. Pendiente/en proceso/en
+ * revision/correcciones nunca se filtran por fecha: es trabajo activo, nunca debe desaparecer
+ * de la vista solo porque su fecha compromiso cae fuera de la semana/mes elegido. */
+function coincideFiltroPeriodo(e: Entregable, filtro: FiltroPeriodoEntregables, ahora: Date): boolean {
+  if (filtro === "todos") return true;
+  const fecha = aFecha(fechaDeOrden(e));
+  if (filtro === "semana" || filtro === "semana_pasada") {
+    const inicio = inicioSemanaConOffset(ahora, filtro === "semana" ? 0 : 1);
+    const fin = new Date(inicio);
+    fin.setDate(fin.getDate() + 7);
+    return fecha >= inicio && fecha < fin;
+  }
+  const mesesAtras = filtro === "mes" ? 0 : 1;
+  const base = new Date(ahora.getFullYear(), ahora.getMonth() - mesesAtras, 1);
+  return fecha.getFullYear() === base.getFullYear() && fecha.getMonth() === base.getMonth();
 }
 
 /** Con pocos entregables (pendiente/en proceso/revision) esto da un solo grupo — no estorba.
@@ -72,6 +107,8 @@ export function EntregablesPage() {
   const { data: usuarios = [] } = useUsuarios();
   const [seleccionadoId, setSeleccionadoId] = useState<string | null>(null);
   const [guionSeleccionadoId, setGuionSeleccionadoId] = useState<string | null>(null);
+  const [filtroPeriodo, setFiltroPeriodo] = useState<FiltroPeriodoEntregables>("semana");
+  const ahora = new Date();
   const seleccionado = entregables.find((e) => e.id === seleccionadoId) ?? null;
   const guionSeleccionado = guiones.find((g) => g.id === guionSeleccionadoId) ?? null;
 
@@ -145,16 +182,38 @@ export function EntregablesPage() {
         </TabsContent>
 
         <TabsContent value="entregables" className="space-y-4">
-          <div className="flex justify-end gap-2">
-            {usuario?.rol === "superadmin" && <CargarEntregableHistoricoDialog />}
-            {puedeAsignarEntregables(usuario) && <NuevoEntregableDialog />}
+          <div className="flex items-center justify-between gap-2">
+            <div className="space-y-0.5">
+              <Select value={filtroPeriodo} onValueChange={(v) => setFiltroPeriodo(v as FiltroPeriodoEntregables)}>
+                <SelectTrigger className="w-44">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(FILTRO_PERIODO_LABELS).map(([valor, etiqueta]) => (
+                    <SelectItem key={valor} value={valor}>
+                      {etiqueta}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                Aplica solo a Aprobado/Entregado — lo pendiente siempre se ve completo.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              {usuario?.rol === "superadmin" && <CargarEntregableHistoricoDialog />}
+              {puedeAsignarEntregables(usuario) && <NuevoEntregableDialog />}
+            </div>
           </div>
           {isLoading ? (
             <p className="text-sm text-muted-foreground">Cargando...</p>
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
               {COLUMNAS.map((estado) => {
-                const items = entregables.filter((e) => e.estado === estado);
+                const esHistorico = estado === "aprobado" || estado === "entregado";
+                const items = entregables.filter(
+                  (e) => e.estado === estado && (!esHistorico || coincideFiltroPeriodo(e, filtroPeriodo, ahora))
+                );
                 return (
                   <Card key={estado} className="min-w-0">
                     <CardHeader className="pb-2">
