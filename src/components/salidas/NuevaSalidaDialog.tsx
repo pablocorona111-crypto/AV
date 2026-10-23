@@ -22,6 +22,10 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { TipoActividadSalida } from "@/types";
 
+/** Las salidas casi siempre son en Uber o en auto de empresa — autobus queda de ultimo recurso
+ * (viajes grandes/grupales). Antes era texto libre y cada quien ponia algo distinto. */
+const OPCIONES_TRANSPORTE = ["Uber", "Auto de empresa", "Autobus"] as const;
+
 const schema = z.object({
   nombreJornada: z.string().min(3, "Requerido"),
   tipoActividad: z.custom<TipoActividadSalida>((v) => typeof v === "string" && v.length > 0, "Requerido"),
@@ -157,8 +161,25 @@ export function NuevaSalidaDialog() {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="transporte">Transporte</Label>
-            <Input id="transporte" {...register("transporte")} placeholder="Ej. Camioneta departamental" />
+            <Label>Transporte</Label>
+            <Controller
+              control={control}
+              name="transporte"
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {OPCIONES_TRANSPORTE.map((op) => (
+                      <SelectItem key={op} value={op}>
+                        {op}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
           </div>
 
           <div className="space-y-1.5">
