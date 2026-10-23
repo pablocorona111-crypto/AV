@@ -27,8 +27,19 @@ const COLORES_TIPO = ["#C1EB1F", "#93C5FD", "#86EFAC", "#C4B5FD", "#FDBA74", "#F
  * ejecutivos: 100% en el navegador, sin backend ni Cloud Function. El tamano de pagina sale
  * directo del tamano real del nodo (aqui ancho fijo tipo slide) — por eso da landscape solo.*/
 async function descargarComoPdf(nodo: HTMLElement, nombreArchivo: string) {
-  const { width: cssW, height: cssH } = nodo.getBoundingClientRect();
-  const dataUrl = await toPng(nodo, { pixelRatio: 2, backgroundColor: "#ffffff", width: cssW, height: cssH });
+  const cssW = Math.round(nodo.scrollWidth);
+  const cssH = Math.round(nodo.scrollHeight);
+  // html-to-image clona el nodo fuera del flujo normal del documento antes de rasterizarlo —
+  // si el ancho real (1200px) solo viene de una clase de Tailwind, el clon a veces se
+  // "reacomoda" angosto (como si no tuviera ese ancho) y el reporte sale alto y angosto en vez
+  // de horizontal. Forzar el width/height como estilo inline en la propia captura evita eso.
+  const dataUrl = await toPng(nodo, {
+    pixelRatio: 2,
+    backgroundColor: "#ffffff",
+    width: cssW,
+    height: cssH,
+    style: { width: `${cssW}px`, height: `${cssH}px` },
+  });
   const wMm = cssW * PX_A_MM;
   const hMm = cssH * PX_A_MM;
   const pdf = new jsPDF({ unit: "mm", format: [wMm, hMm] });

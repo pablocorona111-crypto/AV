@@ -1,8 +1,9 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Film, Camera, FileText, Clock } from "lucide-react";
 import { useRequisiciones } from "@/hooks/useRequisiciones";
 import { useSalidas, useEntregables } from "@/hooks/useCatalogos";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DemoBadge } from "@/components/DemoBadge";
 import { formatFecha } from "@/lib/utils";
 
@@ -36,6 +37,33 @@ function isoLocal(d: Date) {
   return `${d.getFullYear()}-${mes}-${dia}`;
 }
 
+function TarjetaEvento({ evento }: { evento: EventoCalendario }) {
+  const Icono = ICONO_TIPO[evento.tipo];
+  return (
+    <div className="flex items-start gap-3 rounded-lg border border-border p-2.5 hover:bg-bg-secondary">
+      <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-white ${COLOR_TIPO[evento.tipo]}`}>
+        <Icono className="h-4 w-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center justify-between gap-2">
+          <p className="truncate text-sm font-semibold leading-tight">{evento.titulo}</p>
+          <span className="shrink-0 rounded-full bg-bg-secondary px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+            {ETIQUETA_TIPO[evento.tipo]}
+          </span>
+        </div>
+        <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+          {formatFecha(evento.fecha)}
+          {evento.hora && (
+            <>
+              <Clock className="ml-1 h-3 w-3" /> {evento.hora}
+            </>
+          )}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function construirDiasDelMes(ref: Date) {
   const anio = ref.getFullYear();
   const mes = ref.getMonth();
@@ -65,6 +93,8 @@ export function CalendarioPage() {
 
   const dias = useMemo(() => construirDiasDelMes(MES_REFERENCIA), []);
   const hoy = isoLocal(MES_REFERENCIA);
+  const [diaSeleccionado, setDiaSeleccionado] = useState<string | null>(null);
+  const eventosDelDiaSeleccionado = diaSeleccionado ? eventos.filter((e) => e.fecha === diaSeleccionado) : [];
 
   return (
     <div className="space-y-6">
@@ -98,11 +128,14 @@ export function CalendarioPage() {
                 const eventosDia = eventos.filter((e) => e.fecha === iso);
                 const esHoy = iso === hoy;
                 return (
-                  <div
+                  <button
                     key={i}
+                    type="button"
+                    onClick={() => eventosDia.length > 0 && setDiaSeleccionado(iso)}
                     className={
                       "flex min-h-16 flex-col items-center gap-1 rounded-md border border-transparent p-1.5 text-sm " +
-                      (esHoy ? "border-accent bg-accent/20 font-bold" : "hover:bg-bg-secondary")
+                      (esHoy ? "border-accent bg-accent/20 font-bold" : "hover:bg-bg-secondary") +
+                      (eventosDia.length > 0 ? " cursor-pointer" : " cursor-default")
                     }
                   >
                     <span>{dia.getDate()}</span>
@@ -115,7 +148,7 @@ export function CalendarioPage() {
                         />
                       ))}
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -137,41 +170,28 @@ export function CalendarioPage() {
             {eventos
               .sort((a, b) => (a.fecha < b.fecha ? -1 : 1))
               .slice(0, 8)
-              .map((e, i) => {
-                const Icono = ICONO_TIPO[e.tipo];
-                return (
-                  <div
-                    key={i}
-                    className="flex items-start gap-3 rounded-lg border border-border p-2.5 hover:bg-bg-secondary"
-                  >
-                    <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-white ${COLOR_TIPO[e.tipo]}`}>
-                      <Icono className="h-4 w-4" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="truncate text-sm font-semibold leading-tight">{e.titulo}</p>
-                        <span className="shrink-0 rounded-full bg-bg-secondary px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                          {ETIQUETA_TIPO[e.tipo]}
-                        </span>
-                      </div>
-                      <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
-                        {formatFecha(e.fecha)}
-                        {e.hora && (
-                          <>
-                            <Clock className="ml-1 h-3 w-3" /> {e.hora}
-                          </>
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
+              .map((e, i) => (
+                <TarjetaEvento key={i} evento={e} />
+              ))}
             {eventos.length === 0 && (
               <p className="py-6 text-center text-sm text-muted-foreground">Sin eventos registrados.</p>
             )}
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={Boolean(diaSeleccionado)} onOpenChange={(v) => !v && setDiaSeleccionado(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{diaSeleccionado && formatFecha(diaSeleccionado)}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            {eventosDelDiaSeleccionado.map((e, i) => (
+              <TarjetaEvento key={i} evento={e} />
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
