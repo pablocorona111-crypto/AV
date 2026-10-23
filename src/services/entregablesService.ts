@@ -68,7 +68,12 @@ export async function enviarARevision(
 }
 
 export async function aprobarEntregable(id: string, aprobadorId: string, urlFinal: string): Promise<void> {
-  await actualizarEntregable(id, { estado: "aprobado", aprobadorId, urlFinal });
+  await actualizarEntregable(id, {
+    estado: "aprobado",
+    aprobadorId,
+    urlFinal,
+    fechaAprobado: new Date().toISOString(),
+  });
 }
 
 export async function solicitarCorrecciones(id: string): Promise<void> {

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useEntregables } from "@/hooks/useCatalogos";
 import { useProyectos } from "@/hooks/useProyectos";
 import { useUsuarios } from "@/hooks/useCatalogos";
@@ -43,6 +44,20 @@ export function EntregablesPage() {
   const [guionSeleccionadoId, setGuionSeleccionadoId] = useState<string | null>(null);
   const seleccionado = entregables.find((e) => e.id === seleccionadoId) ?? null;
   const guionSeleccionado = guiones.find((g) => g.id === guionSeleccionadoId) ?? null;
+
+  // Al venir de una notificacion ("tu video se aprobo", etc.) con ?abrir=<id>, abre ese
+  // entregable de una vez en vez de dejar que lo busque a mano en el Kanban.
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const abrir = searchParams.get("abrir");
+    if (abrir && entregables.some((e) => e.id === abrir)) {
+      setSeleccionadoId(abrir);
+      setSearchParams((p) => {
+        p.delete("abrir");
+        return p;
+      }, { replace: true });
+    }
+  }, [searchParams, entregables, setSearchParams]);
 
   const proyectoDe = (id: string | undefined) =>
     id ? proyectos.find((p) => p.id === id)?.nombre ?? "Proyecto eliminado" : "Sin proyecto";
@@ -115,20 +130,28 @@ export function EntregablesPage() {
                         <span className="text-xs font-normal text-muted-foreground">{items.length}</span>
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-2 p-3 pt-0">
+                    {/* Alto fijo por columna: con mas tarjetas se achican entre todas (flex-1
+                        reparte el alto disponible) en vez de desbordar con scroll — a proposito,
+                        aunque el video quede chico o se recorte el texto. */}
+                    <CardContent className="flex h-[60vh] flex-col gap-2 overflow-hidden p-3 pt-0">
                       {items.map((e) => (
                         <button
                           key={e.id}
                           onClick={() => setSeleccionadoId(e.id)}
-                          className="w-full overflow-hidden rounded-md border border-border bg-white text-left text-xs transition-colors hover:bg-bg-secondary"
+                          className="flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-md border border-border bg-white text-left text-xs transition-colors hover:bg-bg-secondary"
                         >
-                          <MiniaturaVideo url={e.urlRevision || e.urlFinal} orientacion={e.orientacionVideo} />
-                          <div className="p-2.5">
-                            <p className="font-medium text-text-primary">{e.nombre}</p>
+                          <MiniaturaVideo
+                            url={e.urlRevision || e.urlFinal}
+                            orientacion={e.orientacionVideo}
+                            llenarAlto
+                            className="min-h-0 flex-1"
+                          />
+                          <div className="shrink-0 overflow-hidden p-2.5">
+                            <p className="truncate font-medium text-text-primary">{e.nombre}</p>
                             <p className="truncate text-muted-foreground">{proyectoDe(e.proyectoId)}</p>
                             <div className="mt-1 flex items-center justify-between">
-                              <span className="text-muted-foreground">{nombreDe(e.responsableId)}</span>
-                              <Badge variant="outline">{formatFecha(e.fechaCompromiso)}</Badge>
+                              <span className="truncate text-muted-foreground">{nombreDe(e.responsableId)}</span>
+                              <Badge variant="outline" className="shrink-0">{formatFecha(e.fechaCompromiso)}</Badge>
                             </div>
                           </div>
                         </button>

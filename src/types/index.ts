@@ -182,6 +182,9 @@ export interface Entregable {
   creadoEn: string;
   /** Cuando `estado` paso a "entregado" — para agrupar entregas por mes en la grafica del lider. */
   fechaEntregado?: string;
+  /** Cuando `estado` paso a "aprobado" — una vez aprobado ya cuenta como cumplido en las
+   * graficas, aunque todavia no se marque "entregado" (publicado). */
+  fechaAprobado?: string;
 }
 
 export type TipoActividadSalida =

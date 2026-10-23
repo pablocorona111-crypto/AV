@@ -305,6 +305,7 @@ export const DEMO_ENTREGABLES: Entregable[] = [
     estado: "aprobado",
     urlFinal: "https://drive.example.com/catalogo-final",
     aprobadorId: "u-ana",
+    fechaAprobado: "2026-10-16",
     creadoEn: "2026-10-08",
   },
   {

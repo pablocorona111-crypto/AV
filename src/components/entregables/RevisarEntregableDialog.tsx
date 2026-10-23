@@ -11,6 +11,7 @@ import {
   useMarcarEntregado,
   useSolicitarCorrecciones,
 } from "@/hooks/useEntregables";
+import { useUsuarios } from "@/hooks/useCatalogos";
 import { crearNotificacion } from "@/services/notificacionesService";
 import { driveUrlAPreview } from "@/services/entregablesService";
 import { subirArchivoADrive, extraerFileIdDrive } from "@/services/driveService";
@@ -52,6 +53,7 @@ export function RevisarEntregableDialog({
   nombreAprobador?: string;
 }) {
   const { usuario, driveToken, conectarDrive } = useAuth();
+  const { data: usuarios = [] } = useUsuarios();
   const [linkDraft, setLinkDraft] = useState("");
   const [comentario, setComentario] = useState("");
   const [momento, setMomento] = useState("");
@@ -108,10 +110,23 @@ export function RevisarEntregableDialog({
   // Para un link suelto, un estado vacio o el aviso de conectar Drive, un dialogo angosto se lee mejor.
   const layoutLado = modoVisor === "player" || modoVisor === "preview";
 
+  /** Avisa a quien aprueba (community) que hay material nuevo o actualizado para revisar —
+   * no se sabe de antemano quien vera el dialogo, asi que se manda a todos los que podrian
+   * aprobar (mismo criterio que el boton Aprobar: `esGestorRequisiciones`/superadmin). */
+  const notificarRevisores = (texto: string) => {
+    usuarios
+      .filter((u) => u.id !== usuario.id && (u.rol === "superadmin" || esGestorRequisiciones(u)))
+      .forEach((u) => crearNotificacion({ paraUsuarioId: u.id, texto, entregableId: entregable.id }));
+  };
+
   const onEnviar = async () => {
     const url = linkDraft.trim() || linkActual;
     if (!url) return;
+    const yaHabiaVideo = Boolean(linkActual);
     await enviarARevision.mutateAsync({ id: entregable.id, urlRevision: url });
+    notificarRevisores(
+      `${nombreResponsable} ${yaHabiaVideo ? "actualizo" : "agrego"} el video de "${entregable.nombre}".`
+    );
     setLinkDraft("");
   };
 
@@ -120,6 +135,7 @@ export function RevisarEntregableDialog({
     e.target.value = "";
     if (!file) return;
 
+    const yaHabiaVideo = Boolean(linkActual);
     setErrorSubida(null);
     setSubiendo(true);
     setProgreso(0);
@@ -141,6 +157,9 @@ export function RevisarEntregableDialog({
         urlRevision: subido.previewUrl,
         orientacionVideo: orientacionSubida,
       });
+      notificarRevisores(
+        `${nombreResponsable} ${yaHabiaVideo ? "actualizo" : "agrego"} el video de "${entregable.nombre}".`
+      );
     } catch (err) {
       setErrorSubida(mensajeErrorAuth(err));
     } finally {

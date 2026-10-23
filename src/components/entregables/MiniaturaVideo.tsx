@@ -14,16 +14,20 @@ export function MiniaturaVideo({
   url,
   orientacion,
   className,
+  llenarAlto,
 }: {
   url?: string;
   orientacion?: "vertical" | "horizontal";
   className?: string;
+  /** En vez de forzar su propia proporcion (aspect-video/aspect-[3/4]), ocupa el alto que le
+   * de el padre — para columnas tipo Kanban que achican las cards en vez de hacer scroll. */
+  llenarAlto?: boolean;
 }) {
   const [fallo, setFallo] = useState(false);
   const fileId = url ? extraerFileIdDrive(url) : null;
   const miniatura = fileId && !fallo ? `/api/drive-thumbnail?id=${encodeURIComponent(fileId)}` : null;
 
-  const forma = orientacion === "vertical" ? "aspect-[3/4]" : "aspect-video";
+  const forma = llenarAlto ? "h-full" : orientacion === "vertical" ? "aspect-[3/4]" : "aspect-video";
   const IconoOrientacion = orientacion === "vertical" ? Smartphone : Monitor;
 
   return (

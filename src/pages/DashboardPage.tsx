@@ -87,12 +87,14 @@ export function DashboardPage() {
     ? Math.round((entregablesFinalizados / entregables.length) * 100)
     : 94;
 
-  // Solo para lider/superadmin (`puedeVerMetricasGlobales`) — total de trabajos entregados,
-  // agrupado por mes real de entrega (`fechaEntregado`), no por fecha compromiso.
+  // Solo para lider/superadmin (`puedeVerMetricasGlobales`) — total de trabajos cumplidos,
+  // agrupado por mes real (fechaEntregado o, si aun no se marca "entregado", fechaAprobado —
+  // una vez aprobado ya cuenta como cumplido, no hace falta esperar a que se publique).
   const entregadosPorMesMap = new Map<string, number>();
   entregables.forEach((e) => {
-    if (e.estado !== "entregado" || !e.fechaEntregado) return;
-    const clave = e.fechaEntregado.slice(0, 7); // "2026-10"
+    const fecha = e.fechaEntregado ?? e.fechaAprobado;
+    if (!fecha || (e.estado !== "entregado" && e.estado !== "aprobado")) return;
+    const clave = fecha.slice(0, 7); // "2026-10"
     entregadosPorMesMap.set(clave, (entregadosPorMesMap.get(clave) ?? 0) + 1);
   });
   const entregadosPorMes = [...entregadosPorMesMap.entries()]
@@ -194,7 +196,7 @@ export function DashboardPage() {
       {puedeVerMetricasGlobales(usuario) && (
         <Card>
           <CardHeader>
-            <CardTitle>Trabajos entregados por mes</CardTitle>
+            <CardTitle>Trabajos cumplidos por mes</CardTitle>
           </CardHeader>
           <CardContent className="h-56">
             {entregadosPorMes.length === 0 ? (
@@ -208,7 +210,7 @@ export function DashboardPage() {
                   <XAxis dataKey="mes" tickLine={false} axisLine={false} fontSize={12} />
                   <YAxis tickLine={false} axisLine={false} fontSize={12} allowDecimals={false} />
                   <Tooltip cursor={{ fill: "#F6F8FB" }} />
-                  <Bar dataKey="total" name="Entregados" fill="#C1EB1F" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="total" name="Cumplidos" fill="#C1EB1F" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { Bell, Search, ChevronDown, LogOut, UserCog } from "lucide-react";
@@ -29,6 +30,15 @@ function iniciales(nombre: string) {
 function NotificacionesMenu() {
   const { notificaciones, noLeidas, marcarLeida } = useNotificaciones();
   const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
+
+  const onClickNotificacion = (n: { id: string; leida: boolean; entregableId?: string }) => {
+    if (!n.leida) marcarLeida(n.id);
+    if (n.entregableId) {
+      setOpen(false);
+      navigate(`/entregables?abrir=${n.entregableId}`);
+    }
+  };
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -50,7 +60,7 @@ function NotificacionesMenu() {
           {notificaciones.map((n) => (
             <button
               key={n.id}
-              onClick={() => !n.leida && marcarLeida(n.id)}
+              onClick={() => onClickNotificacion(n)}
               className="flex w-full items-start gap-2 border-b border-border px-2 py-2.5 text-left last:border-0 hover:bg-bg-secondary"
             >
               <span
