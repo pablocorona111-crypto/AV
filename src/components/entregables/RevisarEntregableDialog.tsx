@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { CheckCircle2, Clock, Download, ExternalLink, RotateCcw, Send, Upload } from "lucide-react";
+import { Check, CheckCircle2, Clock, Download, ExternalLink, Link2, RotateCcw, Send, Upload } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { puedeAprobarEntregables, puedeSubirVideos, esGestorRequisiciones } from "@/lib/roles";
 import {
@@ -61,6 +61,7 @@ export function RevisarEntregableDialog({
   const [progreso, setProgreso] = useState(0);
   const [errorSubida, setErrorSubida] = useState<string | null>(null);
   const [errorPlayerPropio, setErrorPlayerPropio] = useState<MotivoErrorDrive | null>(null);
+  const [linkCopiado, setLinkCopiado] = useState(false);
   const [orientacion, setOrientacion] = useState<"vertical" | "horizontal" | null>(null);
   const [ratioReal, setRatioReal] = useState<number | null>(null);
   const [orientacionSubida, setOrientacionSubida] = useState<"vertical" | "horizontal">("horizontal");
@@ -509,12 +510,33 @@ export function RevisarEntregableDialog({
               {ESTADO_ENTREGABLE_LABELS[entregable.estado]}
             </Badge>
             {fileIdActual && (entregable.estado === "aprobado" || entregable.estado === "entregado") && (
-              <a
-                href={`/api/drive-video?id=${encodeURIComponent(fileIdActual)}&download=1&nombre=${encodeURIComponent(entregable.nombre)}`}
-                className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs font-medium hover:bg-bg-secondary"
-              >
-                <Download className="h-3.5 w-3.5" /> Descargar
-              </a>
+              <div className="ml-auto flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(`https://drive.google.com/file/d/${fileIdActual}/view`);
+                    setLinkCopiado(true);
+                    setTimeout(() => setLinkCopiado(false), 1500);
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs font-medium hover:bg-bg-secondary"
+                >
+                  {linkCopiado ? (
+                    <>
+                      <Check className="h-3.5 w-3.5" /> Copiado
+                    </>
+                  ) : (
+                    <>
+                      <Link2 className="h-3.5 w-3.5" /> Copiar link
+                    </>
+                  )}
+                </button>
+                <a
+                  href={`/api/drive-video?id=${encodeURIComponent(fileIdActual)}&download=1&nombre=${encodeURIComponent(entregable.nombre)}`}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs font-medium hover:bg-bg-secondary"
+                >
+                  <Download className="h-3.5 w-3.5" /> Descargar
+                </a>
+              </div>
             )}
           </div>
         </DialogHeader>
