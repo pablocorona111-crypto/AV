@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  adjuntarMaterialHistorico,
   agregarComentario,
   aprobarEntregable,
   crearEntregable,
@@ -39,6 +40,15 @@ export function useEnviarARevision() {
   return useMutation({
     mutationFn: (data: { id: string; urlRevision: string; orientacionVideo?: "vertical" | "horizontal" }) =>
       enviarARevision(data.id, data.urlRevision, data.orientacionVideo),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["entregables"] }),
+  });
+}
+
+export function useAdjuntarMaterialHistorico() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { id: string; urlFinal: string; orientacionVideo?: "vertical" | "horizontal" }) =>
+      adjuntarMaterialHistorico(data.id, data.urlFinal, data.orientacionVideo),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["entregables"] }),
   });
 }

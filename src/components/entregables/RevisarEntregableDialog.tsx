@@ -3,6 +3,7 @@ import { Check, CheckCircle2, Clock, Download, ExternalLink, Link2, RotateCcw, S
 import { useAuth } from "@/context/AuthContext";
 import { puedeAprobarEntregables, puedeSubirVideos, esGestorRequisiciones } from "@/lib/roles";
 import {
+  useAdjuntarMaterialHistorico,
   useAgregarComentario,
   useAprobarEntregable,
   useComentarios,
@@ -80,6 +81,7 @@ export function RevisarEntregableDialog({
   const { data: comentarios = [] } = useComentarios(entregable?.id ?? "");
   const agregarComentario = useAgregarComentario(entregable?.id ?? "");
   const enviarARevision = useEnviarARevision();
+  const adjuntarMaterialHistorico = useAdjuntarMaterialHistorico();
   const aprobar = useAprobarEntregable();
   const solicitarCorrecciones = useSolicitarCorrecciones();
   const marcarEntregado = useMarcarEntregado();
@@ -89,6 +91,11 @@ export function RevisarEntregableDialog({
 
   const esResponsable = entregable.responsableId === usuario.id;
   const esAprobador = puedeAprobarEntregables(usuario);
+  // Completar un historico ya cerrado (ej. carga masiva sin link real) — superadmin adjunta el
+  // archivo SIN reabrirlo a revision ni tocar su estado, a diferencia del flujo normal donde
+  // subir manda de vuelta a revision.
+  const completandoHistorico =
+    usuario.rol === "superadmin" && (entregable.estado === "aprobado" || entregable.estado === "entregado");
   // Ya no hay nada que corregir — las observaciones de correcciones pasadas ya no aportan,
   // se reemplazan por la info de que ya quedo aprobado/entregado.
   const yaResuelto = entregable.estado === "aprobado" || entregable.estado === "entregado";
@@ -129,10 +136,14 @@ export function RevisarEntregableDialog({
     const url = linkDraft.trim() || linkActual;
     if (!url) return;
     const yaHabiaVideo = Boolean(linkActual);
-    await enviarARevision.mutateAsync({ id: entregable.id, urlRevision: url });
-    notificarRevisores(
-      `${nombreResponsable} ${yaHabiaVideo ? "actualizo" : "agrego"} el video de "${entregable.nombre}".`
-    );
+    if (completandoHistorico) {
+      await adjuntarMaterialHistorico.mutateAsync({ id: entregable.id, urlFinal: url });
+    } else {
+      await enviarARevision.mutateAsync({ id: entregable.id, urlRevision: url });
+      notificarRevisores(
+        `${nombreResponsable} ${yaHabiaVideo ? "actualizo" : "agrego"} el video de "${entregable.nombre}".`
+      );
+    }
     setLinkDraft("");
   };
 
@@ -159,14 +170,22 @@ export function RevisarEntregableDialog({
         fileIdExistente,
         onProgress: setProgreso,
       });
-      await enviarARevision.mutateAsync({
-        id: entregable.id,
-        urlRevision: subido.previewUrl,
-        ...(esDiseno ? {} : { orientacionVideo: orientacionSubida }),
-      });
-      notificarRevisores(
-        `${nombreResponsable} ${yaHabiaVideo ? "actualizo" : "agrego"} el video de "${entregable.nombre}".`
-      );
+      if (completandoHistorico) {
+        await adjuntarMaterialHistorico.mutateAsync({
+          id: entregable.id,
+          urlFinal: subido.previewUrl,
+          ...(esDiseno ? {} : { orientacionVideo: orientacionSubida }),
+        });
+      } else {
+        await enviarARevision.mutateAsync({
+          id: entregable.id,
+          urlRevision: subido.previewUrl,
+          ...(esDiseno ? {} : { orientacionVideo: orientacionSubida }),
+        });
+        notificarRevisores(
+          `${nombreResponsable} ${yaHabiaVideo ? "actualizo" : "agrego"} el video de "${entregable.nombre}".`
+        );
+      }
     } catch (err) {
       const mensaje = mensajeErrorAuth(err);
       if (/sesion de Drive expiro|403/.test(mensaje)) limpiarDriveToken();
@@ -318,7 +337,13 @@ export function RevisarEntregableDialog({
     </div>
   );
 
-  const bloqueSubirVideo = esResponsable && puedeSubirVideos(usuario) && entregable.estado !== "aprobado" && (
+  // El superadmin puede subir/reemplazar el material de CUALQUIER entregable, sin importar
+  // quien sea el responsable ni si ya esta aprobado — lo necesita para completar historicos
+  // cargados sin link real de video (el responsable registrado puede ni ser una cuenta real).
+  // Para el resto, sigue igual: solo el propio responsable, y solo antes de quedar aprobado.
+  const puedeEditarMaterial =
+    usuario.rol === "superadmin" || (esResponsable && entregable.estado !== "aprobado");
+  const bloqueSubirVideo = puedeEditarMaterial && puedeSubirVideos(usuario) && (
     <div className="space-y-2 rounded-md border border-border p-3">
       <Label>{esDiseno ? "Subir diseño" : "Subir video"}</Label>
       {!esDiseno && (

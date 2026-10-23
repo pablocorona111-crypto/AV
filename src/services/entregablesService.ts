@@ -101,6 +101,20 @@ export async function enviarARevision(
   });
 }
 
+/** Para completar un historico ya aprobado/entregado al que nunca se le adjunto el archivo real
+ * (ej. carga masiva sin link) — solo pone el material, sin tocar el estado ni mandarlo de vuelta
+ * a revision (a diferencia de enviarARevision, pensado para el flujo normal de trabajo activo). */
+export async function adjuntarMaterialHistorico(
+  id: string,
+  urlFinal: string,
+  orientacionVideo?: "vertical" | "horizontal"
+): Promise<void> {
+  await actualizarEntregable(id, {
+    urlFinal,
+    ...(orientacionVideo ? { orientacionVideo } : {}),
+  });
+}
+
 export async function aprobarEntregable(id: string, aprobadorId: string, urlFinal: string): Promise<void> {
   await actualizarEntregable(id, {
     estado: "aprobado",
