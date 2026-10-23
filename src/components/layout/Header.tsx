@@ -7,7 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useNotificaciones } from "@/hooks/useNotificaciones";
 import { ROLE_LABELS } from "@/lib/roles";
 import { DEMO_USUARIOS } from "@/data/demoData";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -107,6 +107,7 @@ export function Header() {
       <DropdownMenu>
         <DropdownMenuTrigger className="flex items-center gap-2 rounded-md p-1.5 hover:bg-bg-secondary focus:outline-none">
           <Avatar>
+            {usuario?.avatarUrl && <AvatarImage src={usuario.avatarUrl} alt={usuario.nombre} />}
             <AvatarFallback>{usuario ? iniciales(usuario.nombre) : "?"}</AvatarFallback>
           </Avatar>
           <div className="hidden text-left sm:block">

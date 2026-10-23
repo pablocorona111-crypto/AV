@@ -60,7 +60,11 @@ service cloud.firestore {
         request.resource.data.get('gestorRequisiciones', null) ==
           invitacionDe(request.auth.token.email.lower()).get('gestorRequisiciones', null);
 
-      allow update, delete: if esSuperadmin() || esLiderAudiovisual();
+      // Cualquiera puede actualizar SU PROPIA foto de perfil (se sincroniza sola con la de
+      // Google en cada login) — nada mas ese campo, ni su propio rol ni el de nadie mas.
+      allow update: if esSuperadmin() || esLiderAudiovisual() ||
+        (request.auth.uid == usuarioId && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['avatarUrl']));
+      allow delete: if esSuperadmin() || esLiderAudiovisual();
     }
 
     match /contadores/{contadorId} {

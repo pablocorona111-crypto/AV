@@ -22,6 +22,8 @@ import {
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
+const SIN_PROYECTO = "sin-proyecto";
+
 const schema = z.object({
   titulo: z.string().min(3, "Minimo 3 caracteres"),
   proyectoId: z.string().min(1, "Requerido"),
@@ -45,7 +47,7 @@ export function NuevoGuionDialog() {
     control,
     reset,
     formState: { errors },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) });
+  } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { proyectoId: SIN_PROYECTO } });
 
   const colaboradores = usuarios.filter(
     (u) => u.rol === "colaborador_audiovisual" || u.rol === "lider_audiovisual" || u.rol === "superadmin"
@@ -61,12 +63,12 @@ export function NuevoGuionDialog() {
     try {
       await crear.mutateAsync({
         titulo: values.titulo,
-        proyectoId: values.proyectoId,
+        ...(values.proyectoId !== SIN_PROYECTO ? { proyectoId: values.proyectoId } : {}),
         responsableId: values.responsableId,
         contenido: values.contenido,
         ...(requisicionConGestor ? { gestorResponsableId: requisicionConGestor.responsableVentaId } : {}),
       });
-      reset();
+      reset({ proyectoId: SIN_PROYECTO });
       setOpen(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo crear el guion.");
@@ -97,7 +99,7 @@ export function NuevoGuionDialog() {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Proyecto</Label>
+              <Label>Proyecto (opcional)</Label>
               <Controller
                 control={control}
                 name="proyectoId"
@@ -107,6 +109,7 @@ export function NuevoGuionDialog() {
                       <SelectValue placeholder="Selecciona" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value={SIN_PROYECTO}>Sin proyecto (contenido recurrente)</SelectItem>
                       {proyectos.map((p) => (
                         <SelectItem key={p.id} value={p.id}>
                           {p.nombre}

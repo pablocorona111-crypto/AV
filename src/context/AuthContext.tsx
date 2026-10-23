@@ -13,7 +13,7 @@ import {
   GoogleAuthProvider,
   signOut as firebaseSignOut,
 } from "firebase/auth";
-import { doc, getDoc, onSnapshot, setDoc } from "firebase/firestore";
+import { doc, getDoc, onSnapshot, setDoc, updateDoc } from "firebase/firestore";
 import { auth, db, isFirebaseConfigured } from "@/lib/firebase";
 import { DEMO_USUARIOS } from "@/data/demoData";
 import { buscarInvitacionPorCorreo } from "@/services/invitacionesService";
@@ -92,9 +92,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             rol: invitacion.rol,
             activo: true,
             creadoEn: new Date().toISOString(),
+            ...(firebaseUser.photoURL ? { avatarUrl: firebaseUser.photoURL } : {}),
             ...(invitacion.gestorRequisiciones ? { gestorRequisiciones: invitacion.gestorRequisiciones } : {}),
           });
         }
+      } else if (snap.exists() && firebaseUser.photoURL && snap.data().avatarUrl !== firebaseUser.photoURL) {
+        // Autocompleta la foto para cuentas creadas antes de que este campo existiera, o la
+        // actualiza si cambio en Google — asi el avatar deja de ser solo las iniciales.
+        await updateDoc(ref, { avatarUrl: firebaseUser.photoURL });
       }
 
       // Escucha en vivo: si un admin cambia el rol o permisos, se reflejan al instante sin recargar.

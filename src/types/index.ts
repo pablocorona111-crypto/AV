@@ -141,7 +141,8 @@ export type EstadoGuion = "borrador" | "en_revision" | "correcciones" | "aprobad
 export interface Guion {
   id: string;
   folio: string;
-  proyectoId: string;
+  /** Sin valor para contenido recurrente sin proyecto formal (ej. guion semanal de redes). */
+  proyectoId?: string;
   titulo: string;
   contenido: string;
   responsableId: string;
