@@ -8,6 +8,7 @@ import {
   useComentarios,
   useEnviarARevision,
   useEtiquetarOrientacion,
+  useMarcarEntregado,
   useSolicitarCorrecciones,
 } from "@/hooks/useEntregables";
 import { crearNotificacion } from "@/services/notificacionesService";
@@ -78,6 +79,7 @@ export function RevisarEntregableDialog({
   const enviarARevision = useEnviarARevision();
   const aprobar = useAprobarEntregable();
   const solicitarCorrecciones = useSolicitarCorrecciones();
+  const marcarEntregado = useMarcarEntregado();
   const etiquetarOrientacion = useEtiquetarOrientacion();
 
   if (!entregable || !usuario) return null;
@@ -161,6 +163,15 @@ export function RevisarEntregableDialog({
     crearNotificacion({
       paraUsuarioId: entregable.responsableId,
       texto: `Pidieron cambios en tu video "${entregable.nombre}". Revisa las observaciones.`,
+      entregableId: entregable.id,
+    });
+  };
+
+  const onMarcarEntregado = async () => {
+    await marcarEntregado.mutateAsync(entregable.id);
+    crearNotificacion({
+      paraUsuarioId: entregable.responsableId,
+      texto: `Tu video "${entregable.nombre}" ya quedo entregado.`,
       entregableId: entregable.id,
     });
   };
@@ -425,6 +436,15 @@ export function RevisarEntregableDialog({
           </Button>
           <Button type="button" onClick={onAprobar} disabled={aprobar.isPending}>
             <CheckCircle2 className="h-4 w-4" /> Aprobar
+          </Button>
+        </div>
+      )}
+
+      {esAprobador && entregable.estado === "aprobado" && (
+        <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-4">
+          <Button type="button" onClick={onMarcarEntregado} disabled={marcarEntregado.isPending}>
+            <CheckCircle2 className="h-4 w-4" />
+            {marcarEntregado.isPending ? "Marcando..." : "Marcar como entregado"}
           </Button>
         </div>
       )}

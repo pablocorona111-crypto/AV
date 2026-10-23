@@ -10,6 +10,7 @@ import { RevisarEntregableDialog } from "@/components/entregables/RevisarEntrega
 import { MiniaturaVideo } from "@/components/entregables/MiniaturaVideo";
 import { ESTADO_ENTREGABLE_BADGE, ESTADO_ENTREGABLE_LABELS } from "@/lib/labels";
 import { dentroDelPeriodo, type Periodo } from "@/lib/periodo";
+import { formatFecha } from "@/lib/utils";
 import type { EstadoEntregable } from "@/types";
 
 type FiltroPeriodo = Periodo | "todos";
@@ -97,6 +98,11 @@ export function ArchivosPage() {
                   <Badge variant="outline" className="shrink-0 text-[10px]">{e.version}</Badge>
                 </div>
                 <p className="truncate text-[11px] text-muted-foreground">{proyectoDe(e.proyectoId)}</p>
+                <p className="truncate text-[10px] text-muted-foreground/80">
+                  {e.fechaEntregado
+                    ? `Entregado: ${formatFecha(e.fechaEntregado)}`
+                    : `Fecha compromiso: ${formatFecha(e.fechaCompromiso)}`}
+                </p>
                 <div className="flex flex-wrap items-center gap-1">
                   <Badge variant={ESTADO_ENTREGABLE_BADGE[e.estado]} className="text-[10px]">
                     {ESTADO_ENTREGABLE_LABELS[e.estado]}
