@@ -75,6 +75,8 @@ export function CargarEntregableHistoricoDialog() {
     (u) => u.rol === "colaborador_audiovisual" || u.rol === "lider_audiovisual" || u.rol === "superadmin"
   );
 
+  const esDiseno = watch("tipo") === "diseno_grafico";
+
   const onSeleccionarArchivo = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -98,6 +100,7 @@ export function CargarEntregableHistoricoDialog() {
       const subido = await subirArchivoADrive(file, token, {
         nombre: `${nombreProyecto} - ${nombreEntregable}`,
         nombreCarpeta: nombreProyecto,
+        subcarpeta: esDiseno ? "Diseños" : "Videos",
         onProgress: setProgreso,
       });
       setValue("urlFinal", subido.previewUrl, { shouldValidate: true });
@@ -260,7 +263,7 @@ export function CargarEntregableHistoricoDialog() {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="urlFinal">Link del video (Drive, ya confirmado)</Label>
+            <Label htmlFor="urlFinal">{esDiseno ? "Link del diseño (Drive, ya confirmado)" : "Link del video (Drive, ya confirmado)"}</Label>
             <div className="flex gap-2">
               <Input
                 id="urlFinal"
@@ -270,7 +273,7 @@ export function CargarEntregableHistoricoDialog() {
               <input
                 ref={inputArchivoRef}
                 type="file"
-                accept="video/*"
+                accept={esDiseno ? "image/*,.pdf,.ai,.psd,.fig,.sketch,.eps" : "video/*"}
                 className="hidden"
                 onChange={onSeleccionarArchivo}
               />
@@ -282,7 +285,7 @@ export function CargarEntregableHistoricoDialog() {
                 disabled={subiendo}
               >
                 <Upload className="h-4 w-4" />
-                {subiendo ? `${progreso}%` : "Subir video"}
+                {subiendo ? `${progreso}%` : esDiseno ? "Subir diseño" : "Subir video"}
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">Pega el link si ya lo tienes en Drive, o sube el archivo directo.</p>

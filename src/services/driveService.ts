@@ -153,9 +153,11 @@ function linksDe(id: string): ArchivoSubido {
 }
 
 /**
- * Sube un video a Drive, ordenado en "AV Control / {nombreCarpeta}" y etiquetado con el proyecto.
- * Si `fileIdExistente` viene (ya habia un video para este entregable), reemplaza su contenido
- * en vez de crear un archivo nuevo — asi no se acumulan copias por cada correccion.
+ * Sube un archivo a Drive, ordenado en "AV Control / {nombreCarpeta}[ / {subcarpeta}]" y
+ * etiquetado con el proyecto. `subcarpeta` separa por tipo de material dentro del proyecto (ej.
+ * "Videos" vs "Diseños") para que no quede todo revuelto en una sola carpeta. Si
+ * `fileIdExistente` viene (ya habia un archivo para este entregable), reemplaza su contenido en
+ * vez de crear uno nuevo — asi no se acumulan copias por cada correccion.
  */
 export async function subirArchivoADrive(
   file: File,
@@ -163,11 +165,12 @@ export async function subirArchivoADrive(
   opciones: {
     nombre: string;
     nombreCarpeta: string;
+    subcarpeta?: string;
     fileIdExistente?: string;
     onProgress?: (porcentaje: number) => void;
   }
 ): Promise<ArchivoSubido> {
-  const { nombre, nombreCarpeta, fileIdExistente, onProgress } = opciones;
+  const { nombre, nombreCarpeta, subcarpeta, fileIdExistente, onProgress } = opciones;
 
   if (fileIdExistente) {
     await reemplazarContenido(fileIdExistente, file, accessToken, onProgress);
@@ -176,7 +179,10 @@ export async function subirArchivoADrive(
   }
 
   const raizId = await obtenerOCrearCarpeta(CARPETA_RAIZ, accessToken);
-  const carpetaId = await obtenerOCrearCarpeta(nombreCarpeta, accessToken, raizId);
+  const carpetaProyectoId = await obtenerOCrearCarpeta(nombreCarpeta, accessToken, raizId);
+  const carpetaId = subcarpeta
+    ? await obtenerOCrearCarpeta(subcarpeta, accessToken, carpetaProyectoId)
+    : carpetaProyectoId;
   const id = await subirContenidoNuevo(file, accessToken, nombre, carpetaId, onProgress);
   try {
     await compartirArchivo(id, accessToken);

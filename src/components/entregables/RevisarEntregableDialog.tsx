@@ -154,6 +154,7 @@ export function RevisarEntregableDialog({
       const subido = await subirArchivoADrive(file, token, {
         nombre: `${nombreProyecto ?? "Sin proyecto"} - ${entregable.nombre}`,
         nombreCarpeta: nombreProyecto ?? "Sin proyecto",
+        subcarpeta: esDiseno ? "Diseños" : "Videos",
         fileIdExistente,
         onProgress: setProgreso,
       });
