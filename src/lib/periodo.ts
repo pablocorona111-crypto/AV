@@ -16,9 +16,22 @@ export function inicioDePeriodo(periodo: Periodo, ahora: Date = new Date()): Dat
   return inicio;
 }
 
-export function dentroDelPeriodo(fechaIso: string, periodo: Periodo | "todos", ahora: Date = new Date()): boolean {
+/** `creadoEn` se escribe con `serverTimestamp()` de Firestore — al leerlo de vuelta llega como
+ * un objeto `Timestamp` (con `.toDate()`), no como el string ISO que se guardo localmente al
+ * crearlo. `new Date(timestamp)` da fecha invalida y el filtro de periodo fallaba siempre
+ * (nunca entraba nada a "esta semana"/"este mes"). Acepta cualquiera de las dos formas. */
+function aFecha(valor: unknown): Date {
+  if (valor instanceof Date) return valor;
+  if (typeof valor === "string" || typeof valor === "number") return new Date(valor);
+  if (valor && typeof valor === "object" && "toDate" in valor && typeof (valor as { toDate: unknown }).toDate === "function") {
+    return (valor as { toDate: () => Date }).toDate();
+  }
+  return new Date(0);
+}
+
+export function dentroDelPeriodo(fecha: unknown, periodo: Periodo | "todos", ahora: Date = new Date()): boolean {
   if (periodo === "todos") return true;
-  return new Date(fechaIso) >= inicioDePeriodo(periodo, ahora);
+  return aFecha(fecha) >= inicioDePeriodo(periodo, ahora);
 }
 
 export function etiquetaPeriodo(periodo: Periodo, ahora: Date = new Date()): string {
