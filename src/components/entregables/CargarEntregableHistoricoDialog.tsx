@@ -88,9 +88,16 @@ export function CargarEntregableHistoricoDialog() {
         setError("No se pudo conectar con Drive.");
         return;
       }
+      // Mismo criterio que la subida normal (RevisarEntregableDialog): carpeta = nombre del
+      // proyecto, y el archivo se nombra "Proyecto - Entregable" — asi en Drive queda ordenado
+      // por nombre y agrupado junto con el resto de ese proyecto, no aparte en una carpeta
+      // generica de "historico".
+      const proyectoSeleccionado = proyectos.find((p) => p.id === watch("proyectoId"));
+      const nombreProyecto = proyectoSeleccionado?.nombre ?? "Sin proyecto";
+      const nombreEntregable = watch("nombre") || `Historico-${Date.now()}`;
       const subido = await subirArchivoADrive(file, token, {
-        nombre: watch("nombre") || `Historico-${Date.now()}`,
-        nombreCarpeta: "Historico",
+        nombre: `${nombreProyecto} - ${nombreEntregable}`,
+        nombreCarpeta: nombreProyecto,
         onProgress: setProgreso,
       });
       setValue("urlFinal", subido.previewUrl, { shouldValidate: true });
