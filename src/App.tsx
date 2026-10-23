@@ -3,6 +3,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { RutaProtegida } from "@/components/RutaProtegida";
 import { LoginPage } from "@/pages/LoginPage";
+import { PoliticaPrivacidadPage } from "@/pages/PoliticaPrivacidadPage";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { RequisicionesPage } from "@/pages/RequisicionesPage";
 import { ProyectosPage } from "@/pages/ProyectosPage";
@@ -21,6 +22,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/privacidad" element={<PoliticaPrivacidadPage />} />
         <Route
           element={
             <ProtectedRoute>
