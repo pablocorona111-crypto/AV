@@ -1,18 +1,33 @@
 import { useMemo } from "react";
+import { Film, Camera, FileText, Clock } from "lucide-react";
 import { useRequisiciones } from "@/hooks/useRequisiciones";
 import { useSalidas, useEntregables } from "@/hooks/useCatalogos";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DemoBadge } from "@/components/DemoBadge";
+import { formatFecha } from "@/lib/utils";
 
 const DIAS_SEMANA = ["L", "M", "M", "J", "V", "S", "D"];
 const MES_REFERENCIA = new Date("2026-10-14T00:00:00");
 
-type EventoCalendario = { fecha: string; tipo: "entrega" | "salida" | "requisicion"; titulo: string };
+type TipoEvento = "entrega" | "salida" | "requisicion";
+type EventoCalendario = { fecha: string; tipo: TipoEvento; titulo: string; hora?: string };
 
-const COLOR_TIPO: Record<EventoCalendario["tipo"], string> = {
+const COLOR_TIPO: Record<TipoEvento, string> = {
   entrega: "bg-emerald-500",
   salida: "bg-blue-400",
   requisicion: "bg-purple-400",
+};
+
+const ETIQUETA_TIPO: Record<TipoEvento, string> = {
+  entrega: "Entrega",
+  salida: "Salida",
+  requisicion: "Requisicion",
+};
+
+const ICONO_TIPO: Record<TipoEvento, typeof Film> = {
+  entrega: Film,
+  salida: Camera,
+  requisicion: FileText,
 };
 
 function isoLocal(d: Date) {
@@ -43,7 +58,7 @@ export function CalendarioPage() {
   const eventos = useMemo<EventoCalendario[]>(() => {
     const e: EventoCalendario[] = [];
     requisiciones.forEach((r) => e.push({ fecha: r.fechaRequerida, tipo: "requisicion", titulo: r.titulo }));
-    salidas.forEach((s) => e.push({ fecha: s.fecha, tipo: "salida", titulo: s.nombreJornada }));
+    salidas.forEach((s) => e.push({ fecha: s.fecha, tipo: "salida", titulo: s.nombreJornada, hora: s.horaSalida }));
     entregables.forEach((en) => e.push({ fecha: en.fechaCompromiso, tipo: "entrega", titulo: en.nombre }));
     return e;
   }, [requisiciones, salidas, entregables]);
@@ -105,15 +120,11 @@ export function CalendarioPage() {
               })}
             </div>
             <div className="mt-4 flex gap-4 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-accent" /> Entrega
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-blue-400" /> Salida
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-purple-400" /> Requisicion
-              </span>
+              {(Object.keys(ETIQUETA_TIPO) as TipoEvento[]).map((tipo) => (
+                <span key={tipo} className="flex items-center gap-1.5">
+                  <span className={`h-2 w-2 rounded-full ${COLOR_TIPO[tipo]}`} /> {ETIQUETA_TIPO[tipo]}
+                </span>
+              ))}
             </div>
           </CardContent>
         </Card>
@@ -122,19 +133,42 @@ export function CalendarioPage() {
           <CardHeader>
             <CardTitle>Proximos eventos</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-2">
             {eventos
               .sort((a, b) => (a.fecha < b.fecha ? -1 : 1))
               .slice(0, 8)
-              .map((e, i) => (
-                <div key={i} className="flex items-start gap-2 text-sm">
-                  <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${COLOR_TIPO[e.tipo]}`} />
-                  <div>
-                    <p className="font-medium leading-tight">{e.titulo}</p>
-                    <p className="text-xs text-muted-foreground">{e.fecha}</p>
+              .map((e, i) => {
+                const Icono = ICONO_TIPO[e.tipo];
+                return (
+                  <div
+                    key={i}
+                    className="flex items-start gap-3 rounded-lg border border-border p-2.5 hover:bg-bg-secondary"
+                  >
+                    <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-white ${COLOR_TIPO[e.tipo]}`}>
+                      <Icono className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="truncate text-sm font-semibold leading-tight">{e.titulo}</p>
+                        <span className="shrink-0 rounded-full bg-bg-secondary px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                          {ETIQUETA_TIPO[e.tipo]}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+                        {formatFecha(e.fecha)}
+                        {e.hora && (
+                          <>
+                            <Clock className="ml-1 h-3 w-3" /> {e.hora}
+                          </>
+                        )}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
+            {eventos.length === 0 && (
+              <p className="py-6 text-center text-sm text-muted-foreground">Sin eventos registrados.</p>
+            )}
           </CardContent>
         </Card>
       </div>
