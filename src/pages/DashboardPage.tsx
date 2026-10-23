@@ -62,6 +62,13 @@ export function DashboardPage() {
     ["edicion", "animacion_acabados", "revision", "correcciones"].includes(p.etapaActual)
   ).length;
   const entregablesFinalizados = entregables.filter((e) => e.estado === "entregado" || e.estado === "aprobado").length;
+  // El stat "Entregados" dice "Este mes" pero sumaba TODO el historico — se nota en cuanto hay
+  // carga historica de meses pasados. Filtrado al mes en curso, igual que "Tipo de entregables".
+  const entregadosEsteMes = entregables.filter((e) => {
+    if (e.estado !== "entregado" && e.estado !== "aprobado") return false;
+    const fecha = aFecha(e.fechaEntregado ?? e.fechaAprobado ?? e.creadoEn);
+    return fecha.getFullYear() === ahora.getFullYear() && fecha.getMonth() === ahora.getMonth();
+  }).length;
   const entregasAtrasadas = entregables.filter(
     (e) => aFecha(e.fechaCompromiso) < ahora && e.estado !== "entregado" && e.estado !== "aprobado"
   ).length;
@@ -138,7 +145,7 @@ export function DashboardPage() {
         <StatCard icon={FileText} label="Requisiciones" value={requisiciones.length} hint="Este mes" />
         <StatCard icon={Clock} label="Pendientes aprobacion" value={pendientesAprobacion} hint="Requieren revision" />
         <StatCard icon={Film} label="En postproduccion" value={enPostproduccion} hint="Proyectos activos" />
-        <StatCard icon={CheckCircle2} label="Entregados" value={entregablesFinalizados} hint="Este mes" />
+        <StatCard icon={CheckCircle2} label="Entregados" value={entregadosEsteMes} hint="Este mes" />
         <StatCard icon={AlertTriangle} label="Entregas atrasadas" value={entregasAtrasadas} hint="Requieren atencion" iconBg="bg-red-100" />
         <StatCard icon={Clock} label="Cumplimiento" value={`${cumplimiento}%`} hint="A tiempo" />
         <StatCard icon={Camera} label="Salidas programadas" value={salidas.length} hint="Proximos 7 dias" />

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Download, Link2, Check } from "lucide-react";
+import { Download, Link2, Check, LayoutGrid, Table2 } from "lucide-react";
 import { useProyectos } from "@/hooks/useProyectos";
 import { useEntregables, useUsuarios } from "@/hooks/useCatalogos";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,9 +11,9 @@ import { DemoBadge } from "@/components/DemoBadge";
 import { RevisarEntregableDialog } from "@/components/entregables/RevisarEntregableDialog";
 import { MiniaturaVideo } from "@/components/entregables/MiniaturaVideo";
 import { extraerFileIdDrive } from "@/services/driveService";
-import { ESTADO_ENTREGABLE_BADGE, ESTADO_ENTREGABLE_LABELS } from "@/lib/labels";
+import { ESTADO_ENTREGABLE_BADGE, ESTADO_ENTREGABLE_LABELS, CATEGORIA_CONTENIDO_LABELS } from "@/lib/labels";
 import { dentroDelPeriodo, type Periodo } from "@/lib/periodo";
-import { formatFecha } from "@/lib/utils";
+import { cn, formatFecha } from "@/lib/utils";
 import type { EstadoEntregable } from "@/types";
 
 type FiltroPeriodo = Periodo | "todos";
@@ -36,6 +36,7 @@ export function ArchivosPage() {
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstadoArchivos>("todos");
   const [filtroPeriodo, setFiltroPeriodo] = useState<FiltroPeriodo>("todos");
   const [copiadoId, setCopiadoId] = useState<string | null>(null);
+  const [vista, setVista] = useState<"cuadricula" | "tabla">("cuadricula");
 
   const copiarLink = async (id: string, fileId: string) => {
     await navigator.clipboard.writeText(`https://drive.google.com/file/d/${fileId}/view`);
@@ -101,8 +102,112 @@ export function ArchivosPage() {
             <SelectItem value="mes">Este mes</SelectItem>
           </SelectContent>
         </Select>
+
+        <div className="flex gap-1 rounded-md border border-border p-0.5 sm:ml-auto">
+          <button
+            type="button"
+            onClick={() => setVista("cuadricula")}
+            className={cn(
+              "flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-medium",
+              vista === "cuadricula" ? "bg-accent text-white" : "text-muted-foreground hover:bg-bg-secondary"
+            )}
+          >
+            <LayoutGrid className="h-3.5 w-3.5" /> Cuadricula
+          </button>
+          <button
+            type="button"
+            onClick={() => setVista("tabla")}
+            className={cn(
+              "flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-medium",
+              vista === "tabla" ? "bg-accent text-white" : "text-muted-foreground hover:bg-bg-secondary"
+            )}
+          >
+            <Table2 className="h-3.5 w-3.5" /> Tabla
+          </button>
+        </div>
       </div>
 
+      {vista === "tabla" ? (
+        <div className="overflow-x-auto rounded-lg border border-border">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border bg-bg-secondary text-left text-xs text-muted-foreground">
+                <th className="px-3 py-2 font-medium">Entregable</th>
+                <th className="px-3 py-2 font-medium">Proyecto</th>
+                <th className="px-3 py-2 font-medium">Tipo</th>
+                <th className="px-3 py-2 font-medium">Responsable</th>
+                <th className="px-3 py-2 font-medium">Fecha</th>
+                <th className="px-3 py-2 font-medium">Estado</th>
+                <th className="px-3 py-2 font-medium">Material</th>
+              </tr>
+            </thead>
+            <tbody>
+              {referencias.map((e) => {
+                const link = e.urlRevision || e.urlFinal || "";
+                const fileId = extraerFileIdDrive(link);
+                const yaListo = e.estado === "aprobado" || e.estado === "entregado";
+                const puedeBajarYCompartir = yaListo && Boolean(fileId);
+                return (
+                  <tr
+                    key={e.id}
+                    className="cursor-pointer border-b border-border last:border-0 hover:bg-bg-secondary"
+                    onClick={() => setSeleccionadoId(e.id)}
+                  >
+                    <td className="px-3 py-2 font-medium">{e.nombre}</td>
+                    <td className="px-3 py-2 text-muted-foreground">{proyectoDe(e.proyectoId)}</td>
+                    <td className="px-3 py-2 text-muted-foreground">{CATEGORIA_CONTENIDO_LABELS[e.tipo]}</td>
+                    <td className="px-3 py-2 text-muted-foreground">{nombreDe(e.responsableId)}</td>
+                    <td className="px-3 py-2 text-muted-foreground">
+                      {formatFecha(e.fechaEntregado ?? e.fechaAprobado ?? e.fechaCompromiso)}
+                    </td>
+                    <td className="px-3 py-2">
+                      <Badge variant={ESTADO_ENTREGABLE_BADGE[e.estado]} className="text-[10px]">
+                        {ESTADO_ENTREGABLE_LABELS[e.estado]}
+                      </Badge>
+                    </td>
+                    <td className="px-3 py-2" onClick={(ev) => ev.stopPropagation()}>
+                      {puedeBajarYCompartir ? (
+                        <div className="flex gap-1">
+                          <a
+                            href={`/api/drive-video?id=${encodeURIComponent(fileId!)}&download=1&nombre=${encodeURIComponent(e.nombre)}`}
+                            className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] font-medium hover:bg-white"
+                          >
+                            <Download className="h-3 w-3" /> Bajar
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => copiarLink(e.id, fileId!)}
+                            className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] font-medium hover:bg-white"
+                          >
+                            {copiadoId === e.id ? (
+                              <>
+                                <Check className="h-3 w-3" /> Copiado
+                              </>
+                            ) : (
+                              <>
+                                <Link2 className="h-3 w-3" /> Link
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {referencias.length === 0 && (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              {busqueda || filtroEstado !== "todos" || filtroPeriodo !== "todos"
+                ? "Sin resultados para ese filtro."
+                : "Sin referencias de archivo registradas."}
+            </p>
+          )}
+        </div>
+      ) : (
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
         {referencias.map((e) => {
           const link = e.urlRevision || e.urlFinal || "";
@@ -178,6 +283,7 @@ export function ArchivosPage() {
           </p>
         )}
       </div>
+      )}
 
       <RevisarEntregableDialog
         entregable={seleccionado}
