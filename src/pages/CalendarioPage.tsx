@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Film, Camera, FileText, Clock, ChevronLeft, ChevronRight } from "lucide-react";
 import { useRequisiciones } from "@/hooks/useRequisiciones";
 import { useSalidas, useEntregables } from "@/hooks/useCatalogos";
@@ -30,6 +31,7 @@ const BADGE_AUTORIZACION_SALIDA: Record<string, BadgeVariant> = {
 
 type TipoEvento = "entrega" | "salida" | "requisicion";
 type EventoCalendario = {
+  id: string;
   fecha: string;
   tipo: TipoEvento;
   titulo: string;
@@ -39,6 +41,15 @@ type EventoCalendario = {
   estadoLabel: string;
   estadoBadge: BadgeVariant;
 };
+
+/** Al dar clic en la tarjeta: una entrega manda directo al video/material (igual que el link de
+ * una notificacion). Salida/requisicion no tienen vista de detalle por id todavia — mandan a su
+ * lista general, mejor que no hacer nada. */
+function rutaDeEvento(e: EventoCalendario): string {
+  if (e.tipo === "entrega") return `/entregables?abrir=${e.id}`;
+  if (e.tipo === "salida") return "/salidas";
+  return "/requisiciones";
+}
 
 const COLOR_TIPO: Record<TipoEvento, string> = {
   entrega: "bg-emerald-500",
@@ -86,9 +97,14 @@ function PuntoEvento({ tipo, terminado, titulo }: { tipo: TipoEvento; terminado:
 }
 
 function TarjetaEvento({ evento }: { evento: EventoCalendario }) {
+  const navigate = useNavigate();
   const Icono = ICONO_TIPO[evento.tipo];
   return (
-    <div className="flex items-start gap-3 rounded-lg border border-border p-2.5 hover:bg-bg-secondary">
+    <button
+      type="button"
+      onClick={() => navigate(rutaDeEvento(evento))}
+      className="flex w-full items-start gap-3 rounded-lg border border-border p-2.5 text-left hover:bg-bg-secondary"
+    >
       <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-white ${COLOR_TIPO[evento.tipo]}`}>
         <Icono className="h-4 w-4" />
       </div>
@@ -113,7 +129,7 @@ function TarjetaEvento({ evento }: { evento: EventoCalendario }) {
           </Badge>
         </div>
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -140,6 +156,7 @@ export function CalendarioPage() {
     const e: EventoCalendario[] = [];
     requisiciones.forEach((r) =>
       e.push({
+        id: r.id,
         fecha: r.fechaRequerida,
         tipo: "requisicion",
         titulo: r.titulo,
@@ -150,6 +167,7 @@ export function CalendarioPage() {
     );
     salidas.forEach((s) =>
       e.push({
+        id: s.id,
         fecha: s.fecha,
         tipo: "salida",
         titulo: s.nombreJornada,
@@ -161,6 +179,7 @@ export function CalendarioPage() {
     );
     entregables.forEach((en) =>
       e.push({
+        id: en.id,
         fecha: en.fechaCompromiso,
         tipo: "entrega",
         titulo: en.nombre,

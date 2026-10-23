@@ -95,10 +95,15 @@ export function RevisarEntregableDialog({
   const linkActual = entregable.urlRevision || entregable.urlFinal;
   const preview = linkActual ? driveUrlAPreview(linkActual) : null;
   const fileIdActual = linkActual ? extraerFileIdDrive(linkActual) : null;
+  // Diseño grafico (imagen, PSD, AI, PDF...) no es un video — el reproductor propio
+  // (DriveVideoPlayer) asume duracion/orientacion de video y no aplica aqui. Para este tipo se
+  // usa directo el iframe de vista previa de Drive (si hay link) — Drive previsualiza imagenes,
+  // PDFs y la mayoria de formatos de diseño sin necesitar un visor a la medida.
+  const esDiseno = entregable.tipo === "diseno_grafico";
   // Ya no hace falta `driveToken` para VER el video — el reproductor propio lo pide via
   // `/api/drive-video` con una cuenta de servicio fija, no con la sesion de Drive del usuario.
   // `driveToken` solo sigue haciendo falta para SUBIR videos nuevos (ver `onSeleccionarArchivo`).
-  const usaPlayerPropio = Boolean(fileIdActual && !errorPlayerPropio);
+  const usaPlayerPropio = Boolean(fileIdActual && !errorPlayerPropio && !esDiseno);
   const modoVisor: "player" | "preview" | "link" | "vacio" = usaPlayerPropio
     ? "player"
     : preview
@@ -155,7 +160,7 @@ export function RevisarEntregableDialog({
       await enviarARevision.mutateAsync({
         id: entregable.id,
         urlRevision: subido.previewUrl,
-        orientacionVideo: orientacionSubida,
+        ...(esDiseno ? {} : { orientacionVideo: orientacionSubida }),
       });
       notificarRevisores(
         `${nombreResponsable} ${yaHabiaVideo ? "actualizo" : "agrego"} el video de "${entregable.nombre}".`
@@ -252,31 +257,39 @@ export function RevisarEntregableDialog({
 
       {modoVisor === "preview" && preview && (
         <div className="flex w-full flex-col gap-2 lg:h-full">
-          {/* Si se llega aqui es porque el reproductor propio ya diagnostico el motivo real del
-              fallo (sin acceso, archivo borrado, u otra cosa) y no lo pudo reparar solo. Este es
-              el visor de Drive de respaldo, y NO puede detectar el minuto al pausar (es un
-              iframe de otro dominio). */}
-          <div className="flex w-full shrink-0 items-center justify-between gap-2 rounded-md bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-800 ring-1 ring-amber-200">
-            <span>{MENSAJE_ERROR_PLAYER[errorPlayerPropio ?? "desconocido"]}</span>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-6 shrink-0 px-2 text-[11px]"
-              onClick={() => setErrorPlayerPropio(null)}
-            >
-              Reintentar reproductor propio
-            </Button>
-          </div>
+          {/* Si se llega aqui para un VIDEO es porque el reproductor propio ya diagnostico el
+              motivo real del fallo (sin acceso, archivo borrado, u otra cosa) y no lo pudo
+              reparar solo. Este es el visor de Drive de respaldo, y NO puede detectar el minuto
+              al pausar (es un iframe de otro dominio). Para diseño grafico este es el visor
+              normal (no hay reproductor propio que reintentar), asi que no aplica el aviso. */}
+          {!esDiseno && (
+            <div className="flex w-full shrink-0 items-center justify-between gap-2 rounded-md bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-800 ring-1 ring-amber-200">
+              <span>{MENSAJE_ERROR_PLAYER[errorPlayerPropio ?? "desconocido"]}</span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-6 shrink-0 px-2 text-[11px]"
+                onClick={() => setErrorPlayerPropio(null)}
+              >
+                Reintentar reproductor propio
+              </Button>
+            </div>
+          )}
           <div
-            className="w-full min-h-[180px] max-h-[60vh] overflow-hidden rounded-lg bg-black ring-1 ring-black/10 lg:w-auto lg:max-w-full lg:max-h-none lg:min-h-0 lg:flex-1"
-            style={{ aspectRatio: String(ratioVisor) }}
+            className={cn(
+              "w-full overflow-hidden rounded-lg ring-1 ring-black/10",
+              esDiseno
+                ? "h-[60vh] bg-white lg:h-full lg:w-[70vw] lg:max-w-2xl"
+                : "min-h-[180px] max-h-[60vh] bg-black lg:w-auto lg:max-w-full lg:max-h-none lg:min-h-0 lg:flex-1"
+            )}
+            style={esDiseno ? undefined : { aspectRatio: String(ratioVisor) }}
           >
             <iframe
               src={preview}
               className="h-full w-full"
               allow="autoplay; fullscreen"
-              title="Vista previa del video"
+              title={esDiseno ? "Vista previa del diseño" : "Vista previa del video"}
             />
           </div>
         </div>
@@ -289,13 +302,13 @@ export function RevisarEntregableDialog({
           rel="noreferrer"
           className="flex items-center gap-2 rounded-md border border-border bg-bg-secondary p-3 text-sm font-medium transition-colors hover:bg-border/60"
         >
-          <ExternalLink className="h-4 w-4" /> Abrir video en Drive
+          <ExternalLink className="h-4 w-4" /> {esDiseno ? "Abrir diseño en Drive" : "Abrir video en Drive"}
         </a>
       )}
 
       {modoVisor === "vacio" && (
         <p className="rounded-md border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
-          Sin video cargado todavia.
+          {esDiseno ? "Sin diseño cargado todavia." : "Sin video cargado todavia."}
         </p>
       )}
     </div>
@@ -303,28 +316,30 @@ export function RevisarEntregableDialog({
 
   const bloqueSubirVideo = esResponsable && puedeSubirVideos(usuario) && entregable.estado !== "aprobado" && (
     <div className="space-y-2 rounded-md border border-border p-3">
-      <Label>Subir video</Label>
-      <div className="flex gap-1.5">
-        {(["horizontal", "vertical"] as const).map((o) => (
-          <button
-            key={o}
-            type="button"
-            onClick={() => setOrientacionSubida(o)}
-            className={cn(
-              "flex-1 rounded-md border px-2 py-1.5 text-xs font-medium capitalize transition-colors",
-              orientacionSubida === o
-                ? "border-accent bg-accent text-white"
-                : "border-border bg-white text-muted-foreground hover:bg-bg-secondary"
-            )}
-          >
-            {o}
-          </button>
-        ))}
-      </div>
+      <Label>{esDiseno ? "Subir diseño" : "Subir video"}</Label>
+      {!esDiseno && (
+        <div className="flex gap-1.5">
+          {(["horizontal", "vertical"] as const).map((o) => (
+            <button
+              key={o}
+              type="button"
+              onClick={() => setOrientacionSubida(o)}
+              className={cn(
+                "flex-1 rounded-md border px-2 py-1.5 text-xs font-medium capitalize transition-colors",
+                orientacionSubida === o
+                  ? "border-accent bg-accent text-white"
+                  : "border-border bg-white text-muted-foreground hover:bg-bg-secondary"
+              )}
+            >
+              {o}
+            </button>
+          ))}
+        </div>
+      )}
       <input
         ref={inputArchivoRef}
         type="file"
-        accept="video/*"
+        accept={esDiseno ? "image/*,.pdf,.ai,.psd,.fig,.sketch,.eps" : "video/*"}
         className="hidden"
         onChange={onSeleccionarArchivo}
       />
@@ -335,7 +350,7 @@ export function RevisarEntregableDialog({
         disabled={subiendo}
       >
         <Upload className="h-4 w-4" />
-        {subiendo ? `Subiendo... ${progreso}%` : "Subir video a Drive"}
+        {subiendo ? `Subiendo... ${progreso}%` : esDiseno ? "Subir diseño a Drive" : "Subir video a Drive"}
       </Button>
       {errorSubida && <p className="text-xs text-destructive">{errorSubida}</p>}
 
