@@ -6,6 +6,7 @@ import { useUsuarios } from "@/hooks/useCatalogos";
 import { useGuiones } from "@/hooks/useGuiones";
 import { useAuth } from "@/context/AuthContext";
 import { puedeAsignarEntregables } from "@/lib/roles";
+import { aFecha, inicioDeSemana } from "@/lib/periodo";
 import {
   CATEGORIA_CONTENIDO_LABELS,
   ESTADO_ENTREGABLE_LABELS,
@@ -22,7 +23,35 @@ import { RevisarEntregableDialog } from "@/components/entregables/RevisarEntrega
 import { NuevoGuionDialog } from "@/components/guiones/NuevoGuionDialog";
 import { RevisarGuionDialog } from "@/components/guiones/RevisarGuionDialog";
 import { MiniaturaVideo } from "@/components/entregables/MiniaturaVideo";
-import type { EstadoEntregable, EstadoGuion } from "@/types";
+import type { Entregable, EstadoEntregable, EstadoGuion } from "@/types";
+
+/** Fecha real a usar para ordenar/agrupar un entregable — la de cuando paso lo que paso
+ * (se entrego, se aprobo) y si no hay ninguna todavia, la de compromiso. */
+function fechaDeOrden(e: Entregable): string {
+  return e.fechaEntregado ?? e.fechaAprobado ?? e.fechaCompromiso;
+}
+
+function etiquetaSemana(inicio: Date): string {
+  const fin = new Date(inicio);
+  fin.setDate(fin.getDate() + 6);
+  const fmt = (d: Date) => d.toLocaleDateString("es-MX", { day: "numeric", month: "short" });
+  return `${fmt(inicio)} – ${fmt(fin)}`;
+}
+
+/** Con pocos entregables (pendiente/en proceso/revision) esto da un solo grupo — no estorba.
+ * Con muchos (aprobado/entregado acumulado de meses) parte la columna en semanas, mas reciente
+ * primero, para que no sea una sola lista larguisima de tarjetas minusculas. */
+function agruparPorSemana(items: Entregable[]) {
+  const grupos = new Map<number, Entregable[]>();
+  items.forEach((e) => {
+    const inicio = inicioDeSemana(aFecha(fechaDeOrden(e))).getTime();
+    if (!grupos.has(inicio)) grupos.set(inicio, []);
+    grupos.get(inicio)!.push(e);
+  });
+  return [...grupos.entries()]
+    .sort(([a], [b]) => b - a)
+    .map(([inicioMs, itemsSemana]) => ({ inicio: new Date(inicioMs), items: itemsSemana }));
+}
 
 const COLUMNAS: EstadoEntregable[] = [
   "pendiente",
@@ -134,31 +163,43 @@ export function EntregablesPage() {
                         <span className="text-xs font-normal text-muted-foreground">{items.length}</span>
                       </CardTitle>
                     </CardHeader>
-                    {/* Alto fijo por columna: con mas tarjetas se achican entre todas (flex-1
-                        reparte el alto disponible) en vez de desbordar con scroll — a proposito,
-                        aunque el video quede chico o se recorte el texto. */}
-                    <CardContent className="flex h-[60vh] flex-col gap-2 overflow-hidden p-3 pt-0">
-                      {items.map((e) => (
-                        <button
-                          key={e.id}
-                          onClick={() => setSeleccionadoId(e.id)}
-                          className="flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-md border border-border bg-white text-left text-xs transition-colors hover:bg-bg-secondary"
-                        >
-                          <MiniaturaVideo
-                            url={e.urlRevision || e.urlFinal}
-                            orientacion={e.orientacionVideo}
-                            llenarAlto
-                            className="min-h-0 flex-1"
-                          />
-                          <div className="shrink-0 overflow-hidden p-2.5">
-                            <p className="truncate font-medium text-text-primary">{e.nombre}</p>
-                            <p className="truncate text-muted-foreground">{proyectoDe(e.proyectoId)}</p>
-                            <div className="mt-1 flex items-center justify-between">
-                              <span className="truncate text-muted-foreground">{nombreDe(e.responsableId)}</span>
-                              <Badge variant="outline" className="shrink-0">{formatFecha(e.fechaCompromiso)}</Badge>
-                            </div>
+                    {/* Alto fijo con scroll (no "achicar hasta desaparecer"): con pocas tarjetas
+                        (pendiente/en proceso/...) cabe todo sin scroll. Con muchas acumuladas
+                        (aprobado/entregado de meses) se parte por semana para navegarlo rapido
+                        en vez de una sola lista larguisima de tarjetas minusculas. */}
+                    <CardContent className="max-h-[60vh] space-y-3 overflow-y-auto p-3 pt-0">
+                      {agruparPorSemana(items).map(({ inicio, items: itemsSemana }) => (
+                        <div key={inicio.getTime()}>
+                          <p className="sticky top-0 z-10 -mx-3 bg-white px-3 py-1 text-[11px] font-semibold text-muted-foreground">
+                            {etiquetaSemana(inicio)} · {itemsSemana.length}
+                          </p>
+                          <div className="space-y-1.5">
+                            {itemsSemana.map((e) => (
+                              <button
+                                key={e.id}
+                                onClick={() => setSeleccionadoId(e.id)}
+                                className="flex w-full items-center gap-2 rounded-md border border-border bg-white p-1.5 text-left text-xs transition-colors hover:bg-bg-secondary"
+                              >
+                                <MiniaturaVideo
+                                  url={e.urlRevision || e.urlFinal}
+                                  orientacion={e.orientacionVideo}
+                                  llenarAlto
+                                  className="h-12 w-12 shrink-0 rounded"
+                                />
+                                <div className="min-w-0 flex-1 overflow-hidden">
+                                  <p className="truncate font-medium text-text-primary">{e.nombre}</p>
+                                  <p className="truncate text-muted-foreground">{proyectoDe(e.proyectoId)}</p>
+                                  <div className="mt-0.5 flex items-center justify-between gap-1">
+                                    <span className="truncate text-muted-foreground">{nombreDe(e.responsableId)}</span>
+                                    <Badge variant="outline" className="shrink-0 text-[10px]">
+                                      {formatFecha(fechaDeOrden(e))}
+                                    </Badge>
+                                  </div>
+                                </div>
+                              </button>
+                            ))}
                           </div>
-                        </button>
+                        </div>
                       ))}
                       {items.length === 0 && <p className="py-4 text-center text-xs text-muted-foreground">—</p>}
                     </CardContent>
