@@ -54,14 +54,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // Tope por tramo para la REPRODUCCION (no para "Descargar"): sin esto, un <video> que pide
-  // "el resto del archivo" (Range abierto, ej. "bytes=50000000-") obligaba a esta funcion a
-  // quedarse transmitiendo sin parar hasta el final del video — en uno largo eso se pasa del
-  // tiempo maximo de ejecucion serverless de Vercel y la conexion se corta a medio video
-  // (se siente como que "se traba"/se congela cada tanto). En tramos cortos, cada invocacion
-  // termina rapido y el navegador pide el siguiente tramo solo — es como ya funciona YouTube/Drive.
-  // 16MB (y no 8MB): menos tramos = menos "cortes" entre invocaciones, sin acercarse al limite
-  // de tiempo de ejecucion (a velocidad normal un tramo asi tarda segundos, no minutos).
-  const TRAMO_MAX = 16 * 1024 * 1024;
+  // "el resto del archivo" (Range abierto) obligaba a esta funcion a transmitir sin parar hasta
+  // el final del video. 32MB + 60s de tiempo maximo (ver vercel.json, antes el default dejaba
+  // esta funcion corta de tiempo bajo cualquier conexion lenta): con ese colchon, un tramo asi
+  // siempre termina comodo, y como ahora caben tramos mas grandes, el navegador pide el
+  // siguiente con MENOS frecuencia — menos "cortes" perceptibles entre pedazos al reproducir.
+  const TRAMO_MAX = 32 * 1024 * 1024;
   const esDescarga = Boolean(req.query.download);
   const rangeCliente = req.headers.range;
   const headersDrive: Record<string, string> = { Authorization: `Bearer ${token}` };
@@ -92,15 +90,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (!driveRes.ok) {
-    const motivo =
-      driveRes.status === 403
-        ? "La cuenta de servicio no tiene acceso a este archivo. Comparte la carpeta de Drive con ella."
-        : driveRes.status === 404
-          ? "El archivo no existe en Drive (fue borrado o movido)."
-          : driveRes.status === 401
-            ? "Las credenciales de la cuenta de servicio son invalidas."
-            : "No se pudo obtener el video de Drive.";
-    res.status(driveRes.status).json({ error: motivo });
+    res.status(driveRes.status).json({ error: motivoError(driveRes.status) });
     return;
   }
 
@@ -145,6 +135,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
   res.end();
+}
+
+function motivoError(status: number): string {
+  if (status === 403) return "La cuenta de servicio no tiene acceso a este archivo. Comparte la carpeta de Drive con ella.";
+  if (status === 404) return "El archivo no existe en Drive (fue borrado o movido).";
+  if (status === 401) return "Las credenciales de la cuenta de servicio son invalidas.";
+  return "No se pudo obtener el video de Drive.";
 }
 
 export const config = {
