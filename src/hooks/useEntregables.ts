@@ -4,6 +4,7 @@ import {
   agregarComentario,
   aprobarEntregable,
   asignarProyectoEntregable,
+  renombrarEntregable,
   crearEntregable,
   crearEntregableHistorico,
   enviarARevision,
@@ -50,6 +51,14 @@ export function useAsignarProyectoEntregable() {
   return useMutation({
     mutationFn: ({ id, proyectoId }: { id: string; proyectoId: string | null }) =>
       asignarProyectoEntregable(id, proyectoId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["entregables"] }),
+  });
+}
+
+export function useRenombrarEntregable() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, nombre }: { id: string; nombre: string }) => renombrarEntregable(id, nombre),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["entregables"] }),
   });
 }

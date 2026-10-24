@@ -76,6 +76,16 @@ export async function asignarProyectoEntregable(id: string, proyectoId: string |
   await updateDoc(doc(db, COLECCION, id), { proyectoId: proyectoId ?? deleteField() });
 }
 
+/** Renombrar un entregable ya creado — hace falta sobre todo para el historico cargado masivo,
+ * que a veces nacio con un nombre crudo del Sheet original en vez de un nombre bien puesto. */
+export async function renombrarEntregable(id: string, nombre: string): Promise<void> {
+  if (!isFirebaseConfigured || !db) {
+    demoStore = demoStore.map((e) => (e.id === id ? { ...e, nombre } : e));
+    return;
+  }
+  await updateDoc(doc(db, COLECCION, id), { nombre });
+}
+
 /**
  * Carga historica (superadmin) — para meter de una vez un video/trabajo que ya estaba
  * confirmado (de hace una semana, un mes, etc.) y que nunca se registro en el sistema. A

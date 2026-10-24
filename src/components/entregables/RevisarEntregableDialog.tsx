@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { Check, CheckCircle2, Clock, Download, ExternalLink, Link2, RotateCcw, Upload } from "lucide-react";
+import { Check, CheckCircle2, Clock, Download, ExternalLink, Link2, Pencil, RotateCcw, Upload, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { puedeAprobarEntregables, puedeSubirVideos, esGestorRequisiciones } from "@/lib/roles";
 import {
@@ -11,6 +11,7 @@ import {
   useEnviarARevision,
   useEtiquetarOrientacion,
   useMarcarEntregado,
+  useRenombrarEntregable,
   useSolicitarCorrecciones,
 } from "@/hooks/useEntregables";
 import { useProyectos } from "@/hooks/useProyectos";
@@ -72,7 +73,10 @@ export function RevisarEntregableDialog({
   const [orientacion, setOrientacion] = useState<"vertical" | "horizontal" | null>(null);
   const [ratioReal, setRatioReal] = useState<number | null>(null);
   const [orientacionSubida, setOrientacionSubida] = useState<"vertical" | "horizontal">("horizontal");
+  const [editandoNombre, setEditandoNombre] = useState(false);
+  const [nombreEditado, setNombreEditado] = useState("");
   const inputArchivoRef = useRef<HTMLInputElement>(null);
+  const renombrar = useRenombrarEntregable();
 
   useEffect(() => {
     // `open` tambien dispara el reset: si el reproductor propio fallo una vez (ej. un hipo de
@@ -82,6 +86,7 @@ export function RevisarEntregableDialog({
     setRatioReal(null);
     // Si ya quedo etiquetado al subirlo, se usa de una vez — sin esperar a que cargue el video (sin parpadeo).
     setOrientacion(entregable?.orientacionVideo ?? null);
+    setEditandoNombre(false);
   }, [entregable?.id, entregable?.orientacionVideo, open]);
 
   const { data: comentarios = [] } = useComentarios(entregable?.id ?? "");
@@ -218,6 +223,19 @@ export function RevisarEntregableDialog({
       texto: `Tu video "${entregable.nombre}" ya quedo entregado.`,
       entregableId: entregable.id,
     });
+  };
+
+  const onEmpezarRenombrar = () => {
+    setNombreEditado(entregable.nombre);
+    setEditandoNombre(true);
+  };
+
+  const onGuardarNombre = () => {
+    const limpio = nombreEditado.trim();
+    if (limpio && limpio !== entregable.nombre) {
+      renombrar.mutate({ id: entregable.id, nombre: limpio });
+    }
+    setEditandoNombre(false);
   };
 
   const onComentar = async () => {
@@ -521,7 +539,52 @@ export function RevisarEntregableDialog({
       >
         <DialogHeader className="shrink-0">
           <div className="flex flex-wrap items-center gap-2">
-            <DialogTitle>{entregable.nombre}</DialogTitle>
+            {editandoNombre ? (
+              <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                <Input
+                  autoFocus
+                  value={nombreEditado}
+                  onChange={(e) => setNombreEditado(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") onGuardarNombre();
+                    if (e.key === "Escape") setEditandoNombre(false);
+                  }}
+                  className="h-8 flex-1"
+                />
+                <button
+                  type="button"
+                  onClick={onGuardarNombre}
+                  disabled={renombrar.isPending}
+                  className="shrink-0 rounded-md p-1.5 text-green-600 hover:bg-bg-secondary dark:text-green-400"
+                  aria-label="Guardar nombre"
+                >
+                  <Check className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditandoNombre(false)}
+                  className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-bg-secondary"
+                  aria-label="Cancelar"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <DialogTitle>{entregable.nombre}</DialogTitle>
+                {usuario.rol === "superadmin" && (
+                  <button
+                    type="button"
+                    onClick={onEmpezarRenombrar}
+                    className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-bg-secondary hover:text-text-primary"
+                    aria-label="Renombrar"
+                    title="Renombrar"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+            )}
             <Badge variant={ESTADO_ENTREGABLE_BADGE[entregable.estado]}>
               {etiquetaEstadoEntregable(entregable)}
             </Badge>
