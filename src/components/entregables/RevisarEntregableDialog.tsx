@@ -21,7 +21,7 @@ import { subirArchivoADrive, extraerFileIdDrive } from "@/services/driveService"
 import { DriveVideoPlayer, type MotivoErrorDrive } from "@/components/entregables/DriveVideoPlayer";
 import { mensajeErrorAuth } from "@/lib/authErrors";
 import { cn } from "@/lib/utils";
-import { ESTADO_ENTREGABLE_BADGE, ESTADO_ENTREGABLE_LABELS, CATEGORIA_CONTENIDO_LABELS } from "@/lib/labels";
+import { ESTADO_ENTREGABLE_BADGE, etiquetaEstadoEntregable, CATEGORIA_CONTENIDO_LABELS } from "@/lib/labels";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -396,7 +396,9 @@ export function RevisarEntregableDialog({
             <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-green-600 dark:text-green-400" />
             <div className="space-y-1 text-sm">
               <p className="font-medium">
-                {entregable.estado === "entregado" ? "Entregado — ya se publico/entrego." : "Aprobado, listo para subir."}
+                {entregable.estado === "entregado"
+                  ? `${etiquetaEstadoEntregable(entregable)} — ya se publico/entrego.`
+                  : "Aprobado, listo para subir."}
               </p>
               {nombreAprobador && <p className="text-xs text-muted-foreground">Aprobo: {nombreAprobador}</p>}
               <p className="text-xs text-muted-foreground">Version {entregable.version}</p>
@@ -521,7 +523,7 @@ export function RevisarEntregableDialog({
           <div className="flex flex-wrap items-center gap-2">
             <DialogTitle>{entregable.nombre}</DialogTitle>
             <Badge variant={ESTADO_ENTREGABLE_BADGE[entregable.estado]}>
-              {ESTADO_ENTREGABLE_LABELS[entregable.estado]}
+              {etiquetaEstadoEntregable(entregable)}
             </Badge>
             {fileIdActual && (entregable.estado === "aprobado" || entregable.estado === "entregado") && (
               <div className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto">

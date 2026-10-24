@@ -11,7 +11,7 @@ import { DemoBadge } from "@/components/DemoBadge";
 import { RevisarEntregableDialog } from "@/components/entregables/RevisarEntregableDialog";
 import { MiniaturaVideo } from "@/components/entregables/MiniaturaVideo";
 import { extraerFileIdDrive } from "@/services/driveService";
-import { ESTADO_ENTREGABLE_BADGE, ESTADO_ENTREGABLE_LABELS, CATEGORIA_CONTENIDO_LABELS } from "@/lib/labels";
+import { ESTADO_ENTREGABLE_BADGE, ESTADO_ENTREGABLE_LABELS, etiquetaEstadoEntregable, CATEGORIA_CONTENIDO_LABELS } from "@/lib/labels";
 import { dentroDelPeriodo, type Periodo } from "@/lib/periodo";
 import { cn, formatFecha } from "@/lib/utils";
 import type { EstadoEntregable } from "@/types";
@@ -164,7 +164,7 @@ export function ArchivosPage() {
                     </td>
                     <td className="px-3 py-2">
                       <Badge variant={ESTADO_ENTREGABLE_BADGE[e.estado]} className="text-[10px]">
-                        {ESTADO_ENTREGABLE_LABELS[e.estado]}
+                        {etiquetaEstadoEntregable(e)}
                       </Badge>
                     </td>
                     <td className="px-3 py-2" onClick={(ev) => ev.stopPropagation()}>
@@ -238,7 +238,7 @@ export function ArchivosPage() {
                 </p>
                 <div className="flex flex-wrap items-center gap-1">
                   <Badge variant={ESTADO_ENTREGABLE_BADGE[e.estado]} className="text-[10px]">
-                    {ESTADO_ENTREGABLE_LABELS[e.estado]}
+                    {etiquetaEstadoEntregable(e)}
                   </Badge>
                   {e.estado === "aprobado" && (
                     <Badge variant="success" className="text-[10px]">

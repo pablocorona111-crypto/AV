@@ -123,6 +123,16 @@ export const ESTADO_ENTREGABLE_BADGE: Record<EstadoEntregable, BadgeVariant> = {
   entregado: "accent",
 };
 
+/** Etiqueta de estado para UN entregable puntual (badge, encabezado de dialogo, calendario).
+ * "Entregado" generico no describe que se hizo de verdad — una grabacion quedo grabada, una
+ * foto quedo fotografiada. Usa ESTADO_ENTREGABLE_LABELS tal cual para el resto de estados, y
+ * para columnas/agrupaciones que mezclan tipos (ej. el Kanban de Entregables). */
+export function etiquetaEstadoEntregable(e: { estado: EstadoEntregable; tipo: CategoriaContenido }): string {
+  if (e.estado !== "entregado") return ESTADO_ENTREGABLE_LABELS[e.estado];
+  const accion = ACCION_ENTREGA_LABELS[e.tipo];
+  return accion.charAt(0).toUpperCase() + accion.slice(1);
+}
+
 export const TIPO_ACTIVIDAD_SALIDA_LABELS: Record<TipoActividadSalida, string> = {
   levantamiento_contenido: "Levantamiento de contenido",
   grabacion_proceso_industrial: "Grabacion de proceso industrial",

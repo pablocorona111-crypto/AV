@@ -9,7 +9,7 @@ import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DemoBadge } from "@/components/DemoBadge";
 import { formatFecha } from "@/lib/utils";
-import { ESTADO_ENTREGABLE_LABELS, ESTADO_ENTREGABLE_BADGE, ESTADO_REQUISICION_LABELS, ESTADO_REQUISICION_BADGE } from "@/lib/labels";
+import { etiquetaEstadoEntregable, ESTADO_ENTREGABLE_BADGE, ESTADO_REQUISICION_LABELS, ESTADO_REQUISICION_BADGE } from "@/lib/labels";
 
 const DIAS_SEMANA = ["L", "M", "M", "J", "V", "S", "D"];
 const MESES = [
@@ -184,7 +184,7 @@ export function CalendarioPage() {
         tipo: "entrega",
         titulo: en.nombre,
         terminado: en.estado === "aprobado" || en.estado === "entregado",
-        estadoLabel: ESTADO_ENTREGABLE_LABELS[en.estado],
+        estadoLabel: etiquetaEstadoEntregable(en),
         estadoBadge: ESTADO_ENTREGABLE_BADGE[en.estado],
       })
     );
