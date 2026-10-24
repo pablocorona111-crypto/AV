@@ -1,5 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { GoogleAuth } from "google-auth-library";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 
 /**
  * Sirve el video de Drive desde el propio dominio, con la cuenta de servicio de Google
@@ -120,21 +122,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.end();
     return;
   }
-  // `res.write()` puede devolver `false` si el socket de salida ya tiene suficiente en cola —
-  // sin esperar su evento "drain" antes de pedirle el siguiente pedazo a Drive, esta funcion
-  // seguia empujando datos al buffer interno de Node mas rapido de lo que el navegador los
-  // consume. Eso no corta el video, pero entrega los bytes en rafagas desparejas en vez de a
-  // un ritmo parejo — se nota como pequeños tirones durante la reproduccion.
-  const lector = driveRes.body.getReader();
-  while (true) {
-    const { done, value } = await lector.read();
-    if (done) break;
-    const puedeSeguir = res.write(value);
-    if (!puedeSeguir) {
-      await new Promise<void>((resolve) => res.once("drain", resolve));
-    }
+  // Antes: loop manual leyendo de a un pedazo (`reader.read()`) y escribiendolo con `res.write()`
+  // esperando "drain" a mano. Eso funciona, pero cada vuelta del loop paga el costo de dos
+  // promesas (leer + quizas esperar drain) en el event loop de Node — con un stream que entrega
+  // muchos pedazos chiquitos (asi llegan los streams HTTP por abajo), eso suma overhead de JS que
+  // le resta a la velocidad real de entrega. `pipeline()` es la plomeria nativa de Node para esto:
+  // conecta los dos streams a nivel mas bajo, maneja el backpressure el solo (sin pasar cada
+  // pedazo por nuestro propio codigo) y si Drive corta a medio stream, cierra todo limpio en vez
+  // de dejar la respuesta colgada a medias (que el loop manual anterior no manejaba).
+  try {
+    await pipeline(Readable.fromWeb(driveRes.body as import("node:stream/web").ReadableStream), res);
+  } catch {
+    // La conexion con quien pide el video ya se corto (cerro la pestaña, cambio de pagina a
+    // medio cargar) — no hay a quien avisarle del error, solo evitar que truene sin capturar.
   }
-  res.end();
 }
 
 function motivoError(status: number): string {
