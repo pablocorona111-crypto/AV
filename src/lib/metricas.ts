@@ -3,6 +3,21 @@ import type { Entregable, Requisicion } from "@/types";
 
 const DIAS_SEMANA = ["Lun", "Mar", "Mie", "Jue", "Vie"];
 
+/** El colaborador ya hizo su parte en cuanto sube el video — aunque todavia le falte el visto
+ * bueno de community, el material ya se entrego. "Correcciones" NO cuenta: ahi community ya lo
+ * reviso y lo regreso, ese material especifico no quedo bien. */
+export function yaEntregoMaterial(e: Entregable): boolean {
+  return e.estado === "en_revision" || e.estado === "aprobado" || e.estado === "entregado";
+}
+
+/** Fecha real de cuando se entrego el material — si todavia no hay fechaEntregado/fechaAprobado
+ * (ej. recien subido, en revision) usa creadoEn como mejor aproximacion disponible. */
+function fechaDeEntrega(e: Entregable): string | undefined {
+  if (e.fechaEntregado) return e.fechaEntregado;
+  if (e.fechaAprobado) return e.fechaAprobado;
+  return yaEntregoMaterial(e) ? e.creadoEn : undefined;
+}
+
 function mismoDia(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
@@ -20,20 +35,23 @@ export function produccionSemanal(
     fechaDia.setDate(fechaDia.getDate() + i);
     return {
       dia,
-      entregados: entregables.filter((e) => e.fechaEntregado && mismoDia(aFecha(e.fechaEntregado), fechaDia)).length,
+      entregados: entregables.filter((e) => {
+        const fecha = fechaDeEntrega(e);
+        return fecha && mismoDia(aFecha(fecha), fechaDia);
+      }).length,
       solicitudes: requisiciones.filter((r) => mismoDia(aFecha(r.creadoEn), fechaDia)).length,
     };
   });
 }
 
-/** Agrupa entregables "cumplidos" (aprobado o entregado) por mes real — usa fechaEntregado y,
- * si aun no se marca entregado, fechaAprobado (una vez aprobado ya cuenta como cumplido).
- * Compartido entre DashboardPage y ReportesPage para no duplicar el calculo. */
+/** Agrupa entregables "cumplidos" (material ya entregado — en revision, aprobado o entregado)
+ * por mes real. Compartido entre DashboardPage y ReportesPage para no duplicar el calculo. */
 export function cumplidosPorMes(entregables: Entregable[]): { mes: string; total: number }[] {
   const mapa = new Map<string, number>();
   entregables.forEach((e) => {
-    const fecha = e.fechaEntregado ?? e.fechaAprobado;
-    if (!fecha || (e.estado !== "entregado" && e.estado !== "aprobado")) return;
+    if (!yaEntregoMaterial(e)) return;
+    const fecha = fechaDeEntrega(e);
+    if (!fecha) return;
     const clave = fecha.slice(0, 7); // "2026-10"
     mapa.set(clave, (mapa.get(clave) ?? 0) + 1);
   });

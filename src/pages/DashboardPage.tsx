@@ -40,7 +40,12 @@ import {
 } from "@/lib/labels";
 import { formatFecha } from "@/lib/utils";
 import { aFecha } from "@/lib/periodo";
-import { cumplidosPorMes, mesesVacios, produccionSemanal as calcularProduccionSemanal } from "@/lib/metricas";
+import {
+  cumplidosPorMes,
+  mesesVacios,
+  produccionSemanal as calcularProduccionSemanal,
+  yaEntregoMaterial,
+} from "@/lib/metricas";
 import type { Entregable } from "@/types";
 
 const COLORES_TIPO = ["#C1EB1F", "#93C5FD", "#86EFAC", "#C4B5FD", "#FDBA74", "#FCA5A5", "#67E8F9"];
@@ -61,16 +66,19 @@ export function DashboardPage() {
   const enPostproduccion = proyectos.filter((p) =>
     ["edicion", "animacion_acabados", "revision", "correcciones"].includes(p.etapaActual)
   ).length;
-  const entregablesFinalizados = entregables.filter((e) => e.estado === "entregado" || e.estado === "aprobado").length;
+  // "Entregado" para estos stats = el colaborador ya subio el video (en_revision, aprobado o
+  // entregado) — aunque falte el visto bueno de community, su parte ya esta hecha y debe
+  // sumar. "Correcciones" no cuenta: ahi community ya lo reviso y lo regreso.
+  const entregablesFinalizados = entregables.filter(yaEntregoMaterial).length;
   // El stat "Entregados" dice "Este mes" pero sumaba TODO el historico — se nota en cuanto hay
   // carga historica de meses pasados. Filtrado al mes en curso, igual que "Tipo de entregables".
   const entregadosEsteMes = entregables.filter((e) => {
-    if (e.estado !== "entregado" && e.estado !== "aprobado") return false;
+    if (!yaEntregoMaterial(e)) return false;
     const fecha = aFecha(e.fechaEntregado ?? e.fechaAprobado ?? e.creadoEn);
     return fecha.getFullYear() === ahora.getFullYear() && fecha.getMonth() === ahora.getMonth();
   }).length;
   const entregasAtrasadas = entregables.filter(
-    (e) => aFecha(e.fechaCompromiso) < ahora && e.estado !== "entregado" && e.estado !== "aprobado"
+    (e) => aFecha(e.fechaCompromiso) < ahora && !yaEntregoMaterial(e)
   ).length;
   // "Colaboradores" se cuenta de las cuentas reales (usuarios) por rol — la coleccion aparte
   // "colaboradores" (carga de trabajo/disponibilidad en Equipo) casi nunca esta poblada todavia.

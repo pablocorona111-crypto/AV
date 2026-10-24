@@ -170,17 +170,20 @@ export function RevisarEntregableDialog({
         fileIdExistente,
         onProgress: setProgreso,
       });
+      // Si la orientacion ya se sabia (correccion/reemplazo de un video previo) se mantiene esa
+      // — solo se usa lo elegido a mano cuando es la primera subida.
+      const orientacionAEnviar = entregable.orientacionVideo ?? orientacionSubida;
       if (completandoHistorico) {
         await adjuntarMaterialHistorico.mutateAsync({
           id: entregable.id,
           urlFinal: subido.previewUrl,
-          ...(esDiseno ? {} : { orientacionVideo: orientacionSubida }),
+          ...(esDiseno ? {} : { orientacionVideo: orientacionAEnviar }),
         });
       } else {
         await enviarARevision.mutateAsync({
           id: entregable.id,
           urlRevision: subido.previewUrl,
-          ...(esDiseno ? {} : { orientacionVideo: orientacionSubida }),
+          ...(esDiseno ? {} : { orientacionVideo: orientacionAEnviar }),
         });
         notificarRevisores(
           `${nombreResponsable} ${yaHabiaVideo ? "actualizo" : "agrego"} el video de "${entregable.nombre}".`
@@ -346,7 +349,9 @@ export function RevisarEntregableDialog({
   const bloqueSubirVideo = puedeEditarMaterial && puedeSubirVideos(usuario) && (
     <div className="space-y-2 rounded-md border border-border p-3">
       <Label>{esDiseno ? "Subir diseño" : "Subir video"}</Label>
-      {!esDiseno && (
+      {/* Solo se pregunta la orientacion la primera vez — en una correccion/reemplazo ya se
+          sabe (se detecto sola al reproducir el primer video), no hace falta repetirla. */}
+      {!esDiseno && !entregable.orientacionVideo && (
         <div className="flex gap-1.5">
           {(["horizontal", "vertical"] as const).map((o) => (
             <button
