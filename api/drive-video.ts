@@ -53,9 +53,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
+  // Tope por tramo para la REPRODUCCION (no para "Descargar"): sin esto, un <video> que pide
+  // "el resto del archivo" (Range abierto, ej. "bytes=50000000-") obligaba a esta funcion a
+  // quedarse transmitiendo sin parar hasta el final del video — en uno largo eso se pasa del
+  // tiempo maximo de ejecucion serverless de Vercel y la conexion se corta a medio video
+  // (se siente como que "se traba"/se congela cada tanto). En tramos cortos, cada invocacion
+  // termina rapido y el navegador pide el siguiente tramo solo — es como ya funciona YouTube/Drive.
+  const TRAMO_MAX = 8 * 1024 * 1024;
+  const esDescarga = Boolean(req.query.download);
+  const rangeCliente = req.headers.range;
   const headersDrive: Record<string, string> = { Authorization: `Bearer ${token}` };
-  const range = req.headers.range;
-  if (typeof range === "string") headersDrive.Range = range;
+  if (esDescarga) {
+    if (typeof rangeCliente === "string") headersDrive.Range = rangeCliente;
+  } else {
+    let inicio = 0;
+    let finPedido: number | null = null;
+    if (typeof rangeCliente === "string") {
+      const m = /bytes=(\d+)-(\d+)?/.exec(rangeCliente);
+      if (m) {
+        inicio = Number(m[1]);
+        if (m[2]) finPedido = Number(m[2]);
+      }
+    }
+    const fin = finPedido !== null ? Math.min(finPedido, inicio + TRAMO_MAX - 1) : inicio + TRAMO_MAX - 1;
+    headersDrive.Range = `bytes=${inicio}-${fin}`;
+  }
 
   let driveRes: Response;
   try {
@@ -85,6 +107,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const valor = driveRes.headers.get(nombre);
     if (valor) res.setHeader(nombre, valor);
   }
+  // Se fuerza aunque Drive no lo mande: el navegador necesita saber que puede seguir pidiendo
+  // tramos (Range) para no tratar esto como un archivo de una sola pieza.
+  if (!esDescarga) res.setHeader("Accept-Ranges", "bytes");
   res.setHeader("Cache-Control", "private, max-age=3600");
 
   // Boton "Descargar" de la community (RevisarEntregableDialog.tsx) — con esto el navegador
