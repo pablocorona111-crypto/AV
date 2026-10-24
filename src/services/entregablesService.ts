@@ -1,6 +1,7 @@
 import {
   addDoc,
   collection,
+  deleteField,
   doc,
   getDocs,
   orderBy,
@@ -59,6 +60,20 @@ export async function actualizarEntregable(id: string, cambios: Partial<Entregab
     return;
   }
   await updateDoc(doc(db, COLECCION, id), cambios);
+}
+
+/** Asignar/cambiar el proyecto de un entregable ya creado — hace falta sobre todo para el
+ * historico cargado masivo, que nace casi todo "Sin proyecto". `proyectoId` vacio lo deja sin
+ * proyecto de nuevo (deleteField(), no basta con mandar undefined: la app ya usa
+ * ignoreUndefinedProperties, que OMITE el campo en vez de borrarlo). */
+export async function asignarProyectoEntregable(id: string, proyectoId: string | null): Promise<void> {
+  if (!isFirebaseConfigured || !db) {
+    demoStore = demoStore.map((e) =>
+      e.id === id ? { ...e, proyectoId: proyectoId ?? undefined } : e
+    );
+    return;
+  }
+  await updateDoc(doc(db, COLECCION, id), { proyectoId: proyectoId ?? deleteField() });
 }
 
 /**

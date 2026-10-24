@@ -267,32 +267,26 @@ export function CargarEntregableHistoricoDialog() {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="urlFinal">{esDiseno ? "Link del diseño (Drive, ya confirmado)" : "Link del video (Drive, ya confirmado)"}</Label>
-            <div className="flex gap-2">
-              <Input
-                id="urlFinal"
-                {...register("urlFinal")}
-                placeholder="https://drive.google.com/file/d/... o sube el archivo"
-              />
-              <input
-                ref={inputArchivoRef}
-                type="file"
-                accept={esDiseno ? "image/*,.pdf,.ai,.psd,.fig,.sketch,.eps" : "video/*"}
-                className="hidden"
-                onChange={onSeleccionarArchivo}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                className="shrink-0"
-                onClick={() => inputArchivoRef.current?.click()}
-                disabled={subiendo}
-              >
-                <Upload className="h-4 w-4" />
-                {subiendo ? `${progreso}%` : esDiseno ? "Subir diseño" : "Subir video"}
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">Pega el link si ya lo tienes en Drive, o sube el archivo directo.</p>
+            <Label>{esDiseno ? "Diseño" : "Video"}</Label>
+            <input
+              ref={inputArchivoRef}
+              type="file"
+              accept={esDiseno ? "image/*,.pdf,.ai,.psd,.fig,.sketch,.eps" : "video/*"}
+              className="hidden"
+              onChange={onSeleccionarArchivo}
+            />
+            <Button
+              type="button"
+              className="w-full"
+              onClick={() => inputArchivoRef.current?.click()}
+              disabled={subiendo}
+            >
+              <Upload className="h-4 w-4" />
+              {subiendo ? `Subiendo... ${progreso}%` : esDiseno ? "Subir diseño a Drive" : "Subir video a Drive"}
+            </Button>
+            {watch("urlFinal") && (
+              <p className="truncate text-xs text-muted-foreground">Cargado: {watch("urlFinal")}</p>
+            )}
             {errors.urlFinal && <p className="text-xs text-destructive">{errors.urlFinal.message}</p>}
           </div>
 

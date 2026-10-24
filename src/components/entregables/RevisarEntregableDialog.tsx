@@ -1,17 +1,19 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { Check, CheckCircle2, Clock, Download, ExternalLink, Link2, RotateCcw, Send, Upload } from "lucide-react";
+import { Check, CheckCircle2, Clock, Download, ExternalLink, Link2, RotateCcw, Upload } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { puedeAprobarEntregables, puedeSubirVideos, esGestorRequisiciones } from "@/lib/roles";
 import {
   useAdjuntarMaterialHistorico,
   useAgregarComentario,
   useAprobarEntregable,
+  useAsignarProyectoEntregable,
   useComentarios,
   useEnviarARevision,
   useEtiquetarOrientacion,
   useMarcarEntregado,
   useSolicitarCorrecciones,
 } from "@/hooks/useEntregables";
+import { useProyectos } from "@/hooks/useProyectos";
 import { useUsuarios } from "@/hooks/useCatalogos";
 import { crearNotificacion } from "@/services/notificacionesService";
 import { driveUrlAPreview } from "@/services/entregablesService";
@@ -26,7 +28,10 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Entregable } from "@/types";
+
+const SIN_PROYECTO_VALOR = "sin-proyecto";
 
 function iniciales(nombre: string) {
   return nombre.split(" ").slice(0, 2).map((p) => p[0]).join("").toUpperCase();
@@ -55,7 +60,8 @@ export function RevisarEntregableDialog({
 }) {
   const { usuario, driveToken, conectarDrive, limpiarDriveToken } = useAuth();
   const { data: usuarios = [] } = useUsuarios();
-  const [linkDraft, setLinkDraft] = useState("");
+  const { data: proyectos = [] } = useProyectos();
+  const asignarProyecto = useAsignarProyectoEntregable();
   const [comentario, setComentario] = useState("");
   const [momento, setMomento] = useState("");
   const [subiendo, setSubiendo] = useState(false);
@@ -130,21 +136,6 @@ export function RevisarEntregableDialog({
     usuarios
       .filter((u) => u.id !== usuario.id && (u.rol === "superadmin" || esGestorRequisiciones(u)))
       .forEach((u) => crearNotificacion({ paraUsuarioId: u.id, texto, entregableId: entregable.id }));
-  };
-
-  const onEnviar = async () => {
-    const url = linkDraft.trim() || linkActual;
-    if (!url) return;
-    const yaHabiaVideo = Boolean(linkActual);
-    if (completandoHistorico) {
-      await adjuntarMaterialHistorico.mutateAsync({ id: entregable.id, urlFinal: url });
-    } else {
-      await enviarARevision.mutateAsync({ id: entregable.id, urlRevision: url });
-      notificarRevisores(
-        `${nombreResponsable} ${yaHabiaVideo ? "actualizo" : "agrego"} el video de "${entregable.nombre}".`
-      );
-    }
-    setLinkDraft("");
   };
 
   const onSeleccionarArchivo = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -387,18 +378,6 @@ export function RevisarEntregableDialog({
         {subiendo ? `Subiendo... ${progreso}%` : esDiseno ? "Subir diseño a Drive" : "Subir video a Drive"}
       </Button>
       {errorSubida && <p className="text-xs text-destructive">{errorSubida}</p>}
-
-      <p className="pt-1 text-center text-xs text-muted-foreground">o pega un link ya existente</p>
-      <div className="flex gap-2">
-        <Input
-          value={linkDraft}
-          onChange={(e) => setLinkDraft(e.target.value)}
-          placeholder="https://drive.google.com/file/d/..."
-        />
-        <Button type="button" variant="outline" onClick={onEnviar} disabled={enviarARevision.isPending}>
-          <Send className="h-4 w-4" /> Enviar
-        </Button>
-      </div>
     </div>
   );
 
@@ -573,10 +552,37 @@ export function RevisarEntregableDialog({
           </div>
         </DialogHeader>
 
-        <p className="-mt-2 mb-5 shrink-0 text-xs text-muted-foreground">
-          {nombreProyecto && <>Proyecto: {nombreProyecto} · </>}
-          {CATEGORIA_CONTENIDO_LABELS[entregable.tipo]} · Responsable: {nombreResponsable} · v{entregable.version}
-        </p>
+        <div className="-mt-2 mb-5 flex shrink-0 flex-wrap items-center gap-x-1 text-xs text-muted-foreground">
+          {usuario.rol === "superadmin" ? (
+            <span className="flex items-center gap-1">
+              Proyecto:
+              <Select
+                value={entregable.proyectoId ?? SIN_PROYECTO_VALOR}
+                onValueChange={(v) =>
+                  asignarProyecto.mutate({ id: entregable.id, proyectoId: v === SIN_PROYECTO_VALOR ? null : v })
+                }
+              >
+                <SelectTrigger className="h-6 w-auto gap-1 border-none bg-transparent px-1.5 py-0 text-xs font-medium text-text-primary shadow-none hover:bg-bg-secondary">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={SIN_PROYECTO_VALOR}>Sin proyecto</SelectItem>
+                  {proyectos.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              ·
+            </span>
+          ) : (
+            nombreProyecto && <span>Proyecto: {nombreProyecto} ·</span>
+          )}
+          <span>
+            {CATEGORIA_CONTENIDO_LABELS[entregable.tipo]} · Responsable: {nombreResponsable} · v{entregable.version}
+          </span>
+        </div>
 
         <div
           className={cn(

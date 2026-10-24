@@ -36,7 +36,7 @@ export function ArchivosPage() {
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstadoArchivos>("todos");
   const [filtroPeriodo, setFiltroPeriodo] = useState<FiltroPeriodo>("todos");
   const [copiadoId, setCopiadoId] = useState<string | null>(null);
-  const [vista, setVista] = useState<"cuadricula" | "tabla">("cuadricula");
+  const [vista, setVista] = useState<"cuadricula" | "tabla">("tabla");
 
   const copiarLink = async (id: string, fileId: string) => {
     await navigator.clipboard.writeText(`https://drive.google.com/file/d/${fileId}/view`);

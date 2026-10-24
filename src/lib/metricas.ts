@@ -3,11 +3,12 @@ import type { Entregable, Requisicion } from "@/types";
 
 const DIAS_SEMANA = ["Lun", "Mar", "Mie", "Jue", "Vie"];
 
-/** El colaborador ya hizo su parte en cuanto sube el video — aunque todavia le falte el visto
- * bueno de community, el material ya se entrego. "Correcciones" NO cuenta: ahi community ya lo
- * reviso y lo regreso, ese material especifico no quedo bien. */
+/** El colaborador ya hizo su parte en cuanto sube el material — sin importar si despues
+ * community lo aprueba directo, pide cambios ("correcciones") o lo aprueba/entrega. Mientras
+ * haya un video/archivo cargado (urlRevision o urlFinal), ya se entrego — pendiente/en_proceso
+ * son los unicos estados donde de verdad todavia no hay nada subido. */
 export function yaEntregoMaterial(e: Entregable): boolean {
-  return e.estado === "en_revision" || e.estado === "aprobado" || e.estado === "entregado";
+  return Boolean(e.urlRevision || e.urlFinal);
 }
 
 /** Fecha real de cuando se entrego el material — si todavia no hay fechaEntregado/fechaAprobado

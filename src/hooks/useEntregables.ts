@@ -3,6 +3,7 @@ import {
   adjuntarMaterialHistorico,
   agregarComentario,
   aprobarEntregable,
+  asignarProyectoEntregable,
   crearEntregable,
   crearEntregableHistorico,
   enviarARevision,
@@ -40,6 +41,15 @@ export function useEnviarARevision() {
   return useMutation({
     mutationFn: (data: { id: string; urlRevision: string; orientacionVideo?: "vertical" | "horizontal" }) =>
       enviarARevision(data.id, data.urlRevision, data.orientacionVideo),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["entregables"] }),
+  });
+}
+
+export function useAsignarProyectoEntregable() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, proyectoId }: { id: string; proyectoId: string | null }) =>
+      asignarProyectoEntregable(id, proyectoId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["entregables"] }),
   });
 }

@@ -14,7 +14,7 @@ import {
   listarUsuarios,
 } from "@/services/catalogosService";
 import { crearInvitacion } from "@/services/invitacionesService";
-import type { Colaborador, Invitacion, SalidaGrabacion, Usuario } from "@/types";
+import type { Colaborador, Entregable, Invitacion, SalidaGrabacion, Usuario } from "@/types";
 
 export const useSalidas = () => useQuery({ queryKey: ["salidas"], queryFn: listarSalidas });
 
@@ -26,7 +26,26 @@ export function useCrearSalida() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["salidas"] }),
   });
 }
-export const useEntregables = () => useQuery({ queryKey: ["entregables"], queryFn: listarEntregables });
+/**
+ * En vivo (onSnapshot) por la misma razon que useUsuarios(): subir/corregir/aprobar un video
+ * pasa en la sesion de quien lo hace, no en la de quien esta viendo el Dashboard en ese momento
+ * — con un fetch normal, Inicio se quedaba con numeros viejos hasta refrescar la pagina.
+ */
+export function useEntregables() {
+  const qc = useQueryClient();
+  const query = useQuery({ queryKey: ["entregables"], queryFn: listarEntregables });
+
+  useEffect(() => {
+    if (!isFirebaseConfigured || !db) return;
+    const unsubscribe = onSnapshot(collection(db, "entregables"), (snap) => {
+      const entregables = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Entregable);
+      qc.setQueryData(["entregables"], entregables);
+    });
+    return unsubscribe;
+  }, [qc]);
+
+  return query;
+}
 export const useEquipoAV = () => useQuery({ queryKey: ["equipo_av"], queryFn: listarEquipoAV });
 export const useColaboradores = () => useQuery({ queryKey: ["colaboradores"], queryFn: listarColaboradores });
 
