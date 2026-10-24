@@ -59,7 +59,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // tiempo maximo de ejecucion serverless de Vercel y la conexion se corta a medio video
   // (se siente como que "se traba"/se congela cada tanto). En tramos cortos, cada invocacion
   // termina rapido y el navegador pide el siguiente tramo solo — es como ya funciona YouTube/Drive.
-  const TRAMO_MAX = 8 * 1024 * 1024;
+  // 16MB (y no 8MB): menos tramos = menos "cortes" entre invocaciones, sin acercarse al limite
+  // de tiempo de ejecucion (a velocidad normal un tramo asi tarda segundos, no minutos).
+  const TRAMO_MAX = 16 * 1024 * 1024;
   const esDescarga = Boolean(req.query.download);
   const rangeCliente = req.headers.range;
   const headersDrive: Record<string, string> = { Authorization: `Bearer ${token}` };
@@ -128,11 +130,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.end();
     return;
   }
+  // `res.write()` puede devolver `false` si el socket de salida ya tiene suficiente en cola —
+  // sin esperar su evento "drain" antes de pedirle el siguiente pedazo a Drive, esta funcion
+  // seguia empujando datos al buffer interno de Node mas rapido de lo que el navegador los
+  // consume. Eso no corta el video, pero entrega los bytes en rafagas desparejas en vez de a
+  // un ritmo parejo — se nota como pequeños tirones durante la reproduccion.
   const lector = driveRes.body.getReader();
   while (true) {
     const { done, value } = await lector.read();
     if (done) break;
-    res.write(value);
+    const puedeSeguir = res.write(value);
+    if (!puedeSeguir) {
+      await new Promise<void>((resolve) => res.once("drain", resolve));
+    }
   }
   res.end();
 }

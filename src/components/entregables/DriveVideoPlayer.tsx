@@ -69,6 +69,7 @@ export function DriveVideoPlayer({
   onRatio?: (ratio: number) => void;
 }) {
   const [cargando, setCargando] = useState(true);
+  const [bufereando, setBufereando] = useState(false);
   const [ratio, setRatio] = useState<number | null>(null);
   const [intento, setIntento] = useState(0);
   // Solo para no llamar a `onMomentoPausa` en cada frame (timeupdate dispara varias veces por
@@ -124,10 +125,12 @@ export function DriveVideoPlayer({
         className={cn(ESCENARIO_BASE, "mx-auto rounded-lg shadow-card ring-1 ring-black/10")}
         style={{ aspectRatio: String(ratioCaja) }}
       >
-        {cargando && (
+        {(cargando || bufereando) && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
             <Loader2 className="h-5 w-5 animate-spin text-white/50" />
-            <span className="text-[11px] text-white/40">Cargando video...</span>
+            <span className="text-[11px] text-white/40">
+              {cargando ? "Cargando video..." : "Recuperando buffer..."}
+            </span>
           </div>
         )}
         <video
@@ -135,7 +138,7 @@ export function DriveVideoPlayer({
           src={src}
           controls
           playsInline
-          preload="metadata"
+          preload="auto"
           className={cn(
             "h-full w-full scale-[1.03] object-cover [accent-color:#FB670B]",
             "[&:fullscreen]:scale-100 [&:fullscreen]:object-contain [&:fullscreen]:bg-black",
@@ -144,6 +147,8 @@ export function DriveVideoPlayer({
           )}
           onError={manejarError}
           onCanPlay={() => setCargando(false)}
+          onWaiting={() => setBufereando(true)}
+          onPlaying={() => setBufereando(false)}
           onLoadedMetadata={(e) => {
             const v = e.currentTarget;
             setCargando(false);
@@ -187,10 +192,12 @@ export function DriveVideoPlayer({
         className={cn(ESCENARIO_BASE, "lg:min-h-0 lg:flex-1")}
         style={{ aspectRatio: String(ratioCaja) }}
       >
-        {cargando && (
+        {(cargando || bufereando) && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
             <Loader2 className="h-5 w-5 animate-spin text-white/50" />
-            <span className="text-[11px] text-white/40">Cargando video...</span>
+            <span className="text-[11px] text-white/40">
+              {cargando ? "Cargando video..." : "Recuperando buffer..."}
+            </span>
           </div>
         )}
         <video
@@ -198,7 +205,7 @@ export function DriveVideoPlayer({
           src={src}
           controls
           playsInline
-          preload="metadata"
+          preload="auto"
           className={cn(
             "h-full w-full scale-[1.03] object-cover [accent-color:#FB670B]",
             "[&:fullscreen]:scale-100 [&:fullscreen]:object-contain [&:fullscreen]:bg-black",
@@ -208,6 +215,8 @@ export function DriveVideoPlayer({
           onError={manejarError}
           // Red de seguridad: si por lo que sea no llego `loadedmetadata`, el video no se queda invisible.
           onCanPlay={() => setCargando(false)}
+          onWaiting={() => setBufereando(true)}
+          onPlaying={() => setBufereando(false)}
           onLoadedMetadata={(e) => {
             const v = e.currentTarget;
             setCargando(false);
