@@ -1,7 +1,8 @@
 import { aFecha, inicioDeSemana } from "@/lib/periodo";
 import type { Entregable, Requisicion } from "@/types";
 
-const DIAS_SEMANA = ["Lun", "Mar", "Mie", "Jue", "Vie"];
+// Incluye sabado: tambien es dia de trabajo (se sube material ese dia), no solo Lun-Vie.
+const DIAS_SEMANA = ["Lun", "Mar", "Mie", "Jue", "Vie", "Sab"];
 
 /** El colaborador ya hizo su parte en cuanto sube el material — sin importar si despues
  * community lo aprueba directo, pide cambios ("correcciones") o lo aprueba/entrega. Mientras

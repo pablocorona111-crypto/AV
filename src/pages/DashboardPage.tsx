@@ -40,7 +40,7 @@ import {
   ACCION_ENTREGA_LABELS,
 } from "@/lib/labels";
 import { formatFecha } from "@/lib/utils";
-import { aFecha } from "@/lib/periodo";
+import { aFecha, inicioDeSemana } from "@/lib/periodo";
 import {
   cumplidosPorMes,
   mesesVacios,
@@ -90,6 +90,22 @@ export function DashboardPage() {
   const cumplimiento = entregables.length
     ? Math.round((entregablesFinalizados / entregables.length) * 100)
     : 94;
+
+  // Cumplimiento semanal: aqui se trabaja Lunes a Sabado (no Lun-Dom) — el corte real es el
+  // viernes, pero lo que se sube el sabado sigue contando para esa misma semana. Se mide contra
+  // lo que tenia fecha compromiso esta semana, no contra todo el historico — por eso puede dar
+  // 100% una semana y bajar la siguiente, a diferencia de "Cumplimiento" (ese es acumulado).
+  const inicioSemanaActual = inicioDeSemana(ahora);
+  const inicioDomingo = new Date(inicioSemanaActual);
+  inicioDomingo.setDate(inicioDomingo.getDate() + 6);
+  const entregablesDeEstaSemana = entregables.filter((e) => {
+    const fecha = aFecha(e.fechaCompromiso);
+    return fecha >= inicioSemanaActual && fecha < inicioDomingo;
+  });
+  const cumplidosEstaSemana = entregablesDeEstaSemana.filter(yaEntregoMaterial).length;
+  const cumplimientoSemanal = entregablesDeEstaSemana.length
+    ? Math.round((cumplidosEstaSemana / entregablesDeEstaSemana.length) * 100)
+    : 100;
 
   // Produccion real de la semana en curso (ya no datos de ejemplo fijos).
   const produccionSemanal = calcularProduccionSemanal(entregables, requisiciones, ahora);
@@ -164,6 +180,22 @@ export function DashboardPage() {
         <StatCard icon={Camera} label="Salidas programadas" value={salidas.length} hint="Proximos 7 dias" />
         <StatCard icon={Users} label="Colaboradores" value={colaboradoresDelEquipo.length} hint="Audiovisuales en el equipo" />
       </div>
+
+      <Card>
+        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold">Cumplimiento semanal</p>
+            <p className="text-xs text-muted-foreground">
+              Lunes a sabado · {cumplidosEstaSemana} de {entregablesDeEstaSemana.length || 0} con fecha compromiso
+              esta semana
+            </p>
+          </div>
+          <div className="flex items-center gap-3 sm:w-64">
+            <Progress value={cumplimientoSemanal} className="h-2.5" />
+            <span className="w-12 shrink-0 text-right text-lg font-bold">{cumplimientoSemanal}%</span>
+          </div>
+        </CardContent>
+      </Card>
 
       {proyectosAtencion > 0 && (
         <Card className="border-amber-300 bg-amber-50">
