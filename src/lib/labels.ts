@@ -45,6 +45,24 @@ export const CATEGORIA_CONTENIDO_LABELS: Record<CategoriaContenido, string> = {
   otros: "Otros",
 };
 
+/** Para la actividad reciente del dashboard ("Fulano marco X como ___") — "entregado" generico
+ * no describe que se hizo de verdad. Una grabacion quedo grabada, una foto quedo fotografiada. */
+export const ACCION_ENTREGA_LABELS: Record<CategoriaContenido, string> = {
+  video_institucional: "grabado",
+  video_industrial: "grabado",
+  video_producto: "grabado",
+  cobertura_evento: "grabado",
+  entrevistas: "grabado",
+  capacitacion: "grabado",
+  motion_graphics: "animado",
+  animacion_2d_3d: "animado",
+  fotografia_producto: "fotografiado",
+  fotografia_industrial: "fotografiado",
+  diseno_grafico: "diseñado",
+  contenido_redes_sociales: "entregado",
+  otros: "entregado",
+};
+
 export const PRIORIDAD_LABELS: Record<Prioridad, string> = {
   baja: "Baja",
   media: "Media",

@@ -37,6 +37,7 @@ import {
   ESTADO_REQUISICION_BADGE,
   ESTADO_REQUISICION_LABELS,
   CATEGORIA_CONTENIDO_LABELS,
+  ACCION_ENTREGA_LABELS,
 } from "@/lib/labels";
 import { formatFecha } from "@/lib/utils";
 import { aFecha } from "@/lib/periodo";
@@ -125,7 +126,11 @@ export function DashboardPage() {
     .flatMap((e) => {
       const eventos: { icono: typeof Film; texto: string; cuando: Date }[] = [];
       if (e.fechaEntregado) {
-        eventos.push({ icono: CheckCircle2, texto: `${nombreDe(e.responsableId)} marco "${e.nombre}" como entregado`, cuando: aFecha(e.fechaEntregado) });
+        eventos.push({
+          icono: CheckCircle2,
+          texto: `${nombreDe(e.responsableId)} marco "${e.nombre}" como ${ACCION_ENTREGA_LABELS[e.tipo]}`,
+          cuando: aFecha(e.fechaEntregado),
+        });
       }
       if (e.fechaAprobado) {
         eventos.push({ icono: CheckCircle2, texto: `Se aprobo "${e.nombre}"`, cuando: aFecha(e.fechaAprobado) });
