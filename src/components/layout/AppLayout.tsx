@@ -1,14 +1,17 @@
+import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
 
 export function AppLayout() {
+  const [menuAbierto, setMenuAbierto] = useState(false);
+
   return (
     <div className="flex h-screen bg-bg-app">
-      <Sidebar />
+      <Sidebar abierto={menuAbierto} onCerrar={() => setMenuAbierto(false)} />
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <Header />
-        <main className="min-w-0 flex-1 overflow-y-auto p-6">
+        <Header onAbrirMenu={() => setMenuAbierto(true)} />
+        <main className="min-w-0 flex-1 overflow-y-auto p-4 sm:p-6">
           <Outlet />
         </main>
       </div>

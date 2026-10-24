@@ -34,13 +34,13 @@ export const DialogContent = forwardRef<
         onInteractOutside?.(e);
       }}
       className={cn(
-        "fixed left-1/2 top-1/2 z-50 w-[95vw] max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-card p-6 shadow-card max-h-[85vh] overflow-y-auto",
+        "fixed left-1/2 top-1/2 z-50 w-[95vw] max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-card p-4 shadow-card max-h-[90vh] overflow-y-auto sm:max-h-[85vh] sm:p-6",
         className
       )}
       {...props}
     >
       {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-60 hover:opacity-100 focus:outline-none">
+      <DialogPrimitive.Close className="absolute right-3 top-3 rounded-sm opacity-60 hover:opacity-100 focus:outline-none sm:right-4 sm:top-4">
         <X className="h-4 w-4" />
       </DialogPrimitive.Close>
     </DialogPrimitive.Content>
@@ -49,7 +49,7 @@ export const DialogContent = forwardRef<
 DialogContent.displayName = "DialogContent";
 
 export function DialogHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("mb-4 flex flex-col gap-1", className)} {...props} />;
+  return <div className={cn("mb-4 flex flex-col gap-1 pr-8", className)} {...props} />;
 }
 
 export const DialogTitle = forwardRef<
@@ -73,5 +73,10 @@ export const DialogDescription = forwardRef<
 DialogDescription.displayName = "DialogDescription";
 
 export function DialogFooter({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("mt-6 flex justify-end gap-2", className)} {...props} />;
+  return (
+    <div
+      className={cn("mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end", className)}
+      {...props}
+    />
+  );
 }

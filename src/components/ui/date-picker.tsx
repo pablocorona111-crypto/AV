@@ -30,6 +30,8 @@ function diasDelMes(anio: number, mes: number) {
 }
 
 const ALTO_PANEL_ESTIMADO = 330;
+const ANCHO_PANEL = 256;
+const MARGEN_PANTALLA = 8;
 
 export function DatePicker({
   value,
@@ -63,8 +65,10 @@ export function DatePicker({
     const rect = triggerRef.current.getBoundingClientRect();
     const espacioAbajo = window.innerHeight - rect.bottom;
     const arriba = espacioAbajo < ALTO_PANEL_ESTIMADO && rect.top > espacioAbajo;
+    // En pantallas angostas el panel se sale por la derecha si se alinea tal cual al boton.
+    const maxLeft = window.innerWidth - ANCHO_PANEL - MARGEN_PANTALLA;
     setPosicion({
-      left: rect.left,
+      left: Math.max(MARGEN_PANTALLA, Math.min(rect.left, maxLeft)),
       top: arriba ? rect.top - 4 : rect.bottom + 4,
       arriba,
     });

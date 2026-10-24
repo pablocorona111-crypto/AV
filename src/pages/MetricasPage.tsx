@@ -31,7 +31,7 @@ export function MetricasPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-bold">Metricas y reportes</h1>
           <p className="text-sm text-muted-foreground">Indicadores calculados desde la informacion registrada.</p>

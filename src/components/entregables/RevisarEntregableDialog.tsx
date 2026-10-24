@@ -436,7 +436,7 @@ export function RevisarEntregableDialog({
           </div>
           {puedeComentar && (
             <div className="space-y-1.5">
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <Input
                   value={momento}
                   onChange={(e) => setMomento(e.target.value)}
@@ -444,7 +444,7 @@ export function RevisarEntregableDialog({
                     if (e.key === "Enter") onComentar();
                   }}
                   placeholder="min (ej. 0:45)"
-                  className="w-28 shrink-0"
+                  className="w-full shrink-0 sm:w-28"
                 />
                 <Input
                   value={comentario}
@@ -514,17 +514,17 @@ export function RevisarEntregableDialog({
       <DialogContent
         className={cn(
           "flex flex-col overflow-hidden",
-          layoutLado ? "w-fit max-w-[95vw]" : "max-w-3xl"
+          layoutLado ? "max-w-[95vw] lg:w-fit" : "max-w-3xl"
         )}
       >
         <DialogHeader className="shrink-0">
-          <div className="flex flex-wrap items-center gap-2 pr-8">
+          <div className="flex flex-wrap items-center gap-2">
             <DialogTitle>{entregable.nombre}</DialogTitle>
             <Badge variant={ESTADO_ENTREGABLE_BADGE[entregable.estado]}>
               {ESTADO_ENTREGABLE_LABELS[entregable.estado]}
             </Badge>
             {fileIdActual && (entregable.estado === "aprobado" || entregable.estado === "entregado") && (
-              <div className="ml-auto flex items-center gap-2">
+              <div className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
                 <button
                   type="button"
                   onClick={async () => {

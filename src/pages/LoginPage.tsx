@@ -95,7 +95,7 @@ export function LoginPage() {
         </p>
       </div>
 
-      <div className="flex flex-1 items-center justify-center px-6 py-12">
+      <div className="flex flex-1 items-center justify-center px-4 py-10 sm:px-6 sm:py-12">
         <Card className="w-full max-w-sm border-border shadow-card">
           <CardContent className="pt-8">
             <div className="mb-8 flex flex-col items-center gap-3 text-center lg:hidden">

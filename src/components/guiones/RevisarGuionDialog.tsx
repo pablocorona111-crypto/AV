@@ -88,13 +88,19 @@ export function RevisarGuionDialog({
                 ))}
               </div>
               {puedeComentar && (
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <Input
                     value={comentario}
                     onChange={(e) => setComentario(e.target.value)}
                     placeholder="Ej. Cambiar el gancho de la primera linea"
                   />
-                  <Button type="button" variant="outline" onClick={onComentar} disabled={agregarComentario.isPending}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="shrink-0"
+                    onClick={onComentar}
+                    disabled={agregarComentario.isPending}
+                  >
                     Comentar
                   </Button>
                 </div>
@@ -103,7 +109,7 @@ export function RevisarGuionDialog({
           )}
 
           {esAprobador && guion.estado === "en_revision" && (
-            <div className="flex justify-end gap-2 border-t border-border pt-4">
+            <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-4">
               <Button
                 type="button"
                 variant="outline"

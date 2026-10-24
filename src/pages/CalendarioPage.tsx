@@ -209,7 +209,7 @@ export function CalendarioPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-bold">Calendario general</h1>
           <p className="text-sm text-muted-foreground">
@@ -221,7 +221,7 @@ export function CalendarioPage() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
-          <CardHeader className="flex-row items-center justify-between space-y-0">
+          <CardHeader className="flex-row flex-wrap items-center justify-between gap-2 space-y-0">
             <CardTitle className="capitalize">
               {MESES[mesVista.getMonth()]} {mesVista.getFullYear()}
             </CardTitle>
@@ -252,8 +252,8 @@ export function CalendarioPage() {
               </button>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-7 gap-1 text-center text-xs text-muted-foreground">
+          <CardContent className="p-3 sm:p-5">
+            <div className="grid grid-cols-7 gap-0.5 text-center text-xs text-muted-foreground sm:gap-1">
               {DIAS_SEMANA.map((d, i) => (
                 <div key={i} className="py-1 font-medium">
                   {d}
@@ -270,7 +270,7 @@ export function CalendarioPage() {
                     type="button"
                     onClick={() => eventosDia.length > 0 && setDiaSeleccionado(iso)}
                     className={
-                      "flex min-h-16 flex-col items-center gap-1 rounded-md border border-transparent p-1.5 text-sm " +
+                      "flex min-h-12 flex-col items-center gap-1 rounded-md border border-transparent p-1 text-xs sm:min-h-16 sm:p-1.5 sm:text-sm " +
                       // `text-text-primary` explicito: la celda de hoy aclara su fondo con
                       // `bg-accent/20` y el gris heredado del grid se quedaba corto de contraste.
                       (esHoy

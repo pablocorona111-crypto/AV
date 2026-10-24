@@ -61,7 +61,7 @@ export function ArchivosPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-bold">Archivos</h1>
           <p className="text-sm text-muted-foreground">
@@ -129,7 +129,7 @@ export function ArchivosPage() {
 
       {vista === "tabla" ? (
         <div className="overflow-x-auto rounded-lg border border-border">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[880px] text-sm">
             <thead>
               <tr className="border-b border-border bg-bg-secondary text-left text-xs text-muted-foreground">
                 <th className="px-3 py-2 font-medium">Entregable</th>
