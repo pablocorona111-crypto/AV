@@ -47,7 +47,7 @@ function BotonAgregarCalendar({ salida }: { salida: SalidaGrabacion }) {
 
   if (estado === "ok") {
     return (
-      <p className="flex items-center gap-1.5 text-xs font-medium text-green-700">
+      <p className="flex items-center gap-1.5 text-xs font-medium text-green-700 dark:text-green-400">
         <Check className="h-3.5 w-3.5" /> Agregada a tu Google Calendar
       </p>
     );
@@ -92,10 +92,10 @@ export function SalidasPage() {
         </div>
       </div>
 
-      <Card className="border-amber-300 bg-amber-50">
+      <Card className="border-amber-300 bg-amber-50 dark:border-amber-400/30 dark:bg-amber-400/10">
         <CardContent className="flex items-start gap-3 p-4">
-          <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
-          <p className="text-xs text-amber-900">
+          <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+          <p className="text-xs text-amber-900 dark:text-amber-200">
             El checklist de seguridad de esta plataforma no sustituye los permisos y procedimientos
             oficiales de cada instalacion. Confirmar siempre con el responsable de planta.
           </p>

@@ -26,7 +26,9 @@ export const TabsTrigger = forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium transition-all data-[state=active]:bg-white data-[state=active]:shadow-card",
+      // En oscuro la tarjeta es MAS oscura que `bg-secondary` (el fondo de la lista), asi que
+      // la pestaña activa se hundiria en vez de resaltar: ahi se usa un velo de acento.
+      "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium transition-all data-[state=active]:bg-card data-[state=active]:shadow-card dark:data-[state=active]:bg-accent/15",
       className
     )}
     {...props}

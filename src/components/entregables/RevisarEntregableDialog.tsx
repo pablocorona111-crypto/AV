@@ -283,7 +283,7 @@ export function RevisarEntregableDialog({
               al pausar (es un iframe de otro dominio). Para diseño grafico este es el visor
               normal (no hay reproductor propio que reintentar), asi que no aplica el aviso. */}
           {!esDiseno && (
-            <div className="flex w-full shrink-0 items-center justify-between gap-2 rounded-md bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-800 ring-1 ring-amber-200">
+            <div className="flex w-full shrink-0 items-center justify-between gap-2 rounded-md bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-800 ring-1 ring-amber-200 dark:bg-amber-400/10 dark:text-amber-200 dark:ring-amber-400/30">
               <span>{MENSAJE_ERROR_PLAYER[errorPlayerPropio ?? "desconocido"]}</span>
               <Button
                 type="button"
@@ -298,7 +298,7 @@ export function RevisarEntregableDialog({
           )}
           <div
             className={cn(
-              "w-full overflow-hidden rounded-lg ring-1 ring-black/10",
+              "w-full overflow-hidden rounded-lg ring-1 ring-black/10 dark:ring-white/10",
               esDiseno
                 ? "h-[60vh] bg-white lg:h-full lg:w-[70vw] lg:max-w-2xl"
                 : "min-h-[180px] max-h-[60vh] bg-black lg:w-auto lg:max-w-full lg:max-h-none lg:min-h-0 lg:flex-1"
@@ -355,8 +355,8 @@ export function RevisarEntregableDialog({
               className={cn(
                 "flex-1 rounded-md border px-2 py-1.5 text-xs font-medium capitalize transition-colors",
                 orientacionSubida === o
-                  ? "border-accent bg-accent text-white"
-                  : "border-border bg-white text-muted-foreground hover:bg-bg-secondary"
+                  ? "border-accent bg-accent text-accent-foreground"
+                  : "border-border bg-card text-muted-foreground hover:bg-bg-secondary"
               )}
             >
               {o}
@@ -393,7 +393,7 @@ export function RevisarEntregableDialog({
         <div className="space-y-2">
           <Label>Estado</Label>
           <div className="flex items-start gap-2.5 rounded-md border border-border bg-bg-secondary/40 p-3">
-            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-green-600" />
+            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-green-600 dark:text-green-400" />
             <div className="space-y-1 text-sm">
               <p className="font-medium">
                 {entregable.estado === "entregado" ? "Entregado — ya se publico/entrego." : "Aprobado, listo para subir."}
@@ -420,7 +420,7 @@ export function RevisarEntregableDialog({
                 <Avatar className="h-7 w-7 shrink-0">
                   <AvatarFallback className="text-[10px]">{iniciales(c.autorNombre)}</AvatarFallback>
                 </Avatar>
-                <div className="min-w-0 flex-1 rounded-lg rounded-tl-none bg-white p-2.5 shadow-card">
+                <div className="min-w-0 flex-1 rounded-lg rounded-tl-none bg-card p-2.5 shadow-card dark:bg-bg-secondary">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold">{c.autorNombre}</span>
                     {c.momento && (

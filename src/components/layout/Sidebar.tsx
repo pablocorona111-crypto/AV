@@ -35,10 +35,10 @@ export function Sidebar() {
   const { usuario } = useAuth();
 
   return (
-    <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-border bg-white">
+    <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-border bg-card">
       <div className="flex items-center gap-2 px-5 py-5">
         <div className="flex h-9 w-9 items-center justify-center rounded-md bg-accent">
-          <Clapperboard className="h-5 w-5 text-white" />
+          <Clapperboard className="h-5 w-5 text-accent-foreground" />
         </div>
         <div>
           <p className="text-sm font-bold leading-tight">AV CONTROL</p>

@@ -109,7 +109,7 @@ export function ArchivosPage() {
             onClick={() => setVista("cuadricula")}
             className={cn(
               "flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-medium",
-              vista === "cuadricula" ? "bg-accent text-white" : "text-muted-foreground hover:bg-bg-secondary"
+              vista === "cuadricula" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-bg-secondary"
             )}
           >
             <LayoutGrid className="h-3.5 w-3.5" /> Cuadricula
@@ -119,7 +119,7 @@ export function ArchivosPage() {
             onClick={() => setVista("tabla")}
             className={cn(
               "flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-medium",
-              vista === "tabla" ? "bg-accent text-white" : "text-muted-foreground hover:bg-bg-secondary"
+              vista === "tabla" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-bg-secondary"
             )}
           >
             <Table2 className="h-3.5 w-3.5" /> Tabla
@@ -170,14 +170,14 @@ export function ArchivosPage() {
                         <div className="flex gap-1">
                           <a
                             href={`/api/drive-video?id=${encodeURIComponent(fileId!)}&download=1&nombre=${encodeURIComponent(e.nombre)}`}
-                            className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] font-medium hover:bg-white"
+                            className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] font-medium hover:bg-bg-secondary"
                           >
                             <Download className="h-3 w-3" /> Bajar
                           </a>
                           <button
                             type="button"
                             onClick={() => copiarLink(e.id, fileId!)}
-                            className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] font-medium hover:bg-white"
+                            className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] font-medium hover:bg-bg-secondary"
                           >
                             {copiadoId === e.id ? (
                               <>

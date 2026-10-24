@@ -79,7 +79,7 @@ export function ProyectosPage() {
                 <div className="flex items-center justify-between pt-1">
                   <div className="flex -space-x-2">
                     {p.colaboradoresIds.slice(0, 4).map((id) => (
-                      <Avatar key={id} className="h-7 w-7 border-2 border-white">
+                      <Avatar key={id} className="h-7 w-7 border-2 border-card">
                         <AvatarFallback className="text-[10px]">{iniciales(nombreDe(id))}</AvatarFallback>
                       </Avatar>
                     ))}
@@ -112,7 +112,7 @@ export function ProyectosPage() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="text-destructive hover:bg-red-50"
+                      className="text-destructive hover:bg-red-50 dark:hover:bg-red-400/10"
                       onClick={() => setAEliminar(seleccionado)}
                       disabled={eliminar.isPending}
                     >
@@ -156,9 +156,9 @@ export function ProyectosPage() {
                           className={
                             "rounded-full px-2.5 py-1 text-[11px] font-medium " +
                             (actual
-                              ? "bg-accent text-white"
+                              ? "bg-accent text-accent-foreground"
                               : completada
-                              ? "bg-green-100 text-green-800"
+                              ? "bg-green-100 text-green-800 dark:bg-green-400/15 dark:text-green-300"
                               : "bg-bg-secondary text-muted-foreground")
                           }
                         >

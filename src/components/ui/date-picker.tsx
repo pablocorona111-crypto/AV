@@ -105,7 +105,7 @@ export function DatePicker({
         type="button"
         onClick={() => setOpen((o) => !o)}
         className={cn(
-          "flex h-10 w-full items-center justify-between rounded-md border border-border bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+          "flex h-10 w-full items-center justify-between rounded-md border border-border bg-card px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
           !value && "text-muted-foreground",
           className
         )}
@@ -129,7 +129,7 @@ export function DatePicker({
               // portal fuera del Dialog, hereda ese "none" y se ve pero no se puede clickear.
               pointerEvents: "auto",
             }}
-            className="z-50 w-64 rounded-md border border-border bg-white p-3 shadow-card"
+            className="z-50 w-64 rounded-md border border-border bg-card p-3 shadow-card"
           >
             <div className="mb-2 flex items-center justify-between">
               <button
@@ -174,7 +174,7 @@ export function DatePicker({
                     className={cn(
                       "rounded-md py-1.5 text-sm text-text-primary hover:bg-bg-secondary",
                       esPasado && "cursor-not-allowed text-muted-foreground/40 hover:bg-transparent",
-                      esSeleccionado && "bg-accent text-white hover:brightness-95"
+                      esSeleccionado && "bg-accent text-accent-foreground hover:brightness-95"
                     )}
                   >
                     {dia.getDate()}

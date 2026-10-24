@@ -90,7 +90,7 @@ function PuntoEvento({ tipo, terminado, titulo }: { tipo: TipoEvento; terminado:
       className={
         terminado
           ? `h-1.5 w-1.5 rounded-full ${COLOR_TIPO[tipo]}`
-          : `h-1.5 w-1.5 rounded-full border-[1.5px] bg-white ${BORDE_TIPO[tipo]}`
+          : `h-1.5 w-1.5 rounded-full border-[1.5px] bg-card ${BORDE_TIPO[tipo]}`
       }
     />
   );
@@ -271,7 +271,11 @@ export function CalendarioPage() {
                     onClick={() => eventosDia.length > 0 && setDiaSeleccionado(iso)}
                     className={
                       "flex min-h-16 flex-col items-center gap-1 rounded-md border border-transparent p-1.5 text-sm " +
-                      (esHoy ? "border-accent bg-accent/20 font-bold" : "hover:bg-bg-secondary") +
+                      // `text-text-primary` explicito: la celda de hoy aclara su fondo con
+                      // `bg-accent/20` y el gris heredado del grid se quedaba corto de contraste.
+                      (esHoy
+                        ? "border-accent bg-accent/20 font-bold text-text-primary"
+                        : "hover:bg-bg-secondary") +
                       (eventosDia.length > 0 ? " cursor-pointer" : " cursor-default")
                     }
                   >
@@ -296,7 +300,7 @@ export function CalendarioPage() {
                 <span className="h-2 w-2 rounded-full bg-text-primary" /> Terminado
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full border-[1.5px] border-text-primary bg-white" /> Pendiente / en revision
+                <span className="h-2 w-2 rounded-full border-[1.5px] border-text-primary bg-card" /> Pendiente / en revision
               </span>
             </div>
           </CardContent>

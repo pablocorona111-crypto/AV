@@ -2,7 +2,62 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Tokens de color del tema.
+ *
+ * Se declaran como triples RGB sueltos ("17 24 39") porque `tailwind.config.ts` los consume
+ * con `rgb(var(--x) / <alpha-value>)`, que es lo que mantiene vivos los modificadores de
+ * opacidad (`bg-accent/20`, `border-border/60`, ...).
+ *
+ * Jerarquia de superficies, de atras hacia adelante:
+ *   --av-bg-app        fondo de pagina
+ *   --av-card          tarjetas, dialogos, inputs, popovers (= --av-bg-primary)
+ *   --av-bg-secondary  un escalon por encima: hovers, tabs, tracks, chips
+ *
+ * En claro la tarjeta es mas clara que la pagina; en oscuro es mas clara tambien (la pagina es
+ * el nivel mas oscuro). Asi `hover:bg-bg-secondary` siempre "sube" y nunca apaga el elemento. */
 @layer base {
+  :root {
+    --av-bg-app: 246 248 251;
+    --av-bg-primary: 255 255 255;
+    --av-bg-secondary: 246 248 251;
+    --av-card: 255 255 255;
+    --av-border: 229 231 235;
+    --av-text-primary: 17 24 39;
+    --av-muted: 246 248 251;
+    --av-muted-foreground: 107 114 128;
+    /* El acento de marca es negro puro en claro. */
+    --av-accent: 0 0 0;
+    --av-accent-foreground: 255 255 255;
+    --av-destructive: 239 68 68;
+    --av-destructive-foreground: 255 255 255;
+    --av-shadow-card: 0 1px 2px 0 rgba(17, 24, 39, 0.04), 0 1px 3px 0 rgba(17, 24, 39, 0.06);
+    /* Overlay de los dialogos: mas suave en claro que en oscuro. */
+    --av-overlay: 17 24 39;
+    --av-overlay-opacity: 0.4;
+    color-scheme: light;
+  }
+
+  .dark {
+    --av-bg-app: 13 15 18;
+    --av-bg-primary: 23 26 31;
+    --av-bg-secondary: 35 39 46;
+    --av-card: 23 26 31;
+    --av-border: 46 51 60;
+    --av-text-primary: 237 240 245;
+    --av-muted: 35 39 46;
+    --av-muted-foreground: 156 163 176;
+    /* En oscuro el acento no puede seguir siendo negro (se perderia contra el fondo): se
+     * invierte a un blanco roto, con texto casi negro encima. Misma identidad monocroma. */
+    --av-accent: 237 240 245;
+    --av-accent-foreground: 17 20 24;
+    --av-destructive: 248 113 113;
+    --av-destructive-foreground: 23 26 31;
+    --av-shadow-card: 0 1px 2px 0 rgba(0, 0, 0, 0.5), 0 1px 3px 0 rgba(0, 0, 0, 0.4);
+    --av-overlay: 0 0 0;
+    --av-overlay-opacity: 0.65;
+    color-scheme: dark;
+  }
+
   html,
   body,
   #root {
@@ -10,7 +65,7 @@
   }
 
   body {
-    @apply bg-bg-secondary text-text-primary antialiased;
+    @apply bg-bg-app text-text-primary antialiased;
     font-family: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
   }
 
@@ -26,5 +81,10 @@
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
     @apply bg-border rounded-full;
+  }
+
+  /* Overlay de dialogo: un solo token para no tener que repetir `dark:bg-black/65`. */
+  .av-overlay {
+    background-color: rgb(var(--av-overlay) / var(--av-overlay-opacity));
   }
 }

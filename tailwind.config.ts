@@ -1,27 +1,36 @@
 import type { Config } from "tailwindcss";
 
+/** Los tokens de color viven como variables CSS en `src/index.css` (`:root` y `.dark`), no como
+ * hex fijo — asi la misma clase (`bg-card`, `text-text-primary`, ...) cambia sola segun el tema.
+ * El formato `rgb(var(--x) / <alpha-value>)` es el que deja seguir usando modificadores de
+ * opacidad de Tailwind (`bg-accent/20`, `bg-bg-secondary/40`, ...). */
+const token = (nombre: string) => `rgb(var(${nombre}) / <alpha-value>)`;
+
 export default {
   darkMode: ["class"],
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
-        "bg-primary": "#FFFFFF",
-        "bg-secondary": "#F6F8FB",
-        "text-primary": "#111827",
+        /** Fondo de pagina (el nivel mas al fondo). En claro es el gris #F6F8FB de siempre. */
+        "bg-app": token("--av-bg-app"),
+        "bg-primary": token("--av-bg-primary"),
+        /** Un nivel por encima de las superficies: hovers, tracks, chips, tabs. */
+        "bg-secondary": token("--av-bg-secondary"),
+        "text-primary": token("--av-text-primary"),
         accent: {
-          DEFAULT: "#000000",
-          foreground: "#FFFFFF",
+          DEFAULT: token("--av-accent"),
+          foreground: token("--av-accent-foreground"),
         },
-        border: "#E5E7EB",
-        card: "#FFFFFF",
+        border: token("--av-border"),
+        card: token("--av-card"),
         muted: {
-          DEFAULT: "#F6F8FB",
-          foreground: "#6B7280",
+          DEFAULT: token("--av-muted"),
+          foreground: token("--av-muted-foreground"),
         },
         destructive: {
-          DEFAULT: "#EF4444",
-          foreground: "#FFFFFF",
+          DEFAULT: token("--av-destructive"),
+          foreground: token("--av-destructive-foreground"),
         },
       },
       borderRadius: {
@@ -39,7 +48,7 @@ export default {
         ],
       },
       boxShadow: {
-        card: "0 1px 2px 0 rgba(17, 24, 39, 0.04), 0 1px 3px 0 rgba(17, 24, 39, 0.06)",
+        card: "var(--av-shadow-card)",
       },
     },
   },

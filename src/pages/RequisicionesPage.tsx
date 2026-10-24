@@ -263,7 +263,7 @@ export function RequisicionesPage() {
                       variant="ghost"
                       onClick={() => cambiarEstado.mutate({ id: r.id, estado: "aprobada" })}
                     >
-                      <Check className="h-4 w-4 text-green-600" />
+                      <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
                     </Button>
                     <Button
                       size="icon"

@@ -5,16 +5,16 @@ const ACTUALIZADO = "23 de octubre de 2026";
 
 export function PoliticaPrivacidadPage() {
   return (
-    <div className="min-h-screen bg-bg-secondary px-4 py-10">
+    <div className="min-h-screen bg-bg-app px-4 py-10">
       <div className="mx-auto max-w-3xl space-y-6">
         <Link to="/" className="flex items-center gap-2 text-sm font-semibold text-text-primary">
-          <span className="flex h-8 w-8 items-center justify-center rounded-md bg-accent text-white">
+          <span className="flex h-8 w-8 items-center justify-center rounded-md bg-accent text-accent-foreground">
             <Clapperboard className="h-4 w-4" />
           </span>
           AV Control — Grupo Ortiz
         </Link>
 
-        <div className="rounded-lg border border-border bg-white p-6 sm:p-8">
+        <div className="rounded-lg border border-border bg-card p-6 sm:p-8">
           <h1 className="text-2xl font-bold">Politica de privacidad</h1>
           <p className="mt-1 text-sm text-muted-foreground">Ultima actualizacion: {ACTUALIZADO}</p>
 
