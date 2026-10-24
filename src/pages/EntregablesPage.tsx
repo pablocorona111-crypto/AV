@@ -164,7 +164,7 @@ export function EntregablesPage() {
                       <button
                         key={g.id}
                         onClick={() => setGuionSeleccionadoId(g.id)}
-                        className="w-full rounded-md border border-border bg-white p-2.5 text-left text-xs transition-colors hover:bg-bg-secondary"
+                        className="w-full rounded-md border border-border bg-card p-2.5 text-left text-xs transition-colors hover:bg-bg-secondary"
                       >
                         <p className="font-medium text-text-primary">
                           <span className="text-muted-foreground">{g.folio}</span> {g.titulo}
@@ -229,7 +229,7 @@ export function EntregablesPage() {
                     <CardContent className="max-h-[60vh] space-y-3 overflow-y-auto p-3 pt-0">
                       {agruparPorSemana(items).map(({ inicio, items: itemsSemana }) => (
                         <div key={inicio.getTime()}>
-                          <p className="sticky top-0 z-10 -mx-3 bg-white px-3 py-1 text-[11px] font-semibold text-muted-foreground">
+                          <p className="sticky top-0 z-10 -mx-3 bg-card px-3 py-1 text-[11px] font-semibold text-muted-foreground">
                             {etiquetaSemana(inicio)} · {itemsSemana.length}
                           </p>
                           <div className="space-y-1.5">
@@ -237,7 +237,7 @@ export function EntregablesPage() {
                               <button
                                 key={e.id}
                                 onClick={() => setSeleccionadoId(e.id)}
-                                className="flex w-full items-center gap-2 rounded-md border border-border bg-white p-1.5 text-left text-xs transition-colors hover:bg-bg-secondary"
+                                className="flex w-full items-center gap-2 rounded-md border border-border bg-card p-1.5 text-left text-xs transition-colors hover:bg-bg-secondary"
                               >
                                 <MiniaturaVideo
                                   url={e.urlRevision || e.urlFinal}

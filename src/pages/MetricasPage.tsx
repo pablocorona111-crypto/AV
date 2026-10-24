@@ -6,8 +6,10 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DemoBadge } from "@/components/DemoBadge";
 import { FileCheck2, FolderCheck, Timer, Video } from "lucide-react";
+import { useTemaGrafica } from "@/lib/chartTheme";
 
 export function MetricasPage() {
+  const g = useTemaGrafica();
   const { data: requisiciones = [] } = useRequisiciones();
   const { data: proyectos = [] } = useProyectos();
   const { data: entregables = [] } = useEntregables();
@@ -52,10 +54,10 @@ export function MetricasPage() {
           {dataPlanta.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={dataPlanta}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
-                <XAxis dataKey="planta" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
-                <Tooltip cursor={{ fill: "#F6F8FB" }} />
+                <CartesianGrid strokeDasharray="3 3" stroke={g.grid} vertical={false} />
+                <XAxis dataKey="planta" fontSize={12} tickLine={false} axisLine={false} tick={g.tick} />
+                <YAxis fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} tick={g.tick} />
+                <Tooltip cursor={g.cursor} {...g.tooltip} />
                 <Bar dataKey="jornadas" fill="#C1EB1F" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>

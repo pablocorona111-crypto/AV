@@ -22,7 +22,7 @@ export const DialogContent = forwardRef<
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
 >(({ className, children, onPointerDownOutside, onInteractOutside, ...props }, ref) => (
   <DialogPrimitive.Portal>
-    <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/40" />
+    <DialogPrimitive.Overlay className="av-overlay fixed inset-0 z-50" />
     <DialogPrimitive.Content
       ref={ref}
       onPointerDownOutside={(e) => {
@@ -34,7 +34,7 @@ export const DialogContent = forwardRef<
         onInteractOutside?.(e);
       }}
       className={cn(
-        "fixed left-1/2 top-1/2 z-50 w-[95vw] max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-white p-6 shadow-card max-h-[85vh] overflow-y-auto",
+        "fixed left-1/2 top-1/2 z-50 w-[95vw] max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-card p-6 shadow-card max-h-[85vh] overflow-y-auto",
         className
       )}
       {...props}

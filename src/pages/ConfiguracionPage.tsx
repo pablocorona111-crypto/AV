@@ -182,7 +182,7 @@ export function ConfiguracionPage() {
             </CardDescription>
           </CardHeader>
           <CardFooter>
-            <Button variant="outline" className="text-destructive hover:bg-red-50" onClick={() => setConfirmarReset(true)}>
+            <Button variant="outline" className="text-destructive hover:bg-red-50 dark:hover:bg-red-400/10" onClick={() => setConfirmarReset(true)}>
               Vaciar toda la info de la app
             </Button>
           </CardFooter>

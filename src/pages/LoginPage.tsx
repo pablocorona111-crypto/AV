@@ -55,8 +55,11 @@ export function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-bg-secondary">
-      <div className="relative hidden flex-1 flex-col justify-between overflow-hidden bg-text-primary p-12 text-white lg:flex">
+    <div className="flex min-h-screen bg-bg-app">
+      {/* El panel de marca es oscuro en los dos temas, asi que NO puede colgar de
+          `bg-text-primary` (que en oscuro se vuelve casi blanco y se comeria su texto blanco):
+          va a hex fijo. */}
+      <div className="relative hidden flex-1 flex-col justify-between overflow-hidden bg-[#111827] p-12 text-white lg:flex dark:bg-[#0B0D11]">
         <div
           className="pointer-events-none absolute inset-0 opacity-20"
           style={{
@@ -66,7 +69,7 @@ export function LoginPage() {
         />
         <div className="relative flex items-center gap-2">
           <div className="flex h-10 w-10 items-center justify-center rounded-md bg-white">
-            <Clapperboard className="h-5 w-5 text-accent" />
+            <Clapperboard className="h-5 w-5 text-[#111827]" />
           </div>
           <span className="text-lg font-bold">AV CONTROL</span>
         </div>
@@ -97,7 +100,7 @@ export function LoginPage() {
           <CardContent className="pt-8">
             <div className="mb-8 flex flex-col items-center gap-3 text-center lg:hidden">
               <div className="flex h-12 w-12 items-center justify-center rounded-md bg-accent">
-                <Clapperboard className="h-6 w-6 text-white" />
+                <Clapperboard className="h-6 w-6 text-accent-foreground" />
               </div>
               <h1 className="text-lg font-bold">AV CONTROL</h1>
             </div>
@@ -110,7 +113,7 @@ export function LoginPage() {
             </div>
 
             {esModoDemo && (
-              <p className="mb-4 rounded-md bg-amber-50 p-2 text-xs text-amber-800">
+              <p className="mb-4 rounded-md bg-amber-50 p-2 text-xs text-amber-800 dark:bg-amber-400/15 dark:text-amber-300">
                 Modo demo: entra directo con el primer usuario demo. No hay proyecto Firebase configurado todavia.
               </p>
             )}
@@ -127,7 +130,7 @@ export function LoginPage() {
             </Button>
 
             {error && (
-              <p className="mt-3 rounded-md bg-red-50 p-2 text-center text-xs text-destructive">
+              <p className="mt-3 rounded-md bg-red-50 p-2 text-center text-xs text-destructive dark:bg-red-400/15">
                 {error}
               </p>
             )}

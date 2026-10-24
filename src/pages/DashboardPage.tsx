@@ -47,11 +47,11 @@ import {
   produccionSemanal as calcularProduccionSemanal,
   yaEntregoMaterial,
 } from "@/lib/metricas";
+import { COLORES_TIPO, useTemaGrafica } from "@/lib/chartTheme";
 import type { Entregable } from "@/types";
 
-const COLORES_TIPO = ["#C1EB1F", "#93C5FD", "#86EFAC", "#C4B5FD", "#FDBA74", "#FCA5A5", "#67E8F9"];
-
 export function DashboardPage() {
+  const g = useTemaGrafica();
   const { usuario } = useAuth();
   const { data: requisiciones = [] } = useRequisiciones();
   const { data: proyectos = [] } = useProyectos();
@@ -111,7 +111,7 @@ export function DashboardPage() {
           value: Math.round((cantidad / totalTipoMes) * 100),
           color: COLORES_TIPO[i % COLORES_TIPO.length],
         }))
-      : [{ name: "Sin datos este mes", value: 100, color: "#E5E7EB" }];
+      : [{ name: "Sin datos este mes", value: 100, color: g.vacio }];
 
   // Solo para lider/superadmin (`puedeVerMetricasGlobales`).
   const entregadosPorMesReal = cumplidosPorMes(entregables);
@@ -159,17 +159,17 @@ export function DashboardPage() {
         <StatCard icon={Clock} label="Pendientes aprobacion" value={pendientesAprobacion} hint="Requieren revision" />
         <StatCard icon={Film} label="En postproduccion" value={enPostproduccion} hint="Proyectos activos" />
         <StatCard icon={CheckCircle2} label="Entregados" value={entregadosEsteMes} hint="Este mes" />
-        <StatCard icon={AlertTriangle} label="Entregas atrasadas" value={entregasAtrasadas} hint="Requieren atencion" iconBg="bg-red-100" />
+        <StatCard icon={AlertTriangle} label="Entregas atrasadas" value={entregasAtrasadas} hint="Requieren atencion" iconBg="bg-red-100 dark:bg-red-400/20" />
         <StatCard icon={Clock} label="Cumplimiento" value={`${cumplimiento}%`} hint="A tiempo" />
         <StatCard icon={Camera} label="Salidas programadas" value={salidas.length} hint="Proximos 7 dias" />
         <StatCard icon={Users} label="Colaboradores" value={colaboradoresDelEquipo.length} hint="Audiovisuales en el equipo" />
       </div>
 
       {proyectosAtencion > 0 && (
-        <Card className="border-amber-300 bg-amber-50">
+        <Card className="border-amber-300 bg-amber-50 dark:border-amber-400/30 dark:bg-amber-400/10">
           <CardContent className="flex items-center gap-3 p-4">
-            <AlertTriangle className="h-5 w-5 text-amber-600" />
-            <p className="text-sm text-amber-900">
+            <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+            <p className="text-sm text-amber-900 dark:text-amber-200">
               {proyectosAtencion} proyecto(s) de prioridad alta/critica requieren atencion.
             </p>
           </CardContent>
@@ -184,12 +184,12 @@ export function DashboardPage() {
           <CardContent className="h-56">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={produccionSemanal}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
-                <XAxis dataKey="dia" tickLine={false} axisLine={false} fontSize={12} />
-                <YAxis tickLine={false} axisLine={false} fontSize={12} />
-                <Tooltip cursor={{ fill: "#F6F8FB" }} />
+                <CartesianGrid strokeDasharray="3 3" stroke={g.grid} vertical={false} />
+                <XAxis dataKey="dia" tickLine={false} axisLine={false} fontSize={12} tick={g.tick} />
+                <YAxis tickLine={false} axisLine={false} fontSize={12} tick={g.tick} />
+                <Tooltip cursor={g.cursor} {...g.tooltip} />
                 <Bar dataKey="entregados" name="Entregados" fill="#C1EB1F" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="solicitudes" name="Solicitudes" fill="#CBD5E1" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="solicitudes" name="Solicitudes" fill={g.barraNeutra} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -214,7 +214,7 @@ export function DashboardPage() {
                       <Cell key={entry.name} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip {...g.tooltip} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -246,10 +246,10 @@ export function DashboardPage() {
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={entregadosPorMes}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
-                  <XAxis dataKey="mes" tickLine={false} axisLine={false} fontSize={12} />
-                  <YAxis tickLine={false} axisLine={false} fontSize={12} allowDecimals={false} />
-                  <Tooltip cursor={{ fill: "#F6F8FB" }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={g.grid} vertical={false} />
+                  <XAxis dataKey="mes" tickLine={false} axisLine={false} fontSize={12} tick={g.tick} />
+                  <YAxis tickLine={false} axisLine={false} fontSize={12} allowDecimals={false} tick={g.tick} />
+                  <Tooltip cursor={g.cursor} {...g.tooltip} />
                   <Bar dataKey="total" name="Cumplidos" fill="#C1EB1F" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>

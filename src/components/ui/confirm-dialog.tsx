@@ -83,7 +83,7 @@ export function ConfirmDialog({
               onConfirm();
               setTexto("");
             }}
-            className={cn(destructive && "bg-destructive text-white hover:bg-destructive/90")}
+            className={cn(destructive && "bg-destructive text-destructive-foreground hover:bg-destructive/90")}
           >
             {confirmLabel}
           </Button>

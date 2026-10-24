@@ -2,9 +2,10 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
-import { Bell, Search, ChevronDown, LogOut, UserCog } from "lucide-react";
+import { Bell, Search, ChevronDown, LogOut, UserCog, Sun, Moon } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useNotificaciones } from "@/hooks/useNotificaciones";
+import { useTema } from "@/hooks/useTema";
 import { ROLE_LABELS } from "@/lib/roles";
 import { DEMO_USUARIOS } from "@/data/demoData";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -45,7 +46,7 @@ function NotificacionesMenu() {
       <DropdownMenuTrigger className="relative rounded-md p-2 hover:bg-bg-secondary focus:outline-none" aria-label="Notificaciones">
         <Bell className="h-5 w-5 text-text-primary/70" />
         {noLeidas > 0 && (
-          <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-white">
+          <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">
             {noLeidas > 9 ? "9+" : noLeidas}
           </span>
         )}
@@ -82,11 +83,31 @@ function NotificacionesMenu() {
   );
 }
 
+function TemaToggle() {
+  const { esOscuro, alternarTema } = useTema();
+
+  return (
+    <button
+      type="button"
+      onClick={alternarTema}
+      className="rounded-md p-2 hover:bg-bg-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      aria-label={esOscuro ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+      title={esOscuro ? "Modo claro" : "Modo oscuro"}
+    >
+      {esOscuro ? (
+        <Sun className="h-5 w-5 text-text-primary/70" />
+      ) : (
+        <Moon className="h-5 w-5 text-text-primary/70" />
+      )}
+    </button>
+  );
+}
+
 export function Header() {
   const { usuario, esModoDemo, cambiarUsuarioDemo, logout } = useAuth();
 
   return (
-    <header className="flex h-16 shrink-0 items-center gap-4 border-b border-border bg-white px-6">
+    <header className="flex h-16 shrink-0 items-center gap-4 border-b border-border bg-card px-6">
       <div className="relative flex-1 max-w-xl">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <input
@@ -101,6 +122,8 @@ export function Header() {
           Modo demo
         </Badge>
       )}
+
+      <TemaToggle />
 
       <NotificacionesMenu />
 

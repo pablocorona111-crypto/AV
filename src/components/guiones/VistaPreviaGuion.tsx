@@ -5,7 +5,7 @@ import type { Guion } from "@/types";
  * texto plano. */
 export function VistaPreviaGuion({ guion }: { guion: Guion }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-white">
+    <div className="overflow-hidden rounded-lg border border-border bg-card">
       <div className="flex items-center justify-between gap-3 bg-black px-5 py-3">
         <img src="/LOGO.png" alt="Grupo Ortiz" className="h-7 w-auto" />
         <span className="shrink-0 text-xs font-semibold tracking-wide text-white">

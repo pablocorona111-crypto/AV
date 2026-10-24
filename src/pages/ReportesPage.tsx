@@ -24,9 +24,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DemoBadge } from "@/components/DemoBadge";
+import { COLORES_TIPO, useTemaGrafica } from "@/lib/chartTheme";
 import type { Entregable } from "@/types";
 
-const COLORES_TIPO = ["#C1EB1F", "#93C5FD", "#86EFAC", "#C4B5FD", "#FDBA74", "#FCA5A5", "#67E8F9"];
 
 /** Captura el nodo del reporte a PNG (html-to-image) y lo mete en un PDF de una sola pagina
  * (jsPDF) — mismo patron que el "slide ejecutivo ancho" de GO2026 (ChangelogTab.jsx,
@@ -38,7 +38,9 @@ async function descargarComoPdf(nodo: HTMLElement, nombreArchivo: string) {
   const cssH = Math.round(nodo.scrollHeight);
   const dataUrl = await toPng(nodo, {
     pixelRatio: 2,
-    backgroundColor: "#ffffff",
+    // El fondo lo decide el tema activo (el slide usa `bg-card`): hardcodear blanco dejaba
+    // el PDF con texto claro sobre blanco cuando la app estaba en modo oscuro.
+    backgroundColor: getComputedStyle(nodo).backgroundColor || "#ffffff",
     width: cssW,
     height: cssH,
     style: { width: `${cssW}px`, height: `${cssH}px`, transform: "none" },
@@ -98,6 +100,7 @@ type DatosReporte = {
  * pantalla, una version a ancho fijo de 1200px que es la que de verdad se captura para el PDF
  * (asi el PDF siempre sale landscape nitido, sin depender de que tan ancha sea la ventana). */
 function ContenidoSlide({ datos }: { datos: DatosReporte }) {
+  const g = useTemaGrafica();
   const {
     periodo,
     entregadosEnPeriodo,
@@ -112,7 +115,7 @@ function ContenidoSlide({ datos }: { datos: DatosReporte }) {
   } = datos;
 
   return (
-    <div className="space-y-4 bg-white p-6">
+    <div className="space-y-4 bg-card p-6">
       <div className="flex flex-col gap-1 border-b border-border pb-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -125,9 +128,9 @@ function ContenidoSlide({ datos }: { datos: DatosReporte }) {
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <SlideStat icon={CheckCircle2} label="Entregados en el periodo" value={entregadosEnPeriodo.length} />
-        <SlideStat icon={FolderKanban} label="Proyectos con entrega" value={proyectosDistintos} iconBg="bg-blue-100" />
-        <SlideStat icon={Users} label="Colaboradores que entregaron" value={responsablesDistintos} iconBg="bg-purple-100" />
-        <SlideStat icon={Film} label="Tipos de contenido distintos" value={tiposDistintos} iconBg="bg-orange-100" />
+        <SlideStat icon={FolderKanban} label="Proyectos con entrega" value={proyectosDistintos} iconBg="bg-blue-100 dark:bg-blue-400/20" />
+        <SlideStat icon={Users} label="Colaboradores que entregaron" value={responsablesDistintos} iconBg="bg-purple-100 dark:bg-purple-400/20" />
+        <SlideStat icon={Film} label="Tipos de contenido distintos" value={tiposDistintos} iconBg="bg-orange-100 dark:bg-orange-400/20" />
       </div>
 
       <div className="rounded-lg border border-border p-4">
@@ -137,12 +140,12 @@ function ContenidoSlide({ datos }: { datos: DatosReporte }) {
         <div className="h-36">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={produccion}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
-              <XAxis dataKey="dia" tickLine={false} axisLine={false} fontSize={11} />
-              <YAxis tickLine={false} axisLine={false} fontSize={11} allowDecimals={false} />
-              <Tooltip />
+              <CartesianGrid strokeDasharray="3 3" stroke={g.grid} vertical={false} />
+              <XAxis dataKey="dia" tickLine={false} axisLine={false} fontSize={11} tick={g.tick} />
+              <YAxis tickLine={false} axisLine={false} fontSize={11} allowDecimals={false} tick={g.tick} />
+              <Tooltip cursor={g.cursor} {...g.tooltip} />
               <Bar dataKey="entregados" name="Entregados" fill="#C1EB1F" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="solicitudes" name="Solicitudes" fill="#CBD5E1" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="solicitudes" name="Solicitudes" fill={g.barraNeutra} radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -155,10 +158,10 @@ function ContenidoSlide({ datos }: { datos: DatosReporte }) {
         <div className="h-36">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={cumplidos}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
-              <XAxis dataKey="mes" tickLine={false} axisLine={false} fontSize={11} />
-              <YAxis tickLine={false} axisLine={false} fontSize={11} allowDecimals={false} />
-              <Tooltip />
+              <CartesianGrid strokeDasharray="3 3" stroke={g.grid} vertical={false} />
+              <XAxis dataKey="mes" tickLine={false} axisLine={false} fontSize={11} tick={g.tick} />
+              <YAxis tickLine={false} axisLine={false} fontSize={11} allowDecimals={false} tick={g.tick} />
+              <Tooltip cursor={g.cursor} {...g.tooltip} />
               <Bar dataKey="total" name="Cumplidos" fill="#C1EB1F" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -178,7 +181,7 @@ function ContenidoSlide({ datos }: { datos: DatosReporte }) {
                     <Cell key={d.name} fill={d.color} />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip cursor={g.cursor} {...g.tooltip} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -237,6 +240,7 @@ function ContenidoSlide({ datos }: { datos: DatosReporte }) {
 }
 
 function ReporteDeContenido() {
+  const { vacio: vacioGrafica } = useTemaGrafica();
   const { data: proyectos = [] } = useProyectos();
   const { data: requisiciones = [] } = useRequisiciones();
   const { data: entregables = [] } = useEntregables();
@@ -262,7 +266,7 @@ function ReporteDeContenido() {
   }));
   // Sin esto la dona desaparecia por completo (array vacio) en vez de mostrar su forma — un
   // placeholder gris deja ver la estructura del slide aunque el periodo no tenga entregas.
-  const datosDonut = datosDonutReal.length > 0 ? datosDonutReal : [{ name: "Sin datos", value: 1, color: "#E5E7EB" }];
+  const datosDonut = datosDonutReal.length > 0 ? datosDonutReal : [{ name: "Sin datos", value: 1, color: vacioGrafica }];
 
   const proyectosDistintos = new Set(entregadosEnPeriodo.map((e) => e.proyectoId).filter(Boolean)).size;
   const responsablesDistintos = new Set(entregadosEnPeriodo.map((e) => e.responsableId)).size;
