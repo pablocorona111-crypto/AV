@@ -11,11 +11,14 @@ export function yaEntregoMaterial(e: Entregable): boolean {
 }
 
 /** Fecha real de cuando se entrego el material — si todavia no hay fechaEntregado/fechaAprobado
- * (ej. recien subido, en revision) usa creadoEn como mejor aproximacion disponible. */
+ * (ej. recien subido, en revision) usa creadoEn como mejor aproximacion disponible. `creadoEn`
+ * se escribe con `serverTimestamp()` — al leerlo de vuelta es un Timestamp de Firestore, NO un
+ * string (a diferencia de fechaEntregado/fechaAprobado, que siempre se guardan como ISO) asi que
+ * hay que normalizarlo con `aFecha()` antes de poder hacer `.slice()` sobre el resultado. */
 function fechaDeEntrega(e: Entregable): string | undefined {
   if (e.fechaEntregado) return e.fechaEntregado;
   if (e.fechaAprobado) return e.fechaAprobado;
-  return yaEntregoMaterial(e) ? e.creadoEn : undefined;
+  return yaEntregoMaterial(e) ? aFecha(e.creadoEn).toISOString() : undefined;
 }
 
 function mismoDia(a: Date, b: Date) {
