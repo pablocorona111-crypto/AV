@@ -105,7 +105,10 @@ export function RevisarEntregableDialog({
   // Ya no hay nada que corregir — las observaciones de correcciones pasadas ya no aportan,
   // se reemplazan por la info de que ya quedo aprobado/entregado.
   const yaResuelto = entregable.estado === "aprobado" || entregable.estado === "entregado";
-  const puedeComentar = esAprobador || esGestorRequisiciones(usuario) || esResponsable;
+  // Solo quien aprueba (community/superadmin) comenta — el colaborador (responsable) solo VE
+  // las observaciones que le dejan y sube el video de nuevo si piden cambios, no comenta su
+  // propio material. Mismo criterio que ya se aplico en guiones (puedeComentarGuion).
+  const puedeComentar = esAprobador;
   const linkActual = entregable.urlRevision || entregable.urlFinal;
   const preview = linkActual ? driveUrlAPreview(linkActual) : null;
   const fileIdActual = linkActual ? extraerFileIdDrive(linkActual) : null;

@@ -128,10 +128,13 @@ service cloud.firestore {
 
       allow delete: if esSuperadmin() || esLiderAudiovisual();
 
+      // Solo quien aprueba el VIDEO (community/superadmin) comenta — el responsable (colaborador)
+      // solo lee las observaciones y sube de nuevo, no comenta su propio material. Antes esto
+      // tambien dejaba comentar a lider/aprobador departamental (puedeAprobar(), pensado para
+      // REQUISICIONES) y al propio responsable — ninguno de los dos deberia poder.
       match /comentarios/{comentarioId} {
         allow read: if usuarioAutenticado();
-        allow create: if puedeAprobar() || esGestorRequisiciones() ||
-          get(/databases/$(database)/documents/entregables/$(entregableId)).data.responsableId == request.auth.uid;
+        allow create: if esSuperadmin() || esGestorRequisiciones();
         allow update: if false;
         allow delete: if esSuperadmin();
       }

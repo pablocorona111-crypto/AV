@@ -35,7 +35,7 @@ const schema = z.object({
   tipo: z.custom<CategoriaContenido>((v) => typeof v === "string" && v.length > 0, "Requerido"),
   estadoFinal: z.enum(["aprobado", "entregado"]),
   fecha: z.string().min(1, "Requerido"),
-  urlFinal: z.string().min(1, "Pega el link del video ya confirmado"),
+  urlFinal: z.string().min(1, "Sube el archivo primero"),
 });
 
 type FormValues = z.infer<typeof schema>;
