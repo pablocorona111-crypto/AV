@@ -41,6 +41,9 @@ export function MiniaturaVideo({
   const agotado = intento >= RETRASOS_REINTENTO_MS.length;
   const miniatura =
     fileId && !agotado && visible ? `/api/drive-thumbnail?id=${encodeURIComponent(fileId)}&r=${intento}` : null;
+  // Sin fileId no hay nada "procesando" — es un entregable pendiente que todavia no tiene
+  // material cargado, no un video recien subido esperando su miniatura.
+  const textoVacio = fileId ? (agotado ? "Sin vista previa" : "Procesando...") : "Sin material";
 
   const onError = () => {
     setVisible(false);
@@ -70,9 +73,7 @@ export function MiniaturaVideo({
       ) : (
         <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-bg-secondary">
           <FileVideo className="h-5 w-5 text-text-primary/30" />
-          <span className="text-[10px] font-medium text-muted-foreground">
-            {agotado ? "Sin vista previa" : "Procesando..."}
-          </span>
+          <span className="text-[10px] font-medium text-muted-foreground">{textoVacio}</span>
         </div>
       )}
 

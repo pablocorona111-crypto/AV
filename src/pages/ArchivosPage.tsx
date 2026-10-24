@@ -50,8 +50,10 @@ export function ArchivosPage() {
   const nombreDe = (id: string) => usuarios.find((u) => u.id === id)?.nombre ?? id;
 
   const terminoBusqueda = busqueda.trim().toLowerCase();
+  // Antes se ocultaba aqui cualquier entregable sin urlRevision/urlFinal — eso dejaba fuera a
+  // TODOS los pendientes (sin material cargado todavia), que es justo lo que el superadmin
+  // necesita ver en Archivos para poder subirles el material el mismo.
   const referencias = entregables.filter((e) => {
-    if (!(e.urlRevision || e.urlFinal)) return false;
     if (!pasaFiltroEstado(e.estado, filtroEstado)) return false;
     if (!dentroDelPeriodo(e.fechaEntregado ?? e.creadoEn, filtroPeriodo)) return false;
     if (!terminoBusqueda) return true;
@@ -191,7 +193,9 @@ export function ArchivosPage() {
                           </button>
                         </div>
                       ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
+                        <span className="text-xs text-muted-foreground">
+                          {fileId ? "Pendiente de aprobar" : "Sin material"}
+                        </span>
                       )}
                     </td>
                   </tr>
