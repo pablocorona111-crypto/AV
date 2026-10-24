@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
-import { Bell, Search, ChevronDown, LogOut, UserCog, Sun, Moon } from "lucide-react";
+import { Bell, Search, ChevronDown, LogOut, UserCog, Sun, Moon, Menu, Clapperboard } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useNotificaciones } from "@/hooks/useNotificaciones";
 import { useTema } from "@/hooks/useTema";
@@ -43,7 +43,7 @@ function NotificacionesMenu() {
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger className="relative rounded-md p-2 hover:bg-bg-secondary focus:outline-none" aria-label="Notificaciones">
+      <DropdownMenuTrigger className="relative shrink-0 rounded-md p-2 hover:bg-bg-secondary focus:outline-none" aria-label="Notificaciones">
         <Bell className="h-5 w-5 text-text-primary/70" />
         {noLeidas > 0 && (
           <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">
@@ -51,7 +51,7 @@ function NotificacionesMenu() {
           </span>
         )}
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80">
+      <DropdownMenuContent align="end" className="w-[min(20rem,calc(100vw-1.5rem))]">
         <DropdownMenuLabel>Notificaciones</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {notificaciones.length === 0 && (
@@ -90,7 +90,7 @@ function TemaToggle() {
     <button
       type="button"
       onClick={alternarTema}
-      className="rounded-md p-2 hover:bg-bg-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      className="shrink-0 rounded-md p-2 hover:bg-bg-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       aria-label={esOscuro ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
       title={esOscuro ? "Modo claro" : "Modo oscuro"}
     >
@@ -103,12 +103,28 @@ function TemaToggle() {
   );
 }
 
-export function Header() {
+export function Header({ onAbrirMenu }: { onAbrirMenu: () => void }) {
   const { usuario, esModoDemo, cambiarUsuarioDemo, logout } = useAuth();
 
   return (
-    <header className="flex h-16 shrink-0 items-center gap-4 border-b border-border bg-card px-6">
-      <div className="relative flex-1 max-w-xl">
+    <header className="flex h-16 shrink-0 items-center gap-1 border-b border-border bg-card px-3 sm:gap-3 sm:px-6">
+      <button
+        type="button"
+        onClick={onAbrirMenu}
+        className="shrink-0 rounded-md p-2 hover:bg-bg-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent lg:hidden"
+        aria-label="Abrir menu"
+      >
+        <Menu className="h-5 w-5 text-text-primary/70" />
+      </button>
+
+      <div className="flex min-w-0 flex-1 items-center gap-2 lg:hidden">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-accent">
+          <Clapperboard className="h-4 w-4 text-accent-foreground" />
+        </span>
+        <span className="truncate text-sm font-bold">AV CONTROL</span>
+      </div>
+
+      <div className="relative hidden max-w-xl flex-1 lg:block">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <input
           type="text"
@@ -128,7 +144,7 @@ export function Header() {
       <NotificacionesMenu />
 
       <DropdownMenu>
-        <DropdownMenuTrigger className="flex items-center gap-2 rounded-md p-1.5 hover:bg-bg-secondary focus:outline-none">
+        <DropdownMenuTrigger className="flex shrink-0 items-center gap-2 rounded-md p-1.5 hover:bg-bg-secondary focus:outline-none">
           <Avatar>
             {usuario?.avatarUrl && <AvatarImage src={usuario.avatarUrl} alt={usuario.nombre} />}
             <AvatarFallback>{usuario ? iniciales(usuario.nombre) : "?"}</AvatarFallback>

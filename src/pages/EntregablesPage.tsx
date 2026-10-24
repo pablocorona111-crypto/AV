@@ -132,7 +132,7 @@ export function EntregablesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-bold">Postproduccion y entregables</h1>
           <p className="text-sm text-muted-foreground">Guiones y versionado de entregables por proyecto.</p>
@@ -182,10 +182,10 @@ export function EntregablesPage() {
         </TabsContent>
 
         <TabsContent value="entregables" className="space-y-4">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-0.5">
               <Select value={filtroPeriodo} onValueChange={(v) => setFiltroPeriodo(v as FiltroPeriodoEntregables)}>
-                <SelectTrigger className="w-44">
+                <SelectTrigger className="w-full sm:w-44">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -200,7 +200,7 @@ export function EntregablesPage() {
                 Aplica solo a Aprobado/Entregado — lo pendiente siempre se ve completo.
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {usuario?.rol === "superadmin" && <CargarEntregableHistoricoDialog />}
               {puedeAsignarEntregables(usuario) && <NuevoEntregableDialog />}
             </div>

@@ -43,7 +43,7 @@ export function ProyectosPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-bold">Proyectos</h1>
           <p className="text-sm text-muted-foreground">Unidades de trabajo nacidas de requisiciones aprobadas.</p>
@@ -102,8 +102,8 @@ export function ProyectosPage() {
           {seleccionado && (
             <>
               <DialogHeader>
-                <div className="flex items-start justify-between">
-                  <div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
                     <p className="text-xs font-semibold text-muted-foreground">{seleccionado.folio}</p>
                     <DialogTitle>{seleccionado.nombre}</DialogTitle>
                   </div>
@@ -112,7 +112,7 @@ export function ProyectosPage() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="text-destructive hover:bg-red-50 dark:hover:bg-red-400/10"
+                      className="self-start text-destructive hover:bg-red-50 dark:hover:bg-red-400/10"
                       onClick={() => setAEliminar(seleccionado)}
                       disabled={eliminar.isPending}
                     >

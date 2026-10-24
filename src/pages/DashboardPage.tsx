@@ -162,7 +162,7 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-bold">¡Hola, {usuario?.nombre?.split(" ")[0] ?? "de nuevo"}!</h1>
           <p className="text-sm text-muted-foreground">Aqui tienes el resumen del departamento audiovisual.</p>
@@ -296,7 +296,7 @@ export function DashboardPage() {
             <CardTitle>Requisiciones recientes</CardTitle>
           </CardHeader>
           <CardContent className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[560px] text-sm">
               <thead>
                 <tr className="border-b border-border text-left text-xs text-muted-foreground">
                   <th className="py-2 font-medium">Folio</th>
@@ -364,8 +364,11 @@ export function DashboardPage() {
               <div className="min-w-0 flex-1">
                 <p className="text-sm">{a.texto}</p>
                 <p className="text-xs text-muted-foreground">{a.detalle}</p>
+                <p className="text-xs text-muted-foreground sm:hidden">
+                  {formatDistanceToNow(a.cuando, { addSuffix: true, locale: es })}
+                </p>
               </div>
-              <span className="shrink-0 text-xs text-muted-foreground">
+              <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">
                 {formatDistanceToNow(a.cuando, { addSuffix: true, locale: es })}
               </span>
             </div>

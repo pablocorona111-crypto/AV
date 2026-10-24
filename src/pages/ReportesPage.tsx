@@ -70,13 +70,13 @@ function SlideStat({
   iconBg?: string;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-border p-4">
-      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md ${iconBg}`}>
-        <Icon className="h-5 w-5 text-text-primary" />
+    <div className="flex items-center gap-2.5 rounded-lg border border-border p-3 sm:gap-3 sm:p-4">
+      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md sm:h-10 sm:w-10 ${iconBg}`}>
+        <Icon className="h-4 w-4 text-text-primary sm:h-5 sm:w-5" />
       </div>
       <div className="min-w-0">
         <p className="text-xl font-bold leading-tight">{value}</p>
-        <p className="truncate text-xs text-muted-foreground">{label}</p>
+        <p className="text-xs leading-snug text-muted-foreground">{label}</p>
       </div>
     </div>
   );
@@ -115,7 +115,7 @@ function ContenidoSlide({ datos }: { datos: DatosReporte }) {
   } = datos;
 
   return (
-    <div className="space-y-4 bg-card p-6">
+    <div className="space-y-4 bg-card p-4 sm:p-6">
       <div className="flex flex-col gap-1 border-b border-border pb-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -205,7 +205,7 @@ function ContenidoSlide({ datos }: { datos: DatosReporte }) {
               Sin entregables marcados como entregados en este periodo.
             </p>
           ) : (
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[480px] text-sm">
               <thead>
                 <tr className="border-b border-border text-left text-xs text-muted-foreground">
                   <th className="py-1.5 font-medium">Entregable</th>
@@ -304,12 +304,12 @@ function ReporteDeContenido() {
 
   return (
     <Card>
-      <CardHeader className="flex-row items-center justify-between">
+      <CardHeader className="gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <CardTitle>Reporte de contenido</CardTitle>
           <CardDescription>Que se entrego en el periodo — para ver que contenido ya se paso.</CardDescription>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <Select value={periodo} onValueChange={(v) => setPeriodo(v as Periodo)}>
             <SelectTrigger className="w-36">
               <SelectValue />
@@ -325,7 +325,7 @@ function ReporteDeContenido() {
           </Button>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-2 sm:p-5">
         {/* Version visible: responsiva, se ve completa en cualquier pantalla sin cortarse. */}
         <ContenidoSlide datos={datos} />
       </CardContent>
@@ -345,7 +345,7 @@ function ReporteDeContenido() {
 export function ReportesPage() {
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-bold">Reportes</h1>
           <p className="text-sm text-muted-foreground">Exportacion ejecutiva en PDF y Excel.</p>

@@ -1,4 +1,5 @@
 import { NavLink } from "react-router-dom";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
   Clapperboard,
   Home,
@@ -12,6 +13,7 @@ import {
   FileBarChart,
   Settings,
   Camera,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
@@ -31,18 +33,20 @@ const navItems = [
   { to: "/configuracion", label: "Configuracion", icon: Settings },
 ];
 
-export function Sidebar() {
+function ContenidoSidebar({ onNavegar }: { onNavegar?: () => void }) {
   const { usuario } = useAuth();
 
   return (
-    <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-border bg-card">
+    <>
       <div className="flex items-center gap-2 px-5 py-5">
-        <div className="flex h-9 w-9 items-center justify-center rounded-md bg-accent">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-accent">
           <Clapperboard className="h-5 w-5 text-accent-foreground" />
         </div>
-        <div>
+        <div className="min-w-0">
           <p className="text-sm font-bold leading-tight">AV CONTROL</p>
-          <p className="text-xs text-muted-foreground leading-tight">Grupo Ortiz | Audiovisual</p>
+          <p className="truncate text-xs text-muted-foreground leading-tight">
+            Grupo Ortiz | Audiovisual
+          </p>
         </div>
       </div>
 
@@ -54,6 +58,7 @@ export function Sidebar() {
               key={item.to}
               to={item.to}
               end={item.end}
+              onClick={onNavegar}
               className={({ isActive }) =>
                 cn(
                   "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-text-primary/80 transition-colors hover:bg-bg-secondary",
@@ -61,7 +66,7 @@ export function Sidebar() {
                 )
               }
             >
-              <item.icon className="h-4 w-4" />
+              <item.icon className="h-4 w-4 shrink-0" />
               {item.label}
             </NavLink>
           ))}
@@ -76,6 +81,35 @@ export function Sidebar() {
           <p className="mt-1 text-[11px] text-muted-foreground">320 GB de 1 TB</p>
         </div>
       )}
-    </aside>
+    </>
+  );
+}
+
+export function Sidebar({ abierto, onCerrar }: { abierto: boolean; onCerrar: () => void }) {
+  return (
+    <>
+      <aside className="hidden h-screen w-64 shrink-0 flex-col border-r border-border bg-card lg:flex">
+        <ContenidoSidebar />
+      </aside>
+
+      <DialogPrimitive.Root open={abierto} onOpenChange={(o) => !o && onCerrar()}>
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Overlay className="av-overlay fixed inset-0 z-50 lg:hidden" />
+          <DialogPrimitive.Content
+            className="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-border bg-card shadow-card lg:hidden"
+            aria-describedby={undefined}
+          >
+            <DialogPrimitive.Title className="sr-only">Menu de navegacion</DialogPrimitive.Title>
+            <DialogPrimitive.Close
+              className="absolute right-3 top-5 rounded-md p-1.5 text-text-primary/70 hover:bg-bg-secondary focus:outline-none"
+              aria-label="Cerrar menu"
+            >
+              <X className="h-4 w-4" />
+            </DialogPrimitive.Close>
+            <ContenidoSidebar onNavegar={onCerrar} />
+          </DialogPrimitive.Content>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
+    </>
   );
 }
