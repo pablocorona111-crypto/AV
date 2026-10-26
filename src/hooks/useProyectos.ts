@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { crearProyecto, eliminarProyecto, listarProyectos } from "@/services/proyectosService";
+import { actualizarProyecto, crearProyecto, eliminarProyecto, listarProyectos } from "@/services/proyectosService";
 import type { Proyecto } from "@/types";
 
 export function useProyectos() {
@@ -12,6 +12,14 @@ export function useCrearProyecto() {
     mutationFn: (
       data: Omit<Proyecto, "id" | "folio" | "etapaActual" | "porcentajeAvance" | "creadoEn" | "actualizadoEn">
     ) => crearProyecto(data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["proyectos"] }),
+  });
+}
+
+export function useActualizarProyecto() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, cambios }: { id: string; cambios: Partial<Proyecto> }) => actualizarProyecto(id, cambios),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["proyectos"] }),
   });
 }

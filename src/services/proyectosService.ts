@@ -1,4 +1,4 @@
-import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp, updateDoc } from "firebase/firestore";
 import { db, isFirebaseConfigured } from "@/lib/firebase";
 import { siguienteFolio } from "@/lib/folio";
 import { DEMO_PROYECTOS } from "@/data/demoData";
@@ -53,6 +53,17 @@ export async function crearProyecto(
 
   const ref = await addDoc(collection(db, COLECCION), { ...nuevo, creadoEn: serverTimestamp() });
   return { ...nuevo, id: ref.id };
+}
+
+/** Corregir etapa/avance de un proyecto directo (solo superadmin) — hace falta sobre todo para
+ * un proyecto creado nada mas para agrupar videos historicos ya entregados: nace siempre en
+ * "planeacion" 0% (crearProyecto no deja elegir otra cosa) y no habia forma de corregirlo despues. */
+export async function actualizarProyecto(id: string, cambios: Partial<Proyecto>): Promise<void> {
+  if (!isFirebaseConfigured || !db) {
+    demoStore = demoStore.map((p) => (p.id === id ? { ...p, ...cambios } : p));
+    return;
+  }
+  await updateDoc(doc(db, COLECCION, id), { ...cambios, actualizadoEn: new Date().toISOString() });
 }
 
 export async function eliminarProyecto(id: string): Promise<void> {

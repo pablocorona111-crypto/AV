@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
-import { useProyectos, useEliminarProyecto } from "@/hooks/useProyectos";
+import { useProyectos, useActualizarProyecto, useEliminarProyecto } from "@/hooks/useProyectos";
 import { useEntregables, useUsuarios } from "@/hooks/useCatalogos";
 import { useGuiones } from "@/hooks/useGuiones";
 import { useAuth } from "@/context/AuthContext";
 import { puedeCrearProyectos } from "@/lib/roles";
 import { ETAPAS_ORDEN, ETAPA_PROYECTO_LABELS, PRIORIDAD_BADGE, PRIORIDAD_LABELS } from "@/lib/labels";
-import { formatFecha } from "@/lib/utils";
+import { cn, formatFecha } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ export function ProyectosPage() {
   const [seleccionado, setSeleccionado] = useState<Proyecto | null>(null);
   const [aEliminar, setAEliminar] = useState<Proyecto | null>(null);
   const eliminar = useEliminarProyecto();
+  const actualizarProyecto = useActualizarProyecto();
 
   const nombreDe = (id: string) => usuarios.find((u) => u.id === id)?.nombre ?? "Usuario eliminado";
 
@@ -144,29 +145,54 @@ export function ProyectosPage() {
                 </div>
 
                 <div>
-                  <p className="mb-2 text-xs text-muted-foreground">Etapas</p>
+                  <p className="mb-2 text-xs text-muted-foreground">
+                    Etapas
+                    {usuario?.rol === "superadmin" && " · toca una etapa para corregirla"}
+                  </p>
                   <div className="flex flex-wrap gap-1.5">
                     {ETAPAS_ORDEN.map((etapa, i) => {
                       const idxActual = ETAPAS_ORDEN.indexOf(seleccionado.etapaActual);
                       const completada = i < idxActual;
                       const actual = etapa === seleccionado.etapaActual;
+                      const clases =
+                        "rounded-full px-2.5 py-1 text-[11px] font-medium " +
+                        (actual
+                          ? "bg-accent text-accent-foreground"
+                          : completada
+                          ? "bg-green-100 text-green-800 dark:bg-green-400/15 dark:text-green-300"
+                          : "bg-bg-secondary text-muted-foreground");
+                      if (usuario?.rol !== "superadmin") {
+                        return (
+                          <span key={etapa} className={clases}>
+                            {ETAPA_PROYECTO_LABELS[etapa]}
+                          </span>
+                        );
+                      }
                       return (
-                        <span
+                        <button
                           key={etapa}
-                          className={
-                            "rounded-full px-2.5 py-1 text-[11px] font-medium " +
-                            (actual
-                              ? "bg-accent text-accent-foreground"
-                              : completada
-                              ? "bg-green-100 text-green-800 dark:bg-green-400/15 dark:text-green-300"
-                              : "bg-bg-secondary text-muted-foreground")
-                          }
+                          type="button"
+                          onClick={() => {
+                            const porcentajeAvance = Math.round(((i + 1) / ETAPAS_ORDEN.length) * 100);
+                            actualizarProyecto.mutate({
+                              id: seleccionado.id,
+                              cambios: { etapaActual: etapa, porcentajeAvance },
+                            });
+                            setSeleccionado({ ...seleccionado, etapaActual: etapa, porcentajeAvance });
+                          }}
+                          className={cn(clases, "cursor-pointer hover:ring-2 hover:ring-accent/40")}
                         >
                           {ETAPA_PROYECTO_LABELS[etapa]}
-                        </span>
+                        </button>
                       );
                     })}
                   </div>
+                  {usuario?.rol === "superadmin" && (
+                    <p className="mt-1.5 text-[11px] text-muted-foreground">
+                      El porcentaje de avance se ajusta solo segun la etapa que elijas — no hace falta ponerlo a
+                      mano. Util para videos historicos ya entregados: toca directo "Entregado"/"Cerrado".
+                    </p>
+                  )}
                 </div>
 
                 <div>
