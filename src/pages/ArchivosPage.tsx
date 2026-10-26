@@ -4,7 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useIdToken } from "@/hooks/useIdToken";
 import { useProyectos } from "@/hooks/useProyectos";
 import { useEntregables, useUsuarios } from "@/hooks/useCatalogos";
-import { useCambiarEstadoEntregableDirecto } from "@/hooks/useEntregables";
+import { useAsignarProyectoEntregable, useCambiarEstadoEntregableDirecto } from "@/hooks/useEntregables";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -71,6 +71,52 @@ function EstadoEntregableCelda({ entregable, className }: { entregable: Entregab
         {TODOS_LOS_ESTADOS.map((estado) => (
           <SelectItem key={estado} value={estado}>
             {etiquetaEstadoEntregable({ estado, tipo: entregable.tipo })}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+const SIN_PROYECTO_VALOR = "sin-proyecto";
+
+/** Selector de proyecto directo en la fila — solo superadmin. Pensado para el historico cargado
+ * masivo: la mayoria quedo "Sin proyecto" y reasignarlo uno por uno abriendo el dialogo de cada
+ * entregable era lento. Mismo cambio que ya existia dentro de RevisarEntregableDialog, solo que
+ * aqui esta a la vista en toda la tabla sin tener que abrir nada. */
+function ProyectoEntregableCelda({
+  entregable,
+  proyectos,
+}: {
+  entregable: Entregable;
+  proyectos: { id: string; nombre: string }[];
+}) {
+  const { usuario } = useAuth();
+  const asignarProyecto = useAsignarProyectoEntregable();
+  const nombreProyecto = proyectos.find((p) => p.id === entregable.proyectoId)?.nombre;
+
+  if (usuario?.rol !== "superadmin") {
+    return <span className="text-muted-foreground">{nombreProyecto ?? "Sin proyecto"}</span>;
+  }
+
+  return (
+    <Select
+      value={entregable.proyectoId ?? SIN_PROYECTO_VALOR}
+      onValueChange={(v) =>
+        asignarProyecto.mutate({ id: entregable.id, proyectoId: v === SIN_PROYECTO_VALOR ? null : v })
+      }
+    >
+      <SelectTrigger
+        className="h-6 w-auto max-w-[180px] gap-1 border-none bg-transparent px-1.5 py-0 text-xs font-medium shadow-none hover:bg-bg-secondary"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent onClick={(e) => e.stopPropagation()}>
+        <SelectItem value={SIN_PROYECTO_VALOR}>Sin proyecto</SelectItem>
+        {proyectos.map((p) => (
+          <SelectItem key={p.id} value={p.id}>
+            {p.nombre}
           </SelectItem>
         ))}
       </SelectContent>
@@ -212,7 +258,9 @@ export function ArchivosPage() {
                     onClick={() => setSeleccionadoId(e.id)}
                   >
                     <td className="px-3 py-2 font-medium">{e.nombre}</td>
-                    <td className="px-3 py-2 text-muted-foreground">{proyectoDe(e.proyectoId)}</td>
+                    <td className="px-3 py-2" onClick={(ev) => ev.stopPropagation()}>
+                      <ProyectoEntregableCelda entregable={e} proyectos={proyectos} />
+                    </td>
                     <td className="px-3 py-2 text-muted-foreground">{CATEGORIA_CONTENIDO_LABELS[e.tipo]}</td>
                     <td className="px-3 py-2 text-muted-foreground">{nombreDe(e.responsableId)}</td>
                     <td className="px-3 py-2 text-muted-foreground">
@@ -300,7 +348,9 @@ export function ArchivosPage() {
                   <p className="truncate text-xs font-medium">{e.nombre}</p>
                   <Badge variant="outline" className="shrink-0 text-[10px]">{e.version}</Badge>
                 </div>
-                <p className="truncate text-[11px] text-muted-foreground">{proyectoDe(e.proyectoId)}</p>
+                <div className="truncate text-[11px]" onClick={(ev) => ev.stopPropagation()}>
+                  <ProyectoEntregableCelda entregable={e} proyectos={proyectos} />
+                </div>
                 <p className="truncate text-[10px] text-muted-foreground/80">
                   {e.fechaEntregado
                     ? `Entregado: ${formatFecha(e.fechaEntregado)}`

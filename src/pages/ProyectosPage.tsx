@@ -70,13 +70,22 @@ export function ProyectosPage() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <p className="text-xs text-muted-foreground">{p.departamentoSolicitante}</p>
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span>{ETAPA_PROYECTO_LABELS[p.etapaActual]}</span>
-                    <span className="font-medium">{p.porcentajeAvance}%</span>
+                {/* Un proyecto "recurrente" (sin fechaCompromiso — ver NuevoProyectoDialog, ej.
+                    "Video redes sociales" que se reusa cada semana) no tiene un final definido:
+                    una barra de avance ahi no significa nada ("0%" de que si nunca termina). */}
+                {p.fechaCompromiso ? (
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span>{ETAPA_PROYECTO_LABELS[p.etapaActual]}</span>
+                      <span className="font-medium">{p.porcentajeAvance}%</span>
+                    </div>
+                    <Progress value={p.porcentajeAvance} />
                   </div>
-                  <Progress value={p.porcentajeAvance} />
-                </div>
+                ) : (
+                  <Badge variant="accent" className="text-[10px]">
+                    Recurrente — sin fecha fija
+                  </Badge>
+                )}
                 <div className="flex items-center justify-between pt-1">
                   <div className="flex -space-x-2">
                     {p.colaboradoresIds.slice(0, 4).map((id) => (
@@ -85,7 +94,9 @@ export function ProyectosPage() {
                       </Avatar>
                     ))}
                   </div>
-                  <span className="text-xs text-muted-foreground">Entrega {formatFecha(p.fechaCompromiso)}</span>
+                  {p.fechaCompromiso && (
+                    <span className="text-xs text-muted-foreground">Entrega {formatFecha(p.fechaCompromiso)}</span>
+                  )}
                 </div>
               </CardContent>
             </Card>
