@@ -1,24 +1,34 @@
 import { useState } from "react";
-import { MapPin, Phone, Truck, ShieldCheck, Clock, CalendarPlus, Check } from "lucide-react";
-import { useSalidas } from "@/hooks/useCatalogos";
+import {
+  MapPin,
+  Phone,
+  Truck,
+  ShieldCheck,
+  Clock,
+  CalendarPlus,
+  Check,
+  CheckCircle2,
+  XCircle,
+} from "lucide-react";
+import { useAutorizarSalida, useSalidas } from "@/hooks/useCatalogos";
 import { useUsuarios } from "@/hooks/useCatalogos";
 import { useAuth } from "@/context/AuthContext";
 import { puedeAsignarEntregables } from "@/lib/roles";
-import { TIPO_ACTIVIDAD_SALIDA_LABELS } from "@/lib/labels";
+import {
+  BADGE_AUTORIZACION_SALIDA,
+  ETIQUETA_AUTORIZACION_SALIDA,
+  TIPO_ACTIVIDAD_SALIDA_LABELS,
+} from "@/lib/labels";
 import { formatFecha } from "@/lib/utils";
 import { agregarEventoCalendar } from "@/services/calendarService";
+import { crearNotificacion } from "@/services/notificacionesService";
+import type { DecisionSalida } from "@/services/catalogosService";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { NuevaSalidaDialog } from "@/components/salidas/NuevaSalidaDialog";
 import { DemoBadge } from "@/components/DemoBadge";
 import type { SalidaGrabacion } from "@/types";
-
-const BADGE_AUTORIZACION = {
-  pendiente: "warning",
-  autorizada: "success",
-  rechazada: "danger",
-} as const;
 
 /** Exporta UNA salida al Google Calendar personal de quien le da click — nunca automatico,
  * cada quien decide cual agregar a su propia agenda (ver `calendarService.ts`). */
@@ -75,7 +85,27 @@ export function SalidasPage() {
   const { usuario } = useAuth();
   const { data: salidas = [], isLoading } = useSalidas();
   const { data: usuarios = [] } = useUsuarios();
+  const autorizar = useAutorizarSalida();
+  const [decidiendo, setDecidiendo] = useState<string | null>(null);
   const nombreDe = (id: string) => usuarios.find((u) => u.id === id)?.nombre ?? "Usuario eliminado";
+  // Mismo criterio que crear la salida (lider/superadmin): quien la programa es quien la
+  // autoriza. El responsable de produccion nunca se autoriza su propia jornada.
+  const puedeAutorizar = puedeAsignarEntregables(usuario);
+
+  const decidir = async (salida: SalidaGrabacion, estadoAutorizacion: DecisionSalida) => {
+    setDecidiendo(salida.id);
+    try {
+      await autorizar.mutateAsync({ id: salida.id, estadoAutorizacion });
+      if (usuario && salida.responsableProduccionId !== usuario.id) {
+        crearNotificacion({
+          paraUsuarioId: salida.responsableProduccionId,
+          texto: `La salida "${salida.nombreJornada}" (${salida.folio}) fue ${estadoAutorizacion} por ${usuario.nombre}.`,
+        });
+      }
+    } finally {
+      setDecidiendo(null);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -113,12 +143,8 @@ export function SalidasPage() {
                   <p className="text-xs font-semibold text-muted-foreground">{s.folio}</p>
                   <CardTitle className="mt-0.5">{s.nombreJornada}</CardTitle>
                 </div>
-                <Badge variant={BADGE_AUTORIZACION[s.estadoAutorizacion]}>
-                  {s.estadoAutorizacion === "pendiente"
-                    ? "Pendiente autorizacion"
-                    : s.estadoAutorizacion === "autorizada"
-                    ? "Autorizada"
-                    : "Rechazada"}
+                <Badge variant={BADGE_AUTORIZACION_SALIDA[s.estadoAutorizacion]}>
+                  {ETIQUETA_AUTORIZACION_SALIDA[s.estadoAutorizacion]}
                 </Badge>
               </CardHeader>
               <CardContent className="space-y-2.5">
@@ -168,6 +194,31 @@ export function SalidasPage() {
                 )}
 
                 <BotonAgregarCalendar salida={s} />
+
+                {puedeAutorizar && s.estadoAutorizacion === "pendiente" && (
+                  <div className="flex flex-col gap-2 border-t border-border pt-3 sm:flex-row sm:justify-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={() => decidir(s, "rechazada")}
+                      disabled={decidiendo === s.id}
+                    >
+                      <XCircle className="h-3.5 w-3.5" /> Rechazar
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={() => decidir(s, "autorizada")}
+                      disabled={decidiendo === s.id}
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      {decidiendo === s.id ? "Guardando..." : "Autorizar"}
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}

@@ -9,25 +9,20 @@ import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DemoBadge } from "@/components/DemoBadge";
 import { formatFecha } from "@/lib/utils";
-import { etiquetaEstadoEntregable, ESTADO_ENTREGABLE_BADGE, ESTADO_REQUISICION_LABELS, ESTADO_REQUISICION_BADGE } from "@/lib/labels";
+import {
+  etiquetaEstadoEntregable,
+  ESTADO_ENTREGABLE_BADGE,
+  ESTADO_REQUISICION_LABELS,
+  ESTADO_REQUISICION_BADGE,
+  ETIQUETA_AUTORIZACION_SALIDA,
+  BADGE_AUTORIZACION_SALIDA,
+} from "@/lib/labels";
 
 const DIAS_SEMANA = ["L", "M", "M", "J", "V", "S", "D"];
 const MESES = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
 ];
-
-const ETIQUETA_AUTORIZACION_SALIDA: Record<string, string> = {
-  pendiente: "Pendiente",
-  autorizada: "Autorizada",
-  rechazada: "Rechazada",
-};
-
-const BADGE_AUTORIZACION_SALIDA: Record<string, BadgeVariant> = {
-  pendiente: "warning",
-  autorizada: "success",
-  rechazada: "danger",
-};
 
 type TipoEvento = "entrega" | "salida" | "requisicion";
 type EventoCalendario = {

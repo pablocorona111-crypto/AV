@@ -5,6 +5,7 @@ import { db, isFirebaseConfigured } from "@/lib/firebase";
 import {
   actualizarGestorRequisiciones,
   actualizarRolUsuario,
+  autorizarSalida,
   crearColaborador,
   crearSalida,
   listarColaboradores,
@@ -12,6 +13,7 @@ import {
   listarEquipoAV,
   listarSalidas,
   listarUsuarios,
+  type DecisionSalida,
 } from "@/services/catalogosService";
 import { crearInvitacion } from "@/services/invitacionesService";
 import type { Colaborador, Entregable, Invitacion, SalidaGrabacion, Usuario } from "@/types";
@@ -23,6 +25,15 @@ export function useCrearSalida() {
   return useMutation({
     mutationFn: (data: Omit<SalidaGrabacion, "id" | "folio" | "estadoAutorizacion" | "creadoEn">) =>
       crearSalida(data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["salidas"] }),
+  });
+}
+
+export function useAutorizarSalida() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, estadoAutorizacion }: { id: string; estadoAutorizacion: DecisionSalida }) =>
+      autorizarSalida(id, estadoAutorizacion),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["salidas"] }),
   });
 }

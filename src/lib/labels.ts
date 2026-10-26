@@ -1,5 +1,6 @@
 import type {
   CategoriaContenido,
+  EstadoAutorizacionSalida,
   EstadoEntregable,
   EstadoGuion,
   EstadoRequisicion,
@@ -144,6 +145,20 @@ export const TIPO_ACTIVIDAD_SALIDA_LABELS: Record<TipoActividadSalida, string> =
   cobertura_evento: "Cobertura de evento",
   grabacion_institucional: "Grabacion institucional",
   visita_tecnica: "Visita tecnica",
+};
+
+/** Unica fuente del texto/color del estado de autorizacion de una salida — lo usan la pagina
+ * de Salidas (badge de la tarjeta) y el Calendario (badge del evento del dia). */
+export const ETIQUETA_AUTORIZACION_SALIDA: Record<EstadoAutorizacionSalida, string> = {
+  pendiente: "Pendiente",
+  autorizada: "Autorizada",
+  rechazada: "Rechazada",
+};
+
+export const BADGE_AUTORIZACION_SALIDA: Record<EstadoAutorizacionSalida, BadgeVariant> = {
+  pendiente: "warning",
+  autorizada: "success",
+  rechazada: "danger",
 };
 
 export const ETAPAS_ORDEN: EtapaProyecto[] = [
