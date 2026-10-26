@@ -729,7 +729,13 @@ export function RevisarEntregableDialog({
           verdad del `max-h-[85vh]` del dialogo, en cualquier pantalla. */}
       <DialogContent
         className={cn(
-          "flex flex-col overflow-hidden",
+          // `overflow-hidden` solo no basta para pisar el `overflow-y-auto` del Dialog base
+          // (dialog.tsx): son grupos distintos para twMerge, asi que ambos quedan en el className
+          // final y gana el que el navegador aplique por orden de la hoja de estilos de Tailwind
+          // (overflow-y-auto, no overflow-hidden) — el dialogo COMPLETO terminaba scrolleando en
+          // vez de solo la fila de abajo, y el video se veia "cortado" sin verse el scrollbar.
+          // `overflow-y-hidden` es el mismo grupo que `overflow-y-auto`: pisa garantizado.
+          "flex flex-col overflow-hidden overflow-y-hidden",
           layoutLado ? "max-w-[95vw] lg:w-fit" : "max-w-3xl"
         )}
       >
