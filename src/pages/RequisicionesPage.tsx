@@ -3,11 +3,18 @@ import { Check, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useAsignarGestorRequisicion, useCambiarEstadoRequisicion, useRequisiciones } from "@/hooks/useRequisiciones";
 import { useUsuarios } from "@/hooks/useCatalogos";
-import { puedeAprobarRequisiciones, puedeGestionarUsuarios, esGestorRequisiciones } from "@/lib/roles";
+import { useProyectos } from "@/hooks/useProyectos";
+import {
+  puedeAprobarRequisiciones,
+  puedeGestionarUsuarios,
+  esGestorRequisiciones,
+  gestorTienePermiso,
+} from "@/lib/roles";
 import {
   CATEGORIA_CONTENIDO_LABELS,
   ESTADO_REQUISICION_BADGE,
   ESTADO_REQUISICION_LABELS,
+  ETAPA_PROYECTO_LABELS,
   PRIORIDAD_BADGE,
   PRIORIDAD_LABELS,
 } from "@/lib/labels";
@@ -36,6 +43,21 @@ const ESTADOS_KANBAN: EstadoRequisicion[] = [
   "en_planeacion",
   "rechazada",
 ];
+
+/**
+ * Firestore no puede tapar campos sueltos de un documento (permite o niega el doc completo),
+ * asi que los permisos de VISUALIZACION del gestor (`verInfoSolicitante`,
+ * `verInfoProyectoVinculado`, `verFechasYEstadosProduccion`) se aplican aqui, redactando el
+ * dato en pantalla. No son una barrera de seguridad — son lo que el lider configura para que
+ * el gestor no trabaje con informacion que no le corresponde.
+ */
+function SinPermiso({ compacto = false }: { compacto?: boolean }) {
+  return (
+    <span className="text-xs italic text-muted-foreground">
+      {compacto ? "Sin permiso" : "Sin permiso para ver esta informacion"}
+    </span>
+  );
+}
 
 function RequisicionCard({
   r,
@@ -89,8 +111,21 @@ function RequisicionDetalleDialog({
 }) {
   const { usuario } = useAuth();
   const { data: usuarios = [] } = useUsuarios();
+  const { data: proyectos = [] } = useProyectos();
   const asignarGestor = useAsignarGestorRequisicion();
   const gestoresDisponibles = usuarios.filter((u) => u.gestorRequisiciones?.activo);
+  const veSolicitante = gestorTienePermiso(usuario, "verInfoSolicitante");
+  const veProyecto = gestorTienePermiso(usuario, "verInfoProyectoVinculado");
+  const veProduccion = gestorTienePermiso(usuario, "verFechasYEstadosProduccion");
+
+  // El vinculo real vive del lado del proyecto (`requisicionesVinculadas`, lo que escribe
+  // NuevoProyectoDialog); `proyectosVinculados` de la requisicion se contempla por si algun
+  // flujo lo llena mas adelante.
+  const proyectosVinculados = r
+    ? proyectos.filter(
+        (p) => p.requisicionesVinculadas?.includes(r.id) || r.proyectosVinculados?.includes(p.id)
+      )
+    : [];
 
   if (!r) return null;
   return (
@@ -108,11 +143,11 @@ function RequisicionDetalleDialog({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <p className="text-xs text-muted-foreground">Solicitado por</p>
-              <p className="font-medium">{r.nombreSolicitante}</p>
+              {veSolicitante ? <p className="font-medium">{r.nombreSolicitante}</p> : <SinPermiso />}
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Departamento</p>
-              <p className="font-medium">{r.departamentoSolicitante}</p>
+              {veSolicitante ? <p className="font-medium">{r.departamentoSolicitante}</p> : <SinPermiso />}
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Tipo de contenido</p>
@@ -128,7 +163,7 @@ function RequisicionDetalleDialog({
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Fecha requerida</p>
-              <p className="font-medium">{formatFecha(r.fechaRequerida)}</p>
+              {veProduccion ? <p className="font-medium">{formatFecha(r.fechaRequerida)}</p> : <SinPermiso />}
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Cantidad entregables</p>
@@ -161,6 +196,37 @@ function RequisicionDetalleDialog({
             <div>
               <p className="text-xs text-muted-foreground">Observaciones</p>
               <p className="whitespace-pre-wrap">{r.observaciones}</p>
+            </div>
+          )}
+
+          {/* Si no tiene el permiso, el bloque se muestra igual con el placeholder: ocultarlo
+              solo cuando hay proyecto delataria por omision cuales si tienen uno. */}
+          {(!veProyecto || proyectosVinculados.length > 0) && (
+            <div>
+              <p className="text-xs text-muted-foreground">Proyecto vinculado</p>
+              {!veProyecto ? (
+                <SinPermiso />
+              ) : (
+                <div className="space-y-1">
+                  {proyectosVinculados.map((p) => (
+                    <div key={p.id} className="flex flex-wrap items-center gap-2">
+                      <span className="font-medium">{p.nombre}</span>
+                      {veProduccion ? (
+                        <>
+                          <Badge variant="outline">{ETAPA_PROYECTO_LABELS[p.etapaActual]}</Badge>
+                          {p.fechaCompromiso && (
+                            <span className="text-xs text-muted-foreground">
+                              Compromiso: {formatFecha(p.fechaCompromiso)}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <SinPermiso compacto />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -206,6 +272,8 @@ export function RequisicionesPage() {
 
   const puedeAprobar = puedeAprobarRequisiciones(usuario);
   const esGestor = esGestorRequisiciones(usuario);
+  const veSolicitante = gestorTienePermiso(usuario, "verInfoSolicitante");
+  const veProduccion = gestorTienePermiso(usuario, "verFechasYEstadosProduccion");
   // Community genera sus propias requisiciones — "mias" ya incluye lo que le asignen,
   // sin necesidad de una pestaña aparte de "Asignadas a mi".
   const esCommunity = usuario?.rol === "community";
@@ -245,12 +313,16 @@ export function RequisicionesPage() {
           <TableRow key={r.id} className="cursor-pointer" onClick={() => setSeleccionadaId(r.id)}>
             <TableCell className="font-medium">{r.folio}</TableCell>
             <TableCell>{r.titulo}</TableCell>
-            <TableCell className="text-muted-foreground">{r.departamentoSolicitante}</TableCell>
+            <TableCell className="text-muted-foreground">
+              {veSolicitante ? r.departamentoSolicitante : <SinPermiso compacto />}
+            </TableCell>
             <TableCell>{CATEGORIA_CONTENIDO_LABELS[r.tipoContenido]}</TableCell>
             <TableCell>
               <Badge variant={PRIORIDAD_BADGE[r.prioridad]}>{PRIORIDAD_LABELS[r.prioridad]}</Badge>
             </TableCell>
-            <TableCell className="text-muted-foreground">{formatFecha(r.fechaRequerida)}</TableCell>
+            <TableCell className="text-muted-foreground">
+              {veProduccion ? formatFecha(r.fechaRequerida) : <SinPermiso compacto />}
+            </TableCell>
             <TableCell>
               <Badge variant={ESTADO_REQUISICION_BADGE[r.estado]}>{ESTADO_REQUISICION_LABELS[r.estado]}</Badge>
             </TableCell>

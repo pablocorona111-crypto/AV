@@ -7,6 +7,22 @@
         { "fieldPath": "paraUsuarioId", "order": "ASCENDING" },
         { "fieldPath": "creadoEn", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "requisiciones",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "solicitanteId", "order": "ASCENDING" },
+        { "fieldPath": "creadoEn", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "requisiciones",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "responsableVentaId", "order": "ASCENDING" },
+        { "fieldPath": "creadoEn", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

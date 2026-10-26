@@ -1,4 +1,14 @@
-import { addDoc, collection, doc, getDocs, orderBy, query, serverTimestamp, updateDoc } from "firebase/firestore";
+import {
+  addDoc,
+  collection,
+  doc,
+  getDocs,
+  orderBy,
+  query,
+  serverTimestamp,
+  updateDoc,
+  where,
+} from "firebase/firestore";
 import { db, isFirebaseConfigured } from "@/lib/firebase";
 import { siguienteFolio as siguienteFolioReal } from "@/lib/folio";
 import { DEMO_REQUISICIONES } from "@/data/demoData";
@@ -9,12 +19,48 @@ const COLECCION = "requisiciones";
 /** En modo demo opera sobre un arreglo en memoria — se reinicia al recargar la pagina. */
 let demoStore: Requisicion[] = [...DEMO_REQUISICIONES];
 
-export async function listarRequisiciones(): Promise<Requisicion[]> {
+const masNuevaPrimero = (a: Requisicion, b: Requisicion) => (a.creadoEn < b.creadoEn ? 1 : -1);
+
+/**
+ * Alcance de lectura cuando el gestor NO tiene `verRequisicionesDeOtros`.
+ *
+ * Firestore evalua las reglas de una QUERY de coleccion contra la FORMA de la query (sus
+ * `where`), no documento por documento: si la regla depende de `resource.data.campo == uid`
+ * y la query no trae ese `where`, rechaza la query COMPLETA con permission-denied (no
+ * filtra en silencio). Por eso aqui se piden dos queries acotadas — una por cada rama de
+ * `allow read` que aplica al gestor — en vez de una sola sin filtro.
+ *
+ * No se usa un unico `or()` porque cada rama necesita ser probable por separado contra la
+ * regla; dos queries acotadas y un merge local es el camino seguro.
+ */
+export type AlcanceRequisiciones = { uid: string } | null;
+
+export async function listarRequisiciones(alcance: AlcanceRequisiciones = null): Promise<Requisicion[]> {
   if (!isFirebaseConfigured || !db) {
-    return [...demoStore].sort((a, b) => (a.creadoEn < b.creadoEn ? 1 : -1));
+    const visibles = alcance
+      ? demoStore.filter((r) => r.solicitanteId === alcance.uid || r.responsableVentaId === alcance.uid)
+      : demoStore;
+    return [...visibles].sort(masNuevaPrimero);
   }
-  const snap = await getDocs(query(collection(db, COLECCION), orderBy("creadoEn", "desc")));
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Requisicion);
+
+  const coleccion = collection(db, COLECCION);
+
+  if (!alcance) {
+    const snap = await getDocs(query(coleccion, orderBy("creadoEn", "desc")));
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Requisicion);
+  }
+
+  const [propias, asignadas] = await Promise.all([
+    getDocs(query(coleccion, where("solicitanteId", "==", alcance.uid), orderBy("creadoEn", "desc"))),
+    getDocs(query(coleccion, where("responsableVentaId", "==", alcance.uid), orderBy("creadoEn", "desc"))),
+  ]);
+
+  // Una requisicion creada por el gestor y asignada a el mismo cae en las dos queries.
+  const porId = new Map<string, Requisicion>();
+  [...propias.docs, ...asignadas.docs].forEach((d) => {
+    porId.set(d.id, { id: d.id, ...d.data() } as Requisicion);
+  });
+  return [...porId.values()].sort(masNuevaPrimero);
 }
 
 function siguienteFolio(): string {
