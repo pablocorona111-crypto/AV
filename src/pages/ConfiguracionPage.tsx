@@ -26,6 +26,16 @@ const PERMISO_LABELS: Record<keyof Omit<GestorRequisicionesPermisos, "activo">, 
   notificacionesSistema: "Recibir notificaciones dentro del sistema",
 };
 
+/**
+ * Honestidad en la configuracion: estos dos permisos se guardan, pero todavia no hay nada en
+ * la app que los aplique porque la funcionalidad que gobiernan no existe. Sin esta nota, el
+ * lider cree que esta apagando algo y no pasa nada.
+ */
+const PERMISO_SIN_FUNCIONALIDAD: Partial<Record<keyof typeof PERMISO_LABELS, string>> = {
+  adjuntarArchivos: "Aun no hay forma de adjuntar archivos a una requisicion en la app.",
+  notificacionesCorreo: "Aun no hay envio de correo (requiere Cloud Functions, ver SECURITY.md).",
+};
+
 export function ConfiguracionPage() {
   const { usuario: usuarioActual } = useAuth();
   const { data: usuarios = [] } = useUsuarios();
@@ -150,14 +160,21 @@ export function ConfiguracionPage() {
           </CardHeader>
           <CardContent className="grid grid-cols-1 gap-2 md:grid-cols-2">
             {(Object.keys(PERMISO_LABELS) as Array<keyof typeof PERMISO_LABELS>).map((key) => (
-              <label key={key} className="flex items-center gap-2 text-sm">
+              <label key={key} className="flex items-start gap-2 text-sm">
                 <input
                   type="checkbox"
                   checked={permisos[key]}
                   onChange={(e) => setPermisos({ ...permisos, [key]: e.target.checked })}
-                  className="h-4 w-4 rounded border-border"
+                  className="mt-0.5 h-4 w-4 rounded border-border"
                 />
-                {PERMISO_LABELS[key]}
+                <span>
+                  {PERMISO_LABELS[key]}
+                  {PERMISO_SIN_FUNCIONALIDAD[key] && (
+                    <span className="block text-xs text-muted-foreground">
+                      {PERMISO_SIN_FUNCIONALIDAD[key]}
+                    </span>
+                  )}
+                </span>
               </label>
             ))}
           </CardContent>

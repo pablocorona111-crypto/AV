@@ -1,4 +1,6 @@
-import type { Role, Usuario } from "@/types";
+import type { GestorRequisicionesPermisos, Role, Usuario } from "@/types";
+
+export type PermisoGestor = keyof Omit<GestorRequisicionesPermisos, "activo">;
 
 export const ROLE_LABELS: Record<Role, string> = {
   superadmin: "Superadministrador",
@@ -20,6 +22,32 @@ export const ROLE_LABELS: Record<Role, string> = {
 export function esGestorRequisiciones(usuario: Usuario | null): boolean {
   if (!usuario) return false;
   return usuario.rol === "community" || Boolean(usuario.gestorRequisiciones?.activo);
+}
+
+/**
+ * Los 9 sub-permisos del gestor de requisiciones SOLO limitan a quien tiene el permiso
+ * delegado encendido (`gestorRequisiciones.activo`). Nadie mas se ve afectado:
+ *
+ * - superadmin / lider / aprobador departamental: acceso total, nunca se restringen
+ *   (aunque alguien les encienda el flag de gestor).
+ * - rol "community" sin mapa `gestorRequisiciones`: no hay configuracion granular que
+ *   aplicar — se comporta como siempre (sin restricciones nuevas).
+ * - usuario desconocido/aun sin cargar: no se aplica restriccion (evita ocultar datos o
+ *   bloquear queries por un estado transitorio de carga).
+ *
+ * Devuelve `true` = "no hay restriccion que lo impida". Es intencional que el caso por
+ * defecto sea permisivo para todos los demas roles, y restrictivo SOLO para el gestor
+ * delegado: un permiso ausente en su mapa cuenta como denegado.
+ *
+ * Esto es autorizacion de UI. Lo que tiene valor de seguridad real esta ademas en
+ * firestore.rules (crear en nombre de terceros, editar tras enviar, adjuntar, ver de otros).
+ */
+export function gestorTienePermiso(usuario: Usuario | null | undefined, permiso: PermisoGestor): boolean {
+  if (!usuario) return true;
+  if (usuario.rol === "superadmin" || puedeAprobarRequisiciones(usuario)) return true;
+  const permisos = usuario.gestorRequisiciones;
+  if (!permisos?.activo) return true;
+  return permisos[permiso] === true;
 }
 
 export function puedeVerMetricasGlobales(usuario: Usuario | null): boolean {

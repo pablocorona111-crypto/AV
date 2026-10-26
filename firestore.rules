@@ -39,6 +39,22 @@ service cloud.firestore {
         );
     }
 
+    // --- Sub-permisos granulares del gestor de requisiciones (ver SECURITY.md) ---
+    // Solo limitan a quien tiene el permiso DELEGADO encendido (`gestorRequisiciones.activo`).
+    // El rol "community" sin mapa de permisos, y cualquier otro rol, no se ven afectados.
+    function permisosGestor() {
+      return datosUsuario().get('gestorRequisiciones', {});
+    }
+
+    function esGestorDelegado() {
+      return usuarioAutenticado() && permisosGestor().get('activo', false) == true;
+    }
+
+    /** true = no hay restriccion que lo impida (no es gestor delegado, o el permiso esta activo). */
+    function gestorPuede(permiso) {
+      return !esGestorDelegado() || permisosGestor().get(permiso, false) == true;
+    }
+
     function invitacionDe(correo) {
       return get(/databases/$(database)/documents/invitaciones/$(correo)).data;
     }
@@ -90,15 +106,29 @@ service cloud.firestore {
     }
 
     match /requisiciones/{reqId} {
+      // Las ramas que NO dependen de `resource` (rol, o `verRequisicionesDeOtros`) dejan pasar
+      // una query sin `where`. Las que si dependen de `resource` obligan a que la query venga
+      // acotada por ese campo — ver `listarRequisiciones()` en requisicionesService.ts.
       allow read: if usuarioAutenticado() && (
         esSuperadmin() || esLiderAudiovisual() || esAprobadorDepartamental() ||
+        (esGestorDelegado() && permisosGestor().get('verRequisicionesDeOtros', false) == true) ||
         resource.data.solicitanteId == request.auth.uid ||
         (esGestorRequisiciones() && resource.data.responsableVentaId == request.auth.uid)
       );
 
-      allow create: if usuarioAutenticado();
+      // Sin `crearEnNombreDeTerceros`, el gestor solo puede crear requisiciones a su propio
+      // nombre. El resto de roles (solicitante, colaborador, community) ya solo creaban con su
+      // propio uid desde la app — quien crea por terceros es el aprobador/lider o el gestor
+      // autorizado.
+      allow create: if usuarioAutenticado() && (
+        request.resource.data.solicitanteId == request.auth.uid ||
+        puedeAprobar() ||
+        (esGestorDelegado() && permisosGestor().get('crearEnNombreDeTerceros', false) == true)
+      );
 
       // Un gestor no puede aprobar/rechazar, ni auto-asignarse, ni tocar campos restringidos.
+      // Ademas: sin `editarDespuesDeEnviar` solo edita mientras sigue en borrador (igual que un
+      // solicitante normal), y sin `adjuntarArchivos` no puede tocar adjuntos ni referencias.
       allow update: if usuarioAutenticado() && (
         puedeAprobar() ||
         (
@@ -106,7 +136,15 @@ service cloud.firestore {
           resource.data.responsableVentaId == request.auth.uid &&
           request.resource.data.estado == resource.data.estado &&
           request.resource.data.responsableVentaId == resource.data.responsableVentaId &&
-          request.resource.data.prioridad == resource.data.prioridad
+          request.resource.data.prioridad == resource.data.prioridad &&
+          (gestorPuede('editarDespuesDeEnviar') || resource.data.estado == 'borrador') &&
+          (
+            gestorPuede('adjuntarArchivos') ||
+            (
+              request.resource.data.get('archivosAdjuntos', []) == resource.data.get('archivosAdjuntos', []) &&
+              request.resource.data.get('referenciasVisuales', []) == resource.data.get('referenciasVisuales', [])
+            )
+          )
         ) ||
         (resource.data.solicitanteId == request.auth.uid && resource.data.estado == 'borrador')
       );

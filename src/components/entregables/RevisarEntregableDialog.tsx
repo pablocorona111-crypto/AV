@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { Check, CheckCircle2, Clock, Download, ExternalLink, Link2, Pencil, RotateCcw, Upload, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { puedeAprobarEntregables, puedeSubirVideos, esGestorRequisiciones } from "@/lib/roles";
+import { puedeAprobarEntregables, puedeSubirVideos, esGestorRequisiciones, gestorTienePermiso } from "@/lib/roles";
 import {
   useAdjuntarMaterialHistorico,
   useAgregarComentario,
@@ -142,13 +142,24 @@ export function RevisarEntregableDialog({
   // Para un link suelto, un estado vacio o el aviso de conectar Drive, un dialogo angosto se lee mejor.
   const layoutLado = modoVisor === "player" || modoVisor === "preview";
 
+  /**
+   * Respeta `notificacionesSistema` del gestor de requisiciones: si el lider se lo apago, no se
+   * le crea la notificacion dentro del sistema. Para cualquier otro rol (y mientras la lista de
+   * usuarios aun no carga) no hay restriccion y se notifica igual que siempre.
+   */
+  const notificarA = (paraUsuarioId: string, texto: string) => {
+    const destinatario = usuarios.find((u) => u.id === paraUsuarioId);
+    if (!gestorTienePermiso(destinatario, "notificacionesSistema")) return;
+    crearNotificacion({ paraUsuarioId, texto, entregableId: entregable.id });
+  };
+
   /** Avisa a quien aprueba (community) que hay material nuevo o actualizado para revisar —
    * no se sabe de antemano quien vera el dialogo, asi que se manda a todos los que podrian
    * aprobar (mismo criterio que el boton Aprobar: `esGestorRequisiciones`/superadmin). */
   const notificarRevisores = (texto: string) => {
     usuarios
       .filter((u) => u.id !== usuario.id && (u.rol === "superadmin" || esGestorRequisiciones(u)))
-      .forEach((u) => crearNotificacion({ paraUsuarioId: u.id, texto, entregableId: entregable.id }));
+      .forEach((u) => notificarA(u.id, texto));
   };
 
   const onSeleccionarArchivo = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -205,29 +216,20 @@ export function RevisarEntregableDialog({
   const onAprobar = async () => {
     if (!linkActual) return;
     await aprobar.mutateAsync({ id: entregable.id, aprobadorId: usuario.id, urlFinal: linkActual });
-    crearNotificacion({
-      paraUsuarioId: entregable.responsableId,
-      texto: `Tu video "${entregable.nombre}" fue aprobado.`,
-      entregableId: entregable.id,
-    });
+    notificarA(entregable.responsableId, `Tu video "${entregable.nombre}" fue aprobado.`);
   };
 
   const onSolicitarCorrecciones = async () => {
     await solicitarCorrecciones.mutateAsync(entregable.id);
-    crearNotificacion({
-      paraUsuarioId: entregable.responsableId,
-      texto: `Pidieron cambios en tu video "${entregable.nombre}". Revisa las observaciones.`,
-      entregableId: entregable.id,
-    });
+    notificarA(
+      entregable.responsableId,
+      `Pidieron cambios en tu video "${entregable.nombre}". Revisa las observaciones.`
+    );
   };
 
   const onMarcarEntregado = async () => {
     await marcarEntregado.mutateAsync(entregable.id);
-    crearNotificacion({
-      paraUsuarioId: entregable.responsableId,
-      texto: `Tu video "${entregable.nombre}" ya quedo entregado.`,
-      entregableId: entregable.id,
-    });
+    notificarA(entregable.responsableId, `Tu video "${entregable.nombre}" ya quedo entregado.`);
   };
 
   const onEmpezarRenombrar = () => {
@@ -255,11 +257,10 @@ export function RevisarEntregableDialog({
     setMomento("");
 
     if (!esResponsable) {
-      crearNotificacion({
-        paraUsuarioId: entregable.responsableId,
-        texto: `${usuario.nombre} dejo una observacion en "${entregable.nombre}"${momento.trim() ? ` (min ${momento.trim()})` : ""}`,
-        entregableId: entregable.id,
-      });
+      notificarA(
+        entregable.responsableId,
+        `${usuario.nombre} dejo una observacion en "${entregable.nombre}"${momento.trim() ? ` (min ${momento.trim()})` : ""}`
+      );
     }
   };
 

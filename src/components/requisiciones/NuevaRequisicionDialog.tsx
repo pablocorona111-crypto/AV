@@ -4,8 +4,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Plus } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { esGestorRequisiciones } from "@/lib/roles";
+import { esGestorRequisiciones, gestorTienePermiso } from "@/lib/roles";
 import { useCrearRequisicion } from "@/hooks/useRequisiciones";
+import { useUsuarios } from "@/hooks/useCatalogos";
 import { CATEGORIA_CONTENIDO_LABELS, PRIORIDAD_LABELS } from "@/lib/labels";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,9 +27,12 @@ import type { CategoriaContenido, Prioridad } from "@/types";
 
 const FORMATOS = ["Horizontal", "Vertical", "Ambos"] as const;
 
+/** Valor del Select cuando la requisicion va a nombre de quien la esta creando. */
+const SOLICITANTE_YO = "yo";
+
 const schema = z.object({
   titulo: z.string().min(3, "Minimo 3 caracteres"),
-  nombreSolicitante: z.string().optional(),
+  solicitanteId: z.string().optional(),
   tipoContenido: z.custom<CategoriaContenido>((v) => typeof v === "string" && v.length > 0, "Requerido"),
   formatoSolicitado: z.enum(FORMATOS),
   objetivo: z.string().min(5, "Requerido"),
@@ -48,7 +52,11 @@ export function NuevaRequisicionDialog() {
   const [error, setError] = useState<string | null>(null);
   const { usuario } = useAuth();
   const crear = useCrearRequisicion();
+  const { data: usuarios = [] } = useUsuarios();
   const esGestor = esGestorRequisiciones(usuario);
+  // Sin este permiso la requisicion sale forzosamente a nombre de quien la crea — el
+  // `solicitanteId` tambien queda bloqueado en firestore.rules (`allow create`), no solo aqui.
+  const puedeCrearPorTerceros = esGestor && gestorTienePermiso(usuario, "crearEnNombreDeTerceros");
 
   const {
     register,
@@ -58,18 +66,30 @@ export function NuevaRequisicionDialog() {
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { necesitaGrabacion: false, cantidadEntregables: 1, formatoSolicitado: "Horizontal" },
+    defaultValues: {
+      necesitaGrabacion: false,
+      cantidadEntregables: 1,
+      formatoSolicitado: "Horizontal",
+      solicitanteId: SOLICITANTE_YO,
+    },
   });
 
   const onSubmit = async (values: FormValues) => {
     if (!usuario) return;
     setError(null);
+    // Antes este dialogo solo cambiaba el NOMBRE mostrado (texto libre) y dejaba el
+    // `solicitanteId` siempre en el gestor — la requisicion decia una cosa y pertenecia a otra.
+    // Ahora se elige a un usuario real, asi el dueño del documento tambien es el correcto.
+    const tercero =
+      puedeCrearPorTerceros && values.solicitanteId && values.solicitanteId !== SOLICITANTE_YO
+        ? usuarios.find((u) => u.id === values.solicitanteId)
+        : undefined;
     try {
       await crear.mutateAsync({
         titulo: values.titulo,
         departamentoSolicitante: "Marketing",
-        nombreSolicitante: esGestor && values.nombreSolicitante ? values.nombreSolicitante : usuario.nombre,
-        solicitanteId: usuario.id,
+        nombreSolicitante: tercero?.nombre ?? usuario.nombre,
+        solicitanteId: tercero?.id ?? usuario.id,
         ...(esGestor ? { responsableVentaId: usuario.id, responsableVentaCorreo: usuario.correo } : {}),
         tipoContenido: values.tipoContenido,
         formatoSolicitado: values.formatoSolicitado,
@@ -109,10 +129,33 @@ export function NuevaRequisicionDialog() {
             {errors.titulo && <p className="text-xs text-destructive">{errors.titulo.message}</p>}
           </div>
 
-          {esGestor && (
+          {puedeCrearPorTerceros && (
             <div className="space-y-1.5">
-              <Label htmlFor="nombreSolicitante">Solicitado por (nombre de la persona/area)</Label>
-              <Input id="nombreSolicitante" {...register("nombreSolicitante")} placeholder="Ej. Equipo de ventas" />
+              <Label>Solicitado por</Label>
+              <Controller
+                control={control}
+                name="solicitanteId"
+                render={({ field }) => (
+                  <Select value={field.value ?? SOLICITANTE_YO} onValueChange={field.onChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={SOLICITANTE_YO}>Yo mismo ({usuario?.nombre})</SelectItem>
+                      {usuarios
+                        .filter((u) => u.id !== usuario?.id && u.activo)
+                        .map((u) => (
+                          <SelectItem key={u.id} value={u.id}>
+                            {u.nombre}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              <p className="text-xs text-muted-foreground">
+                La requisicion queda a nombre de esta persona. Tu sigues como gestor responsable.
+              </p>
             </div>
           )}
 
