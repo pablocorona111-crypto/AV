@@ -1,15 +1,31 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { Check, CheckCircle2, Clock, Download, ExternalLink, Link2, Pencil, RotateCcw, Upload, X } from "lucide-react";
+import {
+  Check,
+  CheckCircle2,
+  Clock,
+  Download,
+  ExternalLink,
+  Link2,
+  Monitor,
+  Pencil,
+  Plus,
+  RotateCcw,
+  Smartphone,
+  Upload,
+  X,
+} from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { puedeAprobarEntregables, puedeSubirVideos, esGestorRequisiciones, gestorTienePermiso } from "@/lib/roles";
 import {
   useAdjuntarMaterialHistorico,
   useAgregarComentario,
+  useAgregarVersionAlterna,
   useAprobarEntregable,
   useAsignarProyectoEntregable,
   useComentarios,
   useEnviarARevision,
   useEtiquetarOrientacion,
+  useEtiquetarOrientacionAlt,
   useMarcarEntregado,
   useReasignarResponsableEntregable,
   useRenombrarEntregable,
@@ -76,6 +92,13 @@ export function RevisarEntregableDialog({
   const [orientacion, setOrientacion] = useState<"vertical" | "horizontal" | null>(null);
   const [ratioReal, setRatioReal] = useState<number | null>(null);
   const [orientacionSubida, setOrientacionSubida] = useState<"vertical" | "horizontal">("horizontal");
+  // Que version se esta viendo/reproduciendo — "principal" es la de siempre (urlRevision/
+  // urlFinal). "alt" es la version adicional en la otra orientacion (ver agregarVersionAlterna).
+  const [slotActivo, setSlotActivo] = useState<"principal" | "alt">("principal");
+  const inputAltRef = useRef<HTMLInputElement>(null);
+  const [subiendoAlt, setSubiendoAlt] = useState(false);
+  const [progresoAlt, setProgresoAlt] = useState(0);
+  const [errorSubidaAlt, setErrorSubidaAlt] = useState<string | null>(null);
   const [editandoNombre, setEditandoNombre] = useState(false);
   const [nombreEditado, setNombreEditado] = useState("");
   // El boton "Descargar" apunta a `/api/drive-video`, que ahora exige sesion de AV Control.
@@ -84,17 +107,26 @@ export function RevisarEntregableDialog({
   const { token: idToken } = useIdToken();
   const inputArchivoRef = useRef<HTMLInputElement>(null);
   const renombrar = useRenombrarEntregable();
+  const agregarVersionAlterna = useAgregarVersionAlterna();
+  const etiquetarOrientacionAlt = useEtiquetarOrientacionAlt();
 
   useEffect(() => {
-    // `open` tambien dispara el reset: si el reproductor propio fallo una vez (ej. un hipo de
-    // red al pedir el video a Drive), sin esto se quedaba en modo "link" para siempre en esa
-    // sesion, aunque el motivo haya sido pasajero. Reabrir el dialogo le da otra oportunidad.
+    // Nuevo entregable o se reabrio el dialogo: siempre arranca viendo la version principal.
+    setSlotActivo("principal");
+    setEditandoNombre(false);
+  }, [entregable?.id, open]);
+
+  useEffect(() => {
+    // `slotActivo` tambien dispara el reset: cambiar de pestaña (vertical/horizontal) es, para
+    // el reproductor, un video distinto — sin esto se quedaba con el error/ratio del que se
+    // estaba viendo antes. Si el reproductor propio fallo una vez (ej. un hipo de red al pedir
+    // el video a Drive), sin esto se quedaba en modo "link" para siempre en esa sesion, aunque
+    // el motivo haya sido pasajero. Reabrir el dialogo (o cambiar de pestaña) le da otra oportunidad.
     setErrorPlayerPropio(null);
     setRatioReal(null);
     // Si ya quedo etiquetado al subirlo, se usa de una vez — sin esperar a que cargue el video (sin parpadeo).
-    setOrientacion(entregable?.orientacionVideo ?? null);
-    setEditandoNombre(false);
-  }, [entregable?.id, entregable?.orientacionVideo, open]);
+    setOrientacion((slotActivo === "alt" ? entregable?.orientacionVideoAlt : entregable?.orientacionVideo) ?? null);
+  }, [entregable?.id, entregable?.orientacionVideo, entregable?.orientacionVideoAlt, slotActivo, open]);
 
   const { data: comentarios = [] } = useComentarios(entregable?.id ?? "");
   const agregarComentario = useAgregarComentario(entregable?.id ?? "");
@@ -121,7 +153,13 @@ export function RevisarEntregableDialog({
   // las observaciones que le dejan y sube el video de nuevo si piden cambios, no comenta su
   // propio material. Mismo criterio que ya se aplico en guiones (puedeComentarGuion).
   const puedeComentar = esAprobador;
-  const linkActual = entregable.urlRevision || entregable.urlFinal;
+  // La version ALTERNA es la misma pieza en la otra orientacion (ej. "Saco" vertical Y
+  // horizontal) — no un entregable aparte. `slotActivo` decide cual de las dos se esta viendo.
+  const linkPrincipal = entregable.urlRevision || entregable.urlFinal;
+  const linkAlt = entregable.urlRevisionAlt || entregable.urlFinalAlt;
+  const tieneAlt = Boolean(linkAlt);
+  const verAlt = slotActivo === "alt" && tieneAlt;
+  const linkActual = verAlt ? linkAlt : linkPrincipal;
   const preview = linkActual ? driveUrlAPreview(linkActual) : null;
   const fileIdActual = linkActual ? extraerFileIdDrive(linkActual) : null;
   // Diseño grafico (imagen, PSD, AI, PDF...) no es un video — el reproductor propio
@@ -169,7 +207,10 @@ export function RevisarEntregableDialog({
     e.target.value = "";
     if (!file) return;
 
-    const yaHabiaVideo = Boolean(linkActual);
+    // Este boton es siempre para la version PRINCIPAL, sin importar cual pestaña (vertical/
+    // horizontal) se este viendo en ese momento — la version alterna tiene su propio boton
+    // (ver onSeleccionarArchivoAlt).
+    const yaHabiaVideo = Boolean(linkPrincipal);
     setErrorSubida(null);
     setSubiendo(true);
     setProgreso(0);
@@ -179,7 +220,7 @@ export function RevisarEntregableDialog({
         setErrorSubida("No se pudo conectar con Drive.");
         return;
       }
-      const fileIdExistente = linkActual ? extraerFileIdDrive(linkActual) ?? undefined : undefined;
+      const fileIdExistente = linkPrincipal ? extraerFileIdDrive(linkPrincipal) ?? undefined : undefined;
       const subido = await subirArchivoADrive(file, token, {
         nombre: `${nombreProyecto ?? "Sin proyecto"} - ${entregable.nombre}`,
         nombreCarpeta: nombreProyecto ?? "Sin proyecto",
@@ -206,6 +247,7 @@ export function RevisarEntregableDialog({
           `${nombreResponsable} ${yaHabiaVideo ? "actualizo" : "agrego"} el video de "${entregable.nombre}".`
         );
       }
+      setSlotActivo("principal");
     } catch (err) {
       const mensaje = mensajeErrorAuth(err);
       if (/sesion de Drive expiro|403/.test(mensaje)) limpiarDriveToken();
@@ -215,9 +257,67 @@ export function RevisarEntregableDialog({
     }
   };
 
+  // Version ALTERNA: la misma pieza en la otra orientacion (ej. "Saco" vertical Y horizontal).
+  // No manda a revision ni toca `estado` — la version principal ya sigue su propio flujo, esta
+  // solo agrega el archivo adicional. Siempre se ofrece la orientacion contraria a la principal
+  // por default (para eso existe este boton), pero no se fuerza si el usuario prefiere otra.
+  const orientacionAltSugerida: "vertical" | "horizontal" =
+    entregable.orientacionVideo === "vertical" ? "horizontal" : "vertical";
+
+  const onSeleccionarArchivoAlt = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setErrorSubidaAlt(null);
+    setSubiendoAlt(true);
+    setProgresoAlt(0);
+    try {
+      const token = driveToken ?? (await conectarDrive());
+      if (!token) {
+        setErrorSubidaAlt("No se pudo conectar con Drive.");
+        return;
+      }
+      const fileIdExistente = linkAlt ? extraerFileIdDrive(linkAlt) ?? undefined : undefined;
+      const subido = await subirArchivoADrive(file, token, {
+        nombre: `${nombreProyecto ?? "Sin proyecto"} - ${entregable.nombre} (${orientacionAltSugerida})`,
+        nombreCarpeta: nombreProyecto ?? "Sin proyecto",
+        subcarpeta: "Videos",
+        fileIdExistente,
+        onProgress: setProgresoAlt,
+      });
+      await agregarVersionAlterna.mutateAsync({
+        id: entregable.id,
+        url: subido.previewUrl,
+        orientacionVideoAlt: entregable.orientacionVideoAlt ?? orientacionAltSugerida,
+        comoHistorico: completandoHistorico,
+      });
+      setSlotActivo("alt");
+      if (!completandoHistorico) {
+        notificarRevisores(
+          `${nombreResponsable} agrego la version ${orientacionAltSugerida} de "${entregable.nombre}".`
+        );
+      }
+    } catch (err) {
+      const mensaje = mensajeErrorAuth(err);
+      if (/sesion de Drive expiro|403/.test(mensaje)) limpiarDriveToken();
+      setErrorSubidaAlt(mensaje);
+    } finally {
+      setSubiendoAlt(false);
+    }
+  };
+
   const onAprobar = async () => {
-    if (!linkActual) return;
-    await aprobar.mutateAsync({ id: entregable.id, aprobadorId: usuario.id, urlFinal: linkActual });
+    // Siempre aprueba la PRINCIPAL sin importar que pestaña se este viendo — "Aprobar" decide
+    // sobre el entregable completo, no sobre una version puntual. Si la alterna tenia una
+    // revision pendiente (urlRevisionAlt sin promover a final), se aprueba junto con ella.
+    if (!linkPrincipal) return;
+    await aprobar.mutateAsync({
+      id: entregable.id,
+      aprobadorId: usuario.id,
+      urlFinal: linkPrincipal,
+      ...(entregable.urlRevisionAlt ? { urlFinalAlt: entregable.urlRevisionAlt } : {}),
+    });
     notificarA(entregable.responsableId, `Tu video "${entregable.nombre}" fue aprobado.`);
   };
 
@@ -270,7 +370,11 @@ export function RevisarEntregableDialog({
    * guardado, lo corrige y lo guarda — asi solo hace falta detectar bien una vez. */
   const onOrientacionDetectada = (o: "vertical" | "horizontal") => {
     setOrientacion(o);
-    if (entregable.orientacionVideo !== o) {
+    if (verAlt) {
+      if (entregable.orientacionVideoAlt !== o) {
+        etiquetarOrientacionAlt.mutate({ id: entregable.id, orientacionVideoAlt: o });
+      }
+    } else if (entregable.orientacionVideo !== o) {
       etiquetarOrientacion.mutate({ id: entregable.id, orientacionVideo: o });
     }
   };
@@ -278,6 +382,61 @@ export function RevisarEntregableDialog({
   // Si el video aun no carga, se usa la proporcion de referencia de su orientacion etiquetada
   // para no dar un salto al cargar.
   const ratioVisor = ratioReal ?? (orientacion === "vertical" ? 9 / 16 : 16 / 9);
+
+  // El superadmin puede subir/reemplazar el material de CUALQUIER entregable, sin importar
+  // quien sea el responsable ni si ya esta aprobado — lo necesita para completar historicos
+  // cargados sin link real de video (el responsable registrado puede ni ser una cuenta real).
+  // Para el resto, sigue igual: solo el propio responsable, y solo antes de quedar aprobado.
+  const puedeEditarMaterial =
+    usuario.rol === "superadmin" || (esResponsable && entregable.estado !== "aprobado");
+  // La version alterna solo aplica a video (un diseño grafico no tiene "orientacion") y solo
+  // tiene sentido ofrecerla cuando ya existe la principal — primero se sube esa.
+  const puedeAgregarAlt = puedeEditarMaterial && puedeSubirVideos(usuario) && !esDiseno && Boolean(linkPrincipal);
+
+  const selectorDeVersion = (tieneAlt || puedeAgregarAlt) && !esDiseno && (
+    <div className="flex shrink-0 items-center gap-1.5">
+      {([
+        { slot: "principal" as const, orientacion: entregable.orientacionVideo, disponible: Boolean(linkPrincipal) },
+        { slot: "alt" as const, orientacion: entregable.orientacionVideoAlt, disponible: tieneAlt },
+      ] as const)
+        .filter((v) => v.disponible)
+        .map((v) => {
+          const Icono = v.orientacion === "vertical" ? Smartphone : Monitor;
+          const activo = slotActivo === v.slot;
+          return (
+            <button
+              key={v.slot}
+              type="button"
+              onClick={() => setSlotActivo(v.slot)}
+              className={cn(
+                "flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium capitalize transition-colors",
+                activo
+                  ? "border-accent bg-accent text-accent-foreground"
+                  : "border-border bg-card text-muted-foreground hover:bg-bg-secondary"
+              )}
+            >
+              <Icono className="h-3 w-3" />
+              {v.orientacion ?? "video"}
+            </button>
+          );
+        })}
+      {puedeAgregarAlt && !tieneAlt && (
+        <>
+          <input ref={inputAltRef} type="file" accept="video/*" className="hidden" onChange={onSeleccionarArchivoAlt} />
+          <button
+            type="button"
+            onClick={() => inputAltRef.current?.click()}
+            disabled={subiendoAlt}
+            className="flex items-center gap-1 rounded-md border border-dashed border-border px-2 py-1 text-[11px] font-medium text-muted-foreground hover:bg-bg-secondary"
+            title={`Agregar tambien la version ${orientacionAltSugerida}`}
+          >
+            <Plus className="h-3 w-3" />
+            {subiendoAlt ? `Subiendo... ${progresoAlt}%` : `Agregar ${orientacionAltSugerida}`}
+          </button>
+        </>
+      )}
+    </div>
+  );
 
   const bloqueVideo = (
     <div
@@ -290,6 +449,9 @@ export function RevisarEntregableDialog({
         layoutLado && "w-full lg:w-auto lg:min-w-[160px]"
       )}
     >
+      {selectorDeVersion}
+      {errorSubidaAlt && <p className="text-xs text-destructive">{errorSubidaAlt}</p>}
+
       {modoVisor === "player" && fileIdActual && (
         <DriveVideoPlayer
           fileId={fileIdActual}
@@ -360,12 +522,6 @@ export function RevisarEntregableDialog({
     </div>
   );
 
-  // El superadmin puede subir/reemplazar el material de CUALQUIER entregable, sin importar
-  // quien sea el responsable ni si ya esta aprobado — lo necesita para completar historicos
-  // cargados sin link real de video (el responsable registrado puede ni ser una cuenta real).
-  // Para el resto, sigue igual: solo el propio responsable, y solo antes de quedar aprobado.
-  const puedeEditarMaterial =
-    usuario.rol === "superadmin" || (esResponsable && entregable.estado !== "aprobado");
   const bloqueSubirVideo = puedeEditarMaterial && puedeSubirVideos(usuario) && (
     <div className="space-y-2 rounded-md border border-border p-3">
       <Label>{esDiseno ? "Subir diseño" : "Subir video"}</Label>

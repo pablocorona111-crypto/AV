@@ -183,6 +183,12 @@ export interface Entregable {
   estado: EstadoEntregable;
   urlRevision?: string;
   urlFinal?: string;
+  /** Segunda version del MISMO entregable en la otra orientacion (ej. "Saco" se grabo vertical
+   * Y horizontal) — no es un entregable aparte, es la misma pieza en otro formato. Opcional:
+   * la inmensa mayoria de entregables solo tiene la version principal de arriba. */
+  orientacionVideoAlt?: "vertical" | "horizontal";
+  urlRevisionAlt?: string;
+  urlFinalAlt?: string;
   aprobadorId?: string;
   creadoEn: string;
   /** Cuando `estado` paso a "entregado" — para agrupar entregas por mes en la grafica del lider. */

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   adjuntarMaterialHistorico,
   agregarComentario,
+  agregarVersionAlterna,
   aprobarEntregable,
   asignarProyectoEntregable,
   cambiarEstadoEntregableDirecto,
@@ -11,6 +12,7 @@ import {
   crearEntregableHistorico,
   enviarARevision,
   etiquetarOrientacion,
+  etiquetarOrientacionAlt,
   listarComentarios,
   marcarEntregado,
   solicitarCorrecciones,
@@ -74,6 +76,24 @@ export function useRenombrarEntregable() {
   });
 }
 
+export function useAgregarVersionAlterna() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      url,
+      orientacionVideoAlt,
+      comoHistorico,
+    }: {
+      id: string;
+      url: string;
+      orientacionVideoAlt: "vertical" | "horizontal";
+      comoHistorico: boolean;
+    }) => agregarVersionAlterna(id, url, orientacionVideoAlt, comoHistorico),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["entregables"] }),
+  });
+}
+
 export function useCambiarEstadoEntregableDirecto() {
   const qc = useQueryClient();
   return useMutation({
@@ -102,8 +122,17 @@ export function useAdjuntarMaterialHistorico() {
 export function useAprobarEntregable() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, aprobadorId, urlFinal }: { id: string; aprobadorId: string; urlFinal: string }) =>
-      aprobarEntregable(id, aprobadorId, urlFinal),
+    mutationFn: ({
+      id,
+      aprobadorId,
+      urlFinal,
+      urlFinalAlt,
+    }: {
+      id: string;
+      aprobadorId: string;
+      urlFinal: string;
+      urlFinalAlt?: string;
+    }) => aprobarEntregable(id, aprobadorId, urlFinal, urlFinalAlt),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["entregables"] }),
   });
 }
@@ -129,6 +158,15 @@ export function useEtiquetarOrientacion() {
   return useMutation({
     mutationFn: ({ id, orientacionVideo }: { id: string; orientacionVideo: "vertical" | "horizontal" }) =>
       etiquetarOrientacion(id, orientacionVideo),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["entregables"] }),
+  });
+}
+
+export function useEtiquetarOrientacionAlt() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, orientacionVideoAlt }: { id: string; orientacionVideoAlt: "vertical" | "horizontal" }) =>
+      etiquetarOrientacionAlt(id, orientacionVideoAlt),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["entregables"] }),
   });
 }

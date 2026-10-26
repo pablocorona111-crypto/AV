@@ -151,11 +151,36 @@ export async function adjuntarMaterialHistorico(
   });
 }
 
-export async function aprobarEntregable(id: string, aprobadorId: string, urlFinal: string): Promise<void> {
+/** Agrega (o reemplaza) la version ALTERNA de un entregable — la misma pieza grabada tambien en
+ * la otra orientacion (ej. "Saco" vertical Y horizontal), no un entregable nuevo. No toca
+ * `estado`: la version principal ya paso (o esta pasando) por su propio flujo de revision: esta
+ * es solo el archivo adicional. `comoHistorico` decide si va a `urlFinalAlt` (completar un
+ * historico ya cerrado) o `urlRevisionAlt` (flujo normal, igual que enviarARevision). */
+export async function agregarVersionAlterna(
+  id: string,
+  url: string,
+  orientacionVideoAlt: "vertical" | "horizontal",
+  comoHistorico: boolean
+): Promise<void> {
+  await actualizarEntregable(id, {
+    orientacionVideoAlt,
+    ...(comoHistorico ? { urlFinalAlt: url } : { urlRevisionAlt: url }),
+  });
+}
+
+export async function aprobarEntregable(
+  id: string,
+  aprobadorId: string,
+  urlFinal: string,
+  urlFinalAlt?: string
+): Promise<void> {
   await actualizarEntregable(id, {
     estado: "aprobado",
     aprobadorId,
     urlFinal,
+    // Si tambien habia una version alterna pendiente de revision, se aprueba junto con la
+    // principal — es la misma pieza, no tiene sentido un estado de aprobacion por separado.
+    ...(urlFinalAlt ? { urlFinalAlt } : {}),
     fechaAprobado: new Date().toISOString(),
   });
 }
@@ -190,6 +215,11 @@ export async function cambiarEstadoEntregableDirecto(
 /** Deja marcar la orientacion a mano cuando no se detecto sola (ej. video viejo sin etiqueta). */
 export async function etiquetarOrientacion(id: string, orientacionVideo: "vertical" | "horizontal"): Promise<void> {
   await actualizarEntregable(id, { orientacionVideo });
+}
+
+/** Misma correccion automatica que etiquetarOrientacion() pero para la version ALTERNA. */
+export async function etiquetarOrientacionAlt(id: string, orientacionVideoAlt: "vertical" | "horizontal"): Promise<void> {
+  await actualizarEntregable(id, { orientacionVideoAlt });
 }
 
 export async function listarComentarios(entregableId: string): Promise<ComentarioEntregable[]> {
