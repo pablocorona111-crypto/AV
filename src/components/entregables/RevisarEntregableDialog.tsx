@@ -438,6 +438,16 @@ export function RevisarEntregableDialog({
     </div>
   );
 
+  // Bug: un video HORIZONTAL (ancho, caja naturalmente baja) dejaba espacio en blanco debajo —
+  // `lg:items-stretch` en la fila estira esta columna a la altura de observaciones (casi siempre
+  // mas alta), y adentro el header/video/footer de DriveVideoPlayer no llenan esa altura forzada
+  // (aspect-ratio fija el alto del video, no hay de donde sacar mas para "estirarlo"). Un video
+  // VERTICAL (angosto, caja naturalmente alta) no tenia este problema: ahi aspect-ratio deriva el
+  // ANCHO a partir del alto ya estirado, asi que si llena el espacio sin que sobre nada. Fix:
+  // la columna de un horizontal no se estira (`lg:self-start`), solo ocupa lo que su contenido
+  // real necesita — igual que antes de saber la orientacion (metadata sin cargar) se asume
+  // horizontal por default, mismo criterio que ya usa `ratioVisor` mas abajo.
+  const esVideoVertical = ratioReal != null ? ratioReal < 1 : orientacion === "vertical";
   const bloqueVideo = (
     <div
       className={cn(
@@ -446,7 +456,11 @@ export function RevisarEntregableDialog({
         // en pantallas de otro tamaño/alto). Ahora `lg:items-stretch` en la fila le da una altura
         // real y definida (la que sobra del dialogo) — de ahi el video deriva su ancho solo con
         // aspect-ratio. Se adapta a cualquier pantalla porque usa el espacio real, no un numero fijo.
-        layoutLado && "w-full lg:w-auto lg:min-w-[160px]"
+        layoutLado && "w-full lg:w-auto lg:min-w-[160px]",
+        // `esDiseno` queda fuera: su caja de preview (imagen/PDF) si quiere ocupar toda la altura
+        // disponible (lg:h-full sin aspect-ratio fijo) — este fix es solo para video, que SI tiene
+        // una proporcion fija y por eso puede sobrarle espacio al estirarlo de mas.
+        layoutLado && !esDiseno && !esVideoVertical && "lg:self-start"
       )}
     >
       {selectorDeVersion}
