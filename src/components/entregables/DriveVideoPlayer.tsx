@@ -104,9 +104,18 @@ export function DriveVideoPlayer({
     : null;
 
   // Sin esto, el contador de reintentos de un video anterior se arrastraba al siguiente —
-  // un video nuevo con mala suerte se quedaba sin su propio reintento.
+  // un video nuevo con mala suerte se quedaba sin su propio reintento. Y `ratio` TAMBIEN tenia
+  // que resetearse aqui: al agregar la pestaña horizontal/vertical (misma instancia de
+  // DriveVideoPlayer, solo cambia el `fileId` prop), el `ratio` detectado del video ANTERIOR se
+  // quedaba pegado mientras el nuevo cargaba — `esVertical` lo usaba para decidir que rama de
+  // JSX dibujar, asi que un video vertical se renderizaba un instante con la forma del horizontal
+  // anterior (o viceversa), aplastando/recortando el video de mas hasta que llegara la metadata
+  // real. Volver a `null` hace que mientras tanto se use el fallback por `orientacion` (la
+  // etiqueta ya guardada de ESTE video), no la medida del otro.
   useEffect(() => {
     setIntento(0);
+    setRatio(null);
+    setCargando(true);
   }, [fileId]);
 
   // Sin sesion de Firebase no hay forma de pedirle el video al proxy — mejor avisar al padre
@@ -218,8 +227,16 @@ export function DriveVideoPlayer({
         </div>
       </div>
 
+      {/* A diferencia de ESCENARIO_BASE (usado en la rama vertical), esta caja NO usa
+          `lg:h-full`/`flex-1`: el wrapper de arriba ya no se estira a la altura de observaciones
+          (ver comentario del wrapper), asi que no hay una altura externa de la cual derivar el
+          ancho via aspect-ratio — colgarse de flex-grow sin esa altura externa colapsaba la caja
+          a su min-height (video minusculo). En vez de eso, esta caja se acota con un ANCHO maximo
+          fijo (mismo criterio que ya usa el preview de diseño grafico mas abajo en este archivo,
+          `lg:max-w-2xl`) y aspect-ratio deriva el ALTO a partir de ese ancho — tamaño predecible,
+          sin pelear con el flexbox de la columna. */}
       <div
-        className={cn(ESCENARIO_BASE, "lg:min-h-0 lg:flex-1")}
+        className="relative flex w-full min-h-[180px] max-h-[60vh] items-center justify-center overflow-hidden bg-black lg:max-h-[55vh] lg:max-w-2xl"
         style={{ aspectRatio: String(ratioCaja) }}
       >
         {(cargando || bufereando) && (
