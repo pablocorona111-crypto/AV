@@ -451,12 +451,19 @@ export function RevisarEntregableDialog({
   const bloqueVideo = (
     <div
       className={cn(
-        "space-y-3",
+        // Columna flex (ya no `space-y-3` a secas): el selector Vertical/"Agregar horizontal"
+        // es un hermano ARRIBA del reproductor que tambien ocupa alto real. En layout de bloque
+        // simple el reproductor vertical (lg:h-full, ver abajo) pedia el 100% de la altura
+        // estirada de la fila SIN restar lo que ya uso el selector — se pasaba de la caja y el
+        // `overflow-hidden` del dialogo lo recortaba abajo. Con flex-col + el wrapper flex-1
+        // min-h-0 de mas abajo, el reproductor reparte el alto estirado CON el selector en vez
+        // de sumarse encima.
+        "flex flex-col gap-3",
         // La columna ya NO calcula su ancho con una formula de vh adivinada (eso se desajustaba
         // en pantallas de otro tamaño/alto). Ahora `lg:items-stretch` en la fila le da una altura
         // real y definida (la que sobra del dialogo) — de ahi el video deriva su ancho solo con
         // aspect-ratio. Se adapta a cualquier pantalla porque usa el espacio real, no un numero fijo.
-        layoutLado && "w-full lg:w-auto lg:min-w-[160px]",
+        layoutLado && "w-full lg:min-h-0 lg:w-auto lg:min-w-[160px]",
         // `esDiseno` queda fuera: su caja de preview (imagen/PDF) si quiere ocupar toda la altura
         // disponible (lg:h-full sin aspect-ratio fijo) — este fix es solo para video, que SI tiene
         // una proporcion fija y por eso puede sobrarle espacio al estirarlo de mas.
@@ -467,14 +474,19 @@ export function RevisarEntregableDialog({
       {errorSubidaAlt && <p className="text-xs text-destructive">{errorSubidaAlt}</p>}
 
       {modoVisor === "player" && fileIdActual && (
-        <DriveVideoPlayer
-          fileId={fileIdActual}
-          orientacion={orientacion}
-          onMomentoPausa={setMomento}
-          onError={setErrorPlayerPropio}
-          onOrientacion={onOrientacionDetectada}
-          onRatio={setRatioReal}
-        />
+        // Solo vertical necesita el flex-1 min-h-0: es el que depende de `lg:h-full` del padre
+        // para derivar su alto (ver DriveVideoPlayer.tsx). El horizontal ya deriva su tamaño solo
+        // con aspect-ratio + max-width, no le hace falta espacio repartido por flex.
+        <div className={cn(esVideoVertical && "min-h-0 lg:flex-1")}>
+          <DriveVideoPlayer
+            fileId={fileIdActual}
+            orientacion={orientacion}
+            onMomentoPausa={setMomento}
+            onError={setErrorPlayerPropio}
+            onOrientacion={onOrientacionDetectada}
+            onRatio={setRatioReal}
+          />
+        </div>
       )}
 
       {modoVisor === "preview" && preview && (
