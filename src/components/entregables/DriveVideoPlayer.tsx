@@ -36,21 +36,25 @@ export function formatoTiempo(segundos: number): string {
 
 /**
  * Como se dimensiona el escenario del video (aqui estuvieron varios bugs: "se ve chueco",
- * "no se ve nada", "se desajusta en otra pantalla").
+ * "no se ve nada", "se desajusta en otra pantalla", "se corta abajo").
  *
- * Version anterior: calculaba el ancho de la columna con una formula de `vh` que ADIVINABA
+ * Primera version: calculaba el ancho de la columna con una formula de `vh` que ADIVINABA
  * cuanto alto ocupaban el titulo/subtitulo/barras del reproductor (un numero fijo restado).
- * En una pantalla distinta (mas angosta, con el titulo envolviendo a 2 lineas, con otra fuente
- * del sistema) ese numero quedaba mal y el video se desbordaba o se encogia de mas.
+ * En una pantalla distinta ese numero quedaba mal y el video se desbordaba o se encogia de mas.
  *
- * Version actual: ya no se adivina nada.
- * - En pantallas grandes (`lg:` — la fila de video+observaciones queda lado a lado con
- *   `items-stretch` en RevisarEntregableDialog.tsx), el ESCENARIO mide su alto al 100% de esa
- *   fila (una medida real, resuelta por el navegador con el espacio que de verdad sobra) y de
- *   ahi deriva su ancho con `aspect-ratio`. `max-width:100%` es solo un techo de seguridad.
- * - En pantallas angostas (video y observaciones apilados), no hay una fila con alto definido
- *   para heredar — ahi se mide al reves: ancho 100% (de columna apilada) con alto derivado,
- *   topado a `60vh` para no tapar toda la pantalla.
+ * Segunda version: el ESCENARIO media su alto al 100% de la fila video+observaciones
+ * (`lg:h-full`, con esa fila estirada via `items-stretch` en RevisarEntregableDialog.tsx) y de
+ * ahi derivaba su ancho con `aspect-ratio`. Se rompio en cuanto se agrego el selector
+ * Vertical/"Agregar horizontal" arriba del reproductor: ese selector tambien ocupa alto real
+ * dentro de la misma columna estirada, asi que el reproductor pidiendo el 100% de esa altura
+ * se pasaba de la caja por el alto extra del selector — el video quedaba cortado abajo.
+ *
+ * Version actual: ya no depende de la altura de la fila. Igual que el video HORIZONTAL (mas
+ * abajo) y el preview de respaldo, el escenario se topa con un `max-height` fijo en vh y de ahi
+ * `aspect-ratio` deriva el otro lado. Sin stretch no hay forma de que un vecino (el selector)
+ * le robe altura sin que el navegador se entere — la columna completa (selector + escenario)
+ * mide exactamente lo que necesita, ni mas ni menos, y el dialogo crece para alcanzarla (hasta
+ * su propio tope de vh) en vez de recortarla.
  * - `min-height` evita que la caja colapse a 0 en cualquier caso raro.
  * - El <video> usa `h-full w-full object-cover` mas `scale-[1.03]` (3% de "overscan"): Chrome
  *   puede renderizar una linea de 1px en un borde cuando un <video> esta en un contenedor con
@@ -60,7 +64,7 @@ export function formatoTiempo(segundos: number): string {
 const ESCENARIO_BASE =
   "relative flex items-center justify-center overflow-hidden bg-black " +
   "w-full max-h-[60vh] min-h-[180px] " +
-  "lg:h-full lg:w-auto lg:max-w-full lg:max-h-none lg:min-h-[160px]";
+  "lg:w-auto lg:max-w-full lg:max-h-[75vh] lg:min-h-[160px]";
 export function DriveVideoPlayer({
   fileId,
   orientacion,

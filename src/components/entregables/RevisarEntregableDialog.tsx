@@ -438,55 +438,34 @@ export function RevisarEntregableDialog({
     </div>
   );
 
-  // Bug: un video HORIZONTAL (ancho, caja naturalmente baja) dejaba espacio en blanco debajo —
-  // `lg:items-stretch` en la fila estira esta columna a la altura de observaciones (casi siempre
-  // mas alta), y adentro el header/video/footer de DriveVideoPlayer no llenan esa altura forzada
-  // (aspect-ratio fija el alto del video, no hay de donde sacar mas para "estirarlo"). Un video
-  // VERTICAL (angosto, caja naturalmente alta) no tenia este problema: ahi aspect-ratio deriva el
-  // ANCHO a partir del alto ya estirado, asi que si llena el espacio sin que sobre nada. Fix:
-  // la columna de un horizontal no se estira (`lg:self-start`), solo ocupa lo que su contenido
-  // real necesita — igual que antes de saber la orientacion (metadata sin cargar) se asume
-  // horizontal por default, mismo criterio que ya usa `ratioVisor` mas abajo.
-  const esVideoVertical = ratioReal != null ? ratioReal < 1 : orientacion === "vertical";
   const bloqueVideo = (
     <div
       className={cn(
-        // Columna flex (ya no `space-y-3` a secas): el selector Vertical/"Agregar horizontal"
-        // es un hermano ARRIBA del reproductor que tambien ocupa alto real. En layout de bloque
-        // simple el reproductor vertical (lg:h-full, ver abajo) pedia el 100% de la altura
-        // estirada de la fila SIN restar lo que ya uso el selector — se pasaba de la caja y el
-        // `overflow-hidden` del dialogo lo recortaba abajo. Con flex-col + el wrapper flex-1
-        // min-h-0 de mas abajo, el reproductor reparte el alto estirado CON el selector en vez
-        // de sumarse encima.
+        // Columna flex: el selector Vertical/"Agregar horizontal" es un hermano ARRIBA del
+        // reproductor que tambien ocupa alto real (gap-3 entre ambos).
         "flex flex-col gap-3",
-        // La columna ya NO calcula su ancho con una formula de vh adivinada (eso se desajustaba
-        // en pantallas de otro tamaño/alto). Ahora `lg:items-stretch` en la fila le da una altura
-        // real y definida (la que sobra del dialogo) — de ahi el video deriva su ancho solo con
-        // aspect-ratio. Se adapta a cualquier pantalla porque usa el espacio real, no un numero fijo.
-        layoutLado && "w-full lg:min-h-0 lg:w-auto lg:min-w-[160px]",
-        // `esDiseno` queda fuera: su caja de preview (imagen/PDF) si quiere ocupar toda la altura
-        // disponible (lg:h-full sin aspect-ratio fijo) — este fix es solo para video, que SI tiene
-        // una proporcion fija y por eso puede sobrarle espacio al estirarlo de mas.
-        layoutLado && !esDiseno && !esVideoVertical && "lg:self-start"
+        layoutLado && "w-full lg:w-auto lg:min-w-[160px]",
+        // `lg:self-start` SIEMPRE para video (ambas orientaciones) y SIN importar aprobado/no:
+        // la columna ya no depende de `items-stretch` para su alto (ver DriveVideoPlayer.tsx,
+        // donde vertical y horizontal ahora derivan tamaño solo con max-height + aspect-ratio,
+        // igual que el preview de respaldo). Estirarla a la altura de observaciones era la causa
+        // raiz de que el selector arriba hiciera que el video se pasara de la caja y se recortara
+        // — sin stretch, la columna mide justo lo que su contenido real necesita.
+        layoutLado && !esDiseno && "lg:self-start"
       )}
     >
       {selectorDeVersion}
       {errorSubidaAlt && <p className="text-xs text-destructive">{errorSubidaAlt}</p>}
 
       {modoVisor === "player" && fileIdActual && (
-        // Solo vertical necesita el flex-1 min-h-0: es el que depende de `lg:h-full` del padre
-        // para derivar su alto (ver DriveVideoPlayer.tsx). El horizontal ya deriva su tamaño solo
-        // con aspect-ratio + max-width, no le hace falta espacio repartido por flex.
-        <div className={cn(esVideoVertical && "min-h-0 lg:flex-1")}>
-          <DriveVideoPlayer
-            fileId={fileIdActual}
-            orientacion={orientacion}
-            onMomentoPausa={setMomento}
-            onError={setErrorPlayerPropio}
-            onOrientacion={onOrientacionDetectada}
-            onRatio={setRatioReal}
-          />
-        </div>
+        <DriveVideoPlayer
+          fileId={fileIdActual}
+          orientacion={orientacion}
+          onMomentoPausa={setMomento}
+          onError={setErrorPlayerPropio}
+          onOrientacion={onOrientacionDetectada}
+          onRatio={setRatioReal}
+        />
       )}
 
       {modoVisor === "preview" && preview && (
@@ -736,7 +715,13 @@ export function RevisarEntregableDialog({
           // vez de solo la fila de abajo, y el video se veia "cortado" sin verse el scrollbar.
           // `overflow-y-hidden` es el mismo grupo que `overflow-y-auto`: pisa garantizado.
           "flex flex-col overflow-hidden overflow-y-hidden",
-          layoutLado ? "max-w-[95vw] lg:w-fit" : "max-w-3xl"
+          // Con video: `max-h-[95vh]` pisa el `sm:max-h-[85vh]` default del Dialog base — hace
+          // falta el variant `sm:` explicito tambien (mismo caso que `overflow-y-hidden` arriba:
+          // sin el, twMerge los trata como grupos distintos y sobrevive el default, que ademas
+          // gana en pantalla por ir despues en la hoja de Tailwind). Junto con el tope de
+          // `lg:max-h-[75vh]` del escenario del video en DriveVideoPlayer.tsx, el contenido
+          // (titulo + selector + video) cabe sin que la fila de abajo necesite scrollear.
+          layoutLado ? "max-w-[95vw] lg:w-fit max-h-[95vh] sm:max-h-[95vh]" : "max-w-3xl"
         )}
       >
         <DialogHeader className="shrink-0">
