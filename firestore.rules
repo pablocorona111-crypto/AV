@@ -122,8 +122,12 @@ service cloud.firestore {
     match /salidas/{salidaId} {
       allow read: if usuarioAutenticado();
       allow create: if esSuperadmin() || esLiderAudiovisual();
-      allow update: if esSuperadmin() || esLiderAudiovisual() ||
-        resource.data.responsableProduccionId == request.auth.uid;
+      // Antes el responsable de produccion tambien podia "update" su propia salida sin
+      // restriccion de campos — nada en el codigo usa eso hoy (solo existe autorizarSalida(),
+      // que escribe `estadoAutorizacion`), asi que esa rama solo servia para que el responsable
+      // se autoautorizara su propia salida llamando la API directo, saltandose que la UI le
+      // esconde los botones de Autorizar/Rechazar. Solo lider/superadmin deciden.
+      allow update: if esSuperadmin() || esLiderAudiovisual();
       allow delete: if esSuperadmin() || esLiderAudiovisual();
     }
 
