@@ -8,7 +8,17 @@ import {
   DEMO_USUARIOS,
 } from "@/data/demoData";
 import { demoEntregablesActuales } from "@/services/entregablesService";
-import type { Colaborador, Entregable, EquipoAV, SalidaGrabacion, Usuario } from "@/types";
+import type {
+  Colaborador,
+  Entregable,
+  EquipoAV,
+  EstadoAutorizacionSalida,
+  SalidaGrabacion,
+  Usuario,
+} from "@/types";
+
+/** Una salida solo se resuelve hacia autorizada o rechazada — nunca "de vuelta a pendiente". */
+export type DecisionSalida = Exclude<EstadoAutorizacionSalida, "pendiente">;
 
 async function listar<T>(coleccion: string, demo: T[]): Promise<T[]> {
   if (!isFirebaseConfigured || !db) return demo;
@@ -54,6 +64,17 @@ export async function crearSalida(
     creadoEn: serverTimestamp(),
   });
   return { ...data, id: ref.id, folio, estadoAutorizacion: "pendiente", creadoEn: new Date().toISOString() };
+}
+
+/** Resuelve la autorizacion de una salida. Sin esto, toda salida creada se quedaba en
+ * "Pendiente" para siempre: las reglas de Firestore ya lo permitian, pero no habia forma
+ * de dispararlo desde la aplicacion. */
+export async function autorizarSalida(id: string, estadoAutorizacion: DecisionSalida): Promise<void> {
+  if (!isFirebaseConfigured || !db) {
+    demoSalidas = demoSalidas.map((s) => (s.id === id ? { ...s, estadoAutorizacion } : s));
+    return;
+  }
+  await updateDoc(doc(db, "salidas", id), { estadoAutorizacion });
 }
 
 export const listarEntregables = () => listar<Entregable>("entregables", demoEntregablesActuales());
