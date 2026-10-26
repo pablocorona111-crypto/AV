@@ -14,6 +14,7 @@ import {
   useRenombrarEntregable,
   useSolicitarCorrecciones,
 } from "@/hooks/useEntregables";
+import { useIdToken } from "@/hooks/useIdToken";
 import { useProyectos } from "@/hooks/useProyectos";
 import { useUsuarios } from "@/hooks/useCatalogos";
 import { crearNotificacion } from "@/services/notificacionesService";
@@ -75,6 +76,10 @@ export function RevisarEntregableDialog({
   const [orientacionSubida, setOrientacionSubida] = useState<"vertical" | "horizontal">("horizontal");
   const [editandoNombre, setEditandoNombre] = useState(false);
   const [nombreEditado, setNombreEditado] = useState("");
+  // El boton "Descargar" apunta a `/api/drive-video`, que ahora exige sesion de AV Control.
+  // Un <a href> no manda headers, asi que el ID token va en la URL — mientras no este resuelto
+  // el boton queda inerte en vez de llevar a un 401.
+  const { token: idToken } = useIdToken();
   const inputArchivoRef = useRef<HTMLInputElement>(null);
   const renombrar = useRenombrarEntregable();
 
@@ -610,8 +615,16 @@ export function RevisarEntregableDialog({
                   )}
                 </button>
                 <a
-                  href={`/api/drive-video?id=${encodeURIComponent(fileIdActual)}&download=1&nombre=${encodeURIComponent(entregable.nombre)}`}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs font-medium hover:bg-bg-secondary"
+                  href={
+                    idToken
+                      ? `/api/drive-video?id=${encodeURIComponent(fileIdActual)}&download=1&nombre=${encodeURIComponent(entregable.nombre)}&token=${encodeURIComponent(idToken)}`
+                      : undefined
+                  }
+                  aria-disabled={!idToken}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs font-medium hover:bg-bg-secondary",
+                    !idToken && "pointer-events-none opacity-50"
+                  )}
                 >
                   <Download className="h-3.5 w-3.5" /> Descargar
                 </a>
