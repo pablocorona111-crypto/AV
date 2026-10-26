@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Clock, Loader2 } from "lucide-react";
+import { useIdToken } from "@/hooks/useIdToken";
 import { cn } from "@/lib/utils";
 
 export type MotivoErrorDrive = "sin_acceso" | "no_encontrado" | "desconocido";
@@ -8,11 +9,18 @@ export type MotivoErrorDrive = "sin_acceso" | "no_encontrado" | "desconocido";
  * El <video> del navegador solo avisa "fallo" sin decir por que (403 sin acceso, 404 borrado,
  * credenciales invalidas...) — antes de rendirse se le pregunta al propio proxy (`/api/drive-video`,
  * ver ese archivo) el motivo real, leyendo el JSON de error que si expone el status HTTP.
+ *
+ * Aqui si se puede mandar el token por header (es un fetch, no un tag HTML), pero el 401 por
+ * sesion vencida tambien se contempla: se trata como "sin_acceso" para que el mensaje al usuario
+ * hable de permisos y no de un error generico.
  */
-async function diagnosticarProxyDrive(fileId: string): Promise<MotivoErrorDrive> {
+async function diagnosticarProxyDrive(fileId: string, idToken: string | null): Promise<MotivoErrorDrive> {
   try {
-    const res = await fetch(`/api/drive-video?id=${encodeURIComponent(fileId)}`, { method: "HEAD" });
-    if (res.status === 403) return "sin_acceso";
+    const res = await fetch(`/api/drive-video?id=${encodeURIComponent(fileId)}`, {
+      method: "HEAD",
+      headers: idToken ? { Authorization: `Bearer ${idToken}` } : undefined,
+    });
+    if (res.status === 401 || res.status === 403) return "sin_acceso";
     if (res.status === 404) return "no_encontrado";
     return "desconocido";
   } catch {
@@ -86,13 +94,29 @@ export function DriveVideoPlayer({
   // El video ya no sale directo de Drive con el token OAuth del usuario (se vencia cada ~1h y
   // fallaba si el archivo no estaba compartido con esa cuenta) — sale del propio dominio,
   // vía `/api/drive-video`, que lo pide con una cuenta de servicio fija (ver ese archivo).
-  const src = `/api/drive-video?id=${encodeURIComponent(fileId)}`;
+  // Ese proxy exige sesion de AV Control: el ID token de Firebase viaja como query param porque
+  // un <video src> no puede mandar headers. Mientras no haya token, `src` es null y el <video>
+  // ni se monta — con `src=""` el navegador dispara `error` de inmediato y caeria al visor de
+  // respaldo sin motivo real.
+  const { token: idToken, listo: sesionLista } = useIdToken();
+  const src = idToken
+    ? `/api/drive-video?id=${encodeURIComponent(fileId)}&token=${encodeURIComponent(idToken)}`
+    : null;
 
   // Sin esto, el contador de reintentos de un video anterior se arrastraba al siguiente —
   // un video nuevo con mala suerte se quedaba sin su propio reintento.
   useEffect(() => {
     setIntento(0);
   }, [fileId]);
+
+  // Sin sesion de Firebase no hay forma de pedirle el video al proxy — mejor avisar al padre
+  // (que muestra el visor de respaldo de Drive) que dejar el spinner girando para siempre.
+  useEffect(() => {
+    if (sesionLista && !idToken) onError?.("sin_acceso");
+    // `onError` suele venir como funcion nueva en cada render del padre; se deja fuera a
+    // proposito para no reavisar en bucle.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sesionLista, idToken]);
 
   // Un primer error (ej. un hipo de red pidiendole el video al proxy) no tira la toalla de una:
   // se reintenta una vez solita (remontando el <video> con una key distinta) antes de avisarle
@@ -103,7 +127,7 @@ export function DriveVideoPlayer({
       setCargando(true);
       return;
     }
-    onError?.(await diagnosticarProxyDrive(fileId));
+    onError?.(await diagnosticarProxyDrive(fileId, idToken));
   };
 
   // Mientras no se conoce la proporcion real se usa una de referencia segun la orientacion ya
@@ -133,37 +157,39 @@ export function DriveVideoPlayer({
             </span>
           </div>
         )}
-        <video
-          key={`${fileId}-${intento}`}
-          src={src}
-          controls
-          playsInline
-          preload="auto"
-          className={cn(
-            "h-full w-full scale-[1.03] object-cover [accent-color:#FB670B]",
-            "[&:fullscreen]:scale-100 [&:fullscreen]:object-contain [&:fullscreen]:bg-black",
-            "[&:-webkit-full-screen]:scale-100 [&:-webkit-full-screen]:object-contain [&:-webkit-full-screen]:bg-black",
-            cargando && "invisible"
-          )}
-          onError={manejarError}
-          onCanPlay={() => setCargando(false)}
-          onWaiting={() => setBufereando(true)}
-          onPlaying={() => setBufereando(false)}
-          onLoadedMetadata={(e) => {
-            const v = e.currentTarget;
-            setCargando(false);
-            const r = v.videoWidth / v.videoHeight;
-            if (!Number.isFinite(r) || r <= 0) return;
-            setRatio(r);
-            onOrientacion?.(r < 1 ? "vertical" : "horizontal");
-            onRatio?.(r);
-          }}
-          onTimeUpdate={alActualizarTiempo}
-          onPause={(e) => {
-            const v = e.currentTarget;
-            if (onMomentoPausa && !v.ended) onMomentoPausa(formatoTiempo(v.currentTime));
-          }}
-        />
+        {src && (
+          <video
+            key={`${fileId}-${intento}`}
+            src={src}
+            controls
+            playsInline
+            preload="auto"
+            className={cn(
+              "h-full w-full scale-[1.03] object-cover [accent-color:#FB670B]",
+              "[&:fullscreen]:scale-100 [&:fullscreen]:object-contain [&:fullscreen]:bg-black",
+              "[&:-webkit-full-screen]:scale-100 [&:-webkit-full-screen]:object-contain [&:-webkit-full-screen]:bg-black",
+              cargando && "invisible"
+            )}
+            onError={manejarError}
+            onCanPlay={() => setCargando(false)}
+            onWaiting={() => setBufereando(true)}
+            onPlaying={() => setBufereando(false)}
+            onLoadedMetadata={(e) => {
+              const v = e.currentTarget;
+              setCargando(false);
+              const r = v.videoWidth / v.videoHeight;
+              if (!Number.isFinite(r) || r <= 0) return;
+              setRatio(r);
+              onOrientacion?.(r < 1 ? "vertical" : "horizontal");
+              onRatio?.(r);
+            }}
+            onTimeUpdate={alActualizarTiempo}
+            onPause={(e) => {
+              const v = e.currentTarget;
+              if (onMomentoPausa && !v.ended) onMomentoPausa(formatoTiempo(v.currentTime));
+            }}
+          />
+        )}
 
         <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center gap-2 bg-gradient-to-b from-black/70 to-transparent px-2.5 pb-5 pt-2">
           <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#C1EB1F]" />
@@ -200,39 +226,41 @@ export function DriveVideoPlayer({
             </span>
           </div>
         )}
-        <video
-          key={`${fileId}-${intento}`}
-          src={src}
-          controls
-          playsInline
-          preload="auto"
-          className={cn(
-            "h-full w-full scale-[1.03] object-cover [accent-color:#FB670B]",
-            "[&:fullscreen]:scale-100 [&:fullscreen]:object-contain [&:fullscreen]:bg-black",
-            "[&:-webkit-full-screen]:scale-100 [&:-webkit-full-screen]:object-contain [&:-webkit-full-screen]:bg-black",
-            cargando && "invisible"
-          )}
-          onError={manejarError}
-          // Red de seguridad: si por lo que sea no llego `loadedmetadata`, el video no se queda invisible.
-          onCanPlay={() => setCargando(false)}
-          onWaiting={() => setBufereando(true)}
-          onPlaying={() => setBufereando(false)}
-          onLoadedMetadata={(e) => {
-            const v = e.currentTarget;
-            setCargando(false);
-            const r = v.videoWidth / v.videoHeight;
-            // Un ratio no finito (metadata incompleta) romperia `aspect-ratio` y dejaria la caja sin forma.
-            if (!Number.isFinite(r) || r <= 0) return;
-            setRatio(r);
-            onOrientacion?.(r < 1 ? "vertical" : "horizontal");
-            onRatio?.(r);
-          }}
-          onTimeUpdate={alActualizarTiempo}
-          onPause={(e) => {
-            const v = e.currentTarget;
-            if (onMomentoPausa && !v.ended) onMomentoPausa(formatoTiempo(v.currentTime));
-          }}
-        />
+        {src && (
+          <video
+            key={`${fileId}-${intento}`}
+            src={src}
+            controls
+            playsInline
+            preload="auto"
+            className={cn(
+              "h-full w-full scale-[1.03] object-cover [accent-color:#FB670B]",
+              "[&:fullscreen]:scale-100 [&:fullscreen]:object-contain [&:fullscreen]:bg-black",
+              "[&:-webkit-full-screen]:scale-100 [&:-webkit-full-screen]:object-contain [&:-webkit-full-screen]:bg-black",
+              cargando && "invisible"
+            )}
+            onError={manejarError}
+            // Red de seguridad: si por lo que sea no llego `loadedmetadata`, el video no se queda invisible.
+            onCanPlay={() => setCargando(false)}
+            onWaiting={() => setBufereando(true)}
+            onPlaying={() => setBufereando(false)}
+            onLoadedMetadata={(e) => {
+              const v = e.currentTarget;
+              setCargando(false);
+              const r = v.videoWidth / v.videoHeight;
+              // Un ratio no finito (metadata incompleta) romperia `aspect-ratio` y dejaria la caja sin forma.
+              if (!Number.isFinite(r) || r <= 0) return;
+              setRatio(r);
+              onOrientacion?.(r < 1 ? "vertical" : "horizontal");
+              onRatio?.(r);
+            }}
+            onTimeUpdate={alActualizarTiempo}
+            onPause={(e) => {
+              const v = e.currentTarget;
+              if (onMomentoPausa && !v.ended) onMomentoPausa(formatoTiempo(v.currentTime));
+            }}
+          />
+        )}
       </div>
 
       <div className="flex shrink-0 items-center gap-1.5 border-t border-white/10 bg-[#141416] px-2.5 py-1.5">

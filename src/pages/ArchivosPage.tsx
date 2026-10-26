@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Download, Link2, Check, LayoutGrid, Table2 } from "lucide-react";
+import { useIdToken } from "@/hooks/useIdToken";
 import { useProyectos } from "@/hooks/useProyectos";
 import { useEntregables, useUsuarios } from "@/hooks/useCatalogos";
 import { Card, CardContent } from "@/components/ui/card";
@@ -37,6 +38,10 @@ export function ArchivosPage() {
   const [filtroPeriodo, setFiltroPeriodo] = useState<FiltroPeriodo>("todos");
   const [copiadoId, setCopiadoId] = useState<string | null>(null);
   const [vista, setVista] = useState<"cuadricula" | "tabla">("tabla");
+  // Los botones "Bajar" apuntan a `/api/drive-video`, que ahora exige sesion de AV Control.
+  // Un <a href> no manda headers, asi que el ID token va en la URL — mientras no este resuelto
+  // el boton queda inerte en vez de llevar a un 401.
+  const { token: idToken } = useIdToken();
 
   const copiarLink = async (id: string, fileId: string) => {
     await navigator.clipboard.writeText(`https://drive.google.com/file/d/${fileId}/view`);
@@ -171,8 +176,16 @@ export function ArchivosPage() {
                       {puedeBajarYCompartir ? (
                         <div className="flex gap-1">
                           <a
-                            href={`/api/drive-video?id=${encodeURIComponent(fileId!)}&download=1&nombre=${encodeURIComponent(e.nombre)}`}
-                            className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] font-medium hover:bg-bg-secondary"
+                            href={
+                              idToken
+                                ? `/api/drive-video?id=${encodeURIComponent(fileId!)}&download=1&nombre=${encodeURIComponent(e.nombre)}&token=${encodeURIComponent(idToken)}`
+                                : undefined
+                            }
+                            aria-disabled={!idToken}
+                            className={cn(
+                              "flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] font-medium hover:bg-bg-secondary",
+                              !idToken && "pointer-events-none opacity-50"
+                            )}
                           >
                             <Download className="h-3 w-3" /> Bajar
                           </a>
@@ -249,9 +262,17 @@ export function ArchivosPage() {
                 {puedeBajarYCompartir && (
                   <div className="flex gap-1 pt-1">
                     <a
-                      href={`/api/drive-video?id=${encodeURIComponent(fileId!)}&download=1&nombre=${encodeURIComponent(e.nombre)}`}
+                      href={
+                        idToken
+                          ? `/api/drive-video?id=${encodeURIComponent(fileId!)}&download=1&nombre=${encodeURIComponent(e.nombre)}&token=${encodeURIComponent(idToken)}`
+                          : undefined
+                      }
                       onClick={(ev) => ev.stopPropagation()}
-                      className="flex flex-1 items-center justify-center gap-1 rounded-md border border-border py-1 text-[10px] font-medium hover:bg-bg-secondary"
+                      aria-disabled={!idToken}
+                      className={cn(
+                        "flex flex-1 items-center justify-center gap-1 rounded-md border border-border py-1 text-[10px] font-medium hover:bg-bg-secondary",
+                        !idToken && "pointer-events-none opacity-50"
+                      )}
                     >
                       <Download className="h-3 w-3" /> Bajar
                     </a>
