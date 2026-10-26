@@ -478,7 +478,13 @@ export function RevisarEntregableDialog({
       )}
 
       {modoVisor === "preview" && preview && (
-        <div className="flex w-full flex-col gap-2 lg:h-full">
+        // `lg:h-full` solo para diseño: esa caja no tiene aspect-ratio fijo, quiere ocupar toda
+        // la altura disponible. Para video, igual que en DriveVideoPlayer.tsx, nada de
+        // flex-grow/altura forzada — el mismo bug de "se corta" que ya se arreglo ahi (la caja
+        // dependia de flex-1 para su alto; sin una altura externa forzada de donde crecer,
+        // colapsaba o se desbordaba del dialogo sin aviso) tambien vivia aqui, en el visor de
+        // respaldo (modoVisor "preview"), sin que se hubiera tocado la primera vez.
+        <div className={cn("flex w-full flex-col gap-2", esDiseno && "lg:h-full")}>
           {/* Si se llega aqui para un VIDEO es porque el reproductor propio ya diagnostico el
               motivo real del fallo (sin acceso, archivo borrado, u otra cosa) y no lo pudo
               reparar solo. Este es el visor de Drive de respaldo, y NO puede detectar el minuto
@@ -503,7 +509,7 @@ export function RevisarEntregableDialog({
               "w-full overflow-hidden rounded-lg ring-1 ring-black/10 dark:ring-white/10",
               esDiseno
                 ? "h-[60vh] bg-white lg:h-full lg:w-[70vw] lg:max-w-2xl"
-                : "min-h-[180px] max-h-[60vh] bg-black lg:w-auto lg:max-w-full lg:max-h-none lg:min-h-0 lg:flex-1"
+                : "min-h-[180px] max-h-[60vh] bg-black lg:max-h-[55vh] lg:max-w-2xl"
             )}
             style={esDiseno ? undefined : { aspectRatio: String(ratioVisor) }}
           >
@@ -868,8 +874,14 @@ export function RevisarEntregableDialog({
 
         <div
           className={cn(
+            // Antes `lg:overflow-visible`: si el contenido de esta fila (video + observaciones)
+            // excedia el `max-h-[85vh]` del dialogo, se desbordaba silenciosamente y quedaba
+            // CORTADO por el `overflow-hidden` del DialogContent (sin scrollbar, sin aviso) — se
+            // notaba sobre todo al agregar la version alterna (tabs Horizontal/Vertical + boton
+            // "+ Agregar...") porque suman alto arriba del video. `lg:overflow-y-auto` deja que
+            // la fila scrollee cuando de verdad no cabe, en vez de recortar contenido sin avisar.
             layoutLado
-              ? "flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto lg:flex-row lg:items-stretch lg:gap-6 lg:overflow-visible"
+              ? "flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto lg:flex-row lg:items-stretch lg:gap-6"
               : "space-y-4 overflow-y-auto"
           )}
         >
