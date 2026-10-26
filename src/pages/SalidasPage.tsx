@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useAutorizarSalida, useSalidas } from "@/hooks/useCatalogos";
 import { useUsuarios } from "@/hooks/useCatalogos";
+import { useProyectos } from "@/hooks/useProyectos";
 import { useAuth } from "@/context/AuthContext";
 import { puedeAsignarEntregables } from "@/lib/roles";
 import {
@@ -85,7 +86,9 @@ export function SalidasPage() {
   const { usuario } = useAuth();
   const { data: salidas = [], isLoading } = useSalidas();
   const { data: usuarios = [] } = useUsuarios();
+  const { data: proyectos = [] } = useProyectos();
   const autorizar = useAutorizarSalida();
+  const nombreProyectoDe = (id: string) => proyectos.find((p) => p.id === id)?.nombre ?? "Proyecto eliminado";
   const [decidiendo, setDecidiendo] = useState<string | null>(null);
   const nombreDe = (id: string) => usuarios.find((u) => u.id === id)?.nombre ?? "Usuario eliminado";
   // Mismo criterio que crear la salida (lider/superadmin): quien la programa es quien la
@@ -148,7 +151,10 @@ export function SalidasPage() {
                 </Badge>
               </CardHeader>
               <CardContent className="space-y-2.5">
-                <p className="text-xs text-muted-foreground">{TIPO_ACTIVIDAD_SALIDA_LABELS[s.tipoActividad]}</p>
+                <p className="text-xs text-muted-foreground">
+                  {TIPO_ACTIVIDAD_SALIDA_LABELS[s.tipoActividad]}
+                  {s.proyectosRelacionados.length > 0 && ` · ${nombreProyectoDe(s.proyectosRelacionados[0])}`}
+                </p>
 
                 <div className="flex items-center gap-2 text-sm">
                   <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
