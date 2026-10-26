@@ -103,7 +103,7 @@ export function ConfiguracionPage() {
                   <TableCell className="font-medium">{u.nombre}</TableCell>
                   <TableCell className="text-muted-foreground">{u.correo}</TableCell>
                   <TableCell>
-                    {u.id === usuarioActual?.id ? (
+                    {u.id === usuarioActual?.id || usuarioActual?.rol !== "superadmin" ? (
                       <Badge variant="outline">{ROLE_LABELS[u.rol]}</Badge>
                     ) : (
                       <Select

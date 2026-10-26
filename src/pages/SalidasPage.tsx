@@ -75,7 +75,7 @@ export function SalidasPage() {
   const { usuario } = useAuth();
   const { data: salidas = [], isLoading } = useSalidas();
   const { data: usuarios = [] } = useUsuarios();
-  const nombreDe = (id: string) => usuarios.find((u) => u.id === id)?.nombre ?? id;
+  const nombreDe = (id: string) => usuarios.find((u) => u.id === id)?.nombre ?? "Usuario eliminado";
 
   return (
     <div className="space-y-6">

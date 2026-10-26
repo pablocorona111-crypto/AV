@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
-import { puedeVerRuta, puedeGestionarUsuarios } from "@/lib/roles";
+import { puedeVerRuta } from "@/lib/roles";
 
 const navItems = [
   { to: "/", label: "Inicio", icon: Home, end: true },
@@ -71,16 +71,6 @@ function ContenidoSidebar({ onNavegar }: { onNavegar?: () => void }) {
             </NavLink>
           ))}
       </nav>
-
-      {puedeGestionarUsuarios(usuario) && (
-        <div className="border-t border-border p-4">
-          <p className="mb-1 text-xs text-muted-foreground">Espacio de almacenamiento</p>
-          <div className="h-1.5 w-full rounded-full bg-bg-secondary">
-            <div className="h-1.5 w-[32%] rounded-full bg-accent" />
-          </div>
-          <p className="mt-1 text-[11px] text-muted-foreground">320 GB de 1 TB</p>
-        </div>
-      )}
     </>
   );
 }

@@ -89,7 +89,7 @@ export function DashboardPage() {
   ).length;
   const cumplimiento = entregables.length
     ? Math.round((entregablesFinalizados / entregables.length) * 100)
-    : 94;
+    : 0;
 
   // Cumplimiento semanal: aqui se trabaja Lunes a Sabado (no Lun-Dom) — el corte real es el
   // viernes, pero lo que se sube el sabado sigue contando para esa misma semana. Se mide contra
@@ -133,7 +133,7 @@ export function DashboardPage() {
   const entregadosPorMesReal = cumplidosPorMes(entregables);
   const entregadosPorMes = entregadosPorMesReal.length > 0 ? entregadosPorMesReal : mesesVacios(6, ahora);
 
-  const nombreDe = (id: string) => usuarios.find((u) => u.id === id)?.nombre ?? id;
+  const nombreDe = (id: string) => usuarios.find((u) => u.id === id)?.nombre ?? "Usuario eliminado";
   const proyectoDe = (id: string | undefined) => (id ? proyectos.find((p) => p.id === id)?.nombre : undefined);
 
   // Actividad real (ya no nombres de ejemplo fijos) — un renglon por cada cambio de estado con

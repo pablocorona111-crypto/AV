@@ -32,7 +32,7 @@ export function ProyectosPage() {
   const [aEliminar, setAEliminar] = useState<Proyecto | null>(null);
   const eliminar = useEliminarProyecto();
 
-  const nombreDe = (id: string) => usuarios.find((u) => u.id === id)?.nombre ?? id;
+  const nombreDe = (id: string) => usuarios.find((u) => u.id === id)?.nombre ?? "Usuario eliminado";
 
   const confirmarEliminar = () => {
     if (!aEliminar) return;

@@ -47,7 +47,7 @@ export function ArchivosPage() {
   const seleccionado = entregables.find((e) => e.id === seleccionadoId) ?? null;
   const proyectoDe = (id: string | undefined) =>
     id ? proyectos.find((p) => p.id === id)?.nombre ?? "Proyecto eliminado" : "Sin proyecto";
-  const nombreDe = (id: string) => usuarios.find((u) => u.id === id)?.nombre ?? id;
+  const nombreDe = (id: string) => usuarios.find((u) => u.id === id)?.nombre ?? "Usuario eliminado";
 
   const terminoBusqueda = busqueda.trim().toLowerCase();
   // Antes se ocultaba aqui cualquier entregable sin urlRevision/urlFinal — eso dejaba fuera a
@@ -67,7 +67,7 @@ export function ArchivosPage() {
         <div>
           <h1 className="text-xl font-bold">Archivos</h1>
           <p className="text-sm text-muted-foreground">
-            Referencias y vinculos a archivos. El almacenamiento binario vive en Firebase Storage.
+            Referencias y vinculos a archivos. El almacenamiento binario vive en Google Drive.
           </p>
         </div>
         <DemoBadge />

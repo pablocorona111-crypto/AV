@@ -249,7 +249,7 @@ function ReporteDeContenido() {
   const [descargando, setDescargando] = useState(false);
   const reporteRef = useRef<HTMLDivElement>(null);
 
-  const nombreDe = (id: string) => usuarios.find((u) => u.id === id)?.nombre ?? id;
+  const nombreDe = (id: string) => usuarios.find((u) => u.id === id)?.nombre ?? "Usuario eliminado";
   const proyectoDe = (id: string | undefined) =>
     id ? proyectos.find((p) => p.id === id)?.nombre ?? "Proyecto eliminado" : "Sin proyecto";
 

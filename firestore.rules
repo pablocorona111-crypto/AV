@@ -62,13 +62,26 @@ service cloud.firestore {
 
       // Cualquiera puede actualizar SU PROPIA foto de perfil (se sincroniza sola con la de
       // Google en cada login) — nada mas ese campo, ni su propio rol ni el de nadie mas.
-      allow update: if esSuperadmin() || esLiderAudiovisual() ||
+      // Lider SOLO puede tocar `gestorRequisiciones` de otros — antes podia escribir CUALQUIER
+      // campo (incluido `rol`), lo que le permitia autopromoverse o promover a alguien mas a
+      // superadmin desde el mismo Select de ConfiguracionPage.tsx que usa para esto.
+      allow update: if esSuperadmin() ||
+        (esLiderAudiovisual() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['gestorRequisiciones'])) ||
         (request.auth.uid == usuarioId && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['avatarUrl']));
       allow delete: if esSuperadmin() || esLiderAudiovisual();
     }
 
     match /contadores/{contadorId} {
-      allow read, write: if usuarioAutenticado();
+      allow read: if usuarioAutenticado();
+      // Antes cualquier autenticado podia escribir CUALQUIER valor (incluido un numero menor,
+      // negativo, o cualquier otro campo) — esto solo deja avanzar el contador en +1 exacto
+      // (como hace la transaccion de siguienteFolio() en folio.ts), nunca retrocederlo ni tocar
+      // otro campo. Sigue abierto a cualquier autenticado porque solicitante/colaborador tambien
+      // generan folios al crear requisiciones/proyectos/guiones/salidas.
+      allow write: if usuarioAutenticado() &&
+        request.resource.data.keys().hasOnly(['siguiente']) &&
+        request.resource.data.siguiente is int &&
+        (resource == null || request.resource.data.siguiente == resource.data.siguiente + 1);
     }
 
     match /invitaciones/{correoId} {

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
-import { Bell, Search, ChevronDown, LogOut, UserCog, Sun, Moon, Menu, Clapperboard } from "lucide-react";
+import { Bell, ChevronDown, LogOut, UserCog, Sun, Moon, Menu, Clapperboard } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useNotificaciones } from "@/hooks/useNotificaciones";
 import { useTema } from "@/hooks/useTema";
@@ -124,14 +124,7 @@ export function Header({ onAbrirMenu }: { onAbrirMenu: () => void }) {
         <span className="truncate text-sm font-bold">AV CONTROL</span>
       </div>
 
-      <div className="relative hidden max-w-xl flex-1 lg:block">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <input
-          type="text"
-          placeholder="Buscar requisiciones, proyectos o personas..."
-          className="h-10 w-full rounded-md border border-border bg-bg-secondary pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-        />
-      </div>
+      <div className="hidden flex-1 lg:block" />
 
       {esModoDemo && (
         <Badge variant="warning" className="hidden md:inline-flex">
