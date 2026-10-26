@@ -4,6 +4,7 @@ import {
   agregarComentario,
   aprobarEntregable,
   asignarProyectoEntregable,
+  cambiarEstadoEntregableDirecto,
   renombrarEntregable,
   crearEntregable,
   crearEntregableHistorico,
@@ -13,7 +14,7 @@ import {
   marcarEntregado,
   solicitarCorrecciones,
 } from "@/services/entregablesService";
-import type { Entregable } from "@/types";
+import type { Entregable, EstadoEntregable } from "@/types";
 
 export function useCrearEntregable() {
   const qc = useQueryClient();
@@ -59,6 +60,22 @@ export function useRenombrarEntregable() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, nombre }: { id: string; nombre: string }) => renombrarEntregable(id, nombre),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["entregables"] }),
+  });
+}
+
+export function useCambiarEstadoEntregableDirecto() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      estado,
+      actual,
+    }: {
+      id: string;
+      estado: EstadoEntregable;
+      actual: Pick<Entregable, "fechaAprobado" | "fechaEntregado">;
+    }) => cambiarEstadoEntregableDirecto(id, estado, actual),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["entregables"] }),
   });
 }

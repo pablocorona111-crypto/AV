@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Download, Link2, Check, LayoutGrid, Table2 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 import { useIdToken } from "@/hooks/useIdToken";
 import { useProyectos } from "@/hooks/useProyectos";
 import { useEntregables, useUsuarios } from "@/hooks/useCatalogos";
+import { useCambiarEstadoEntregableDirecto } from "@/hooks/useEntregables";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -15,10 +17,12 @@ import { extraerFileIdDrive } from "@/services/driveService";
 import { ESTADO_ENTREGABLE_BADGE, ESTADO_ENTREGABLE_LABELS, etiquetaEstadoEntregable, CATEGORIA_CONTENIDO_LABELS } from "@/lib/labels";
 import { dentroDelPeriodo, type Periodo } from "@/lib/periodo";
 import { cn, formatFecha } from "@/lib/utils";
-import type { EstadoEntregable } from "@/types";
+import type { Entregable, EstadoEntregable } from "@/types";
 
 type FiltroPeriodo = Periodo | "todos";
 type FiltroEstadoArchivos = EstadoEntregable | "todos" | "listos";
+
+const TODOS_LOS_ESTADOS = Object.keys(ESTADO_ENTREGABLE_LABELS) as EstadoEntregable[];
 
 /** "Listos" junta aprobado+entregado — para que community no tenga que elegir un estado a la
  * vez cuando lo que quiere es ver/descargar todo lo que ya se puede usar. */
@@ -26,6 +30,52 @@ function pasaFiltroEstado(estado: EstadoEntregable, filtro: FiltroEstadoArchivos
   if (filtro === "todos") return true;
   if (filtro === "listos") return estado === "aprobado" || estado === "entregado";
   return estado === filtro;
+}
+
+/** Selector de estado solo para superadmin — corrige un entregable que quedo mal etiquetado
+ * (ej. historico cargado con el estado equivocado) sin pasar por todo el flujo de revision. Para
+ * cualquier otro rol, solo el badge de siempre (de solo lectura). */
+function EstadoEntregableCelda({ entregable, className }: { entregable: Entregable; className?: string }) {
+  const { usuario } = useAuth();
+  const cambiarEstado = useCambiarEstadoEntregableDirecto();
+
+  if (usuario?.rol !== "superadmin") {
+    return (
+      <Badge variant={ESTADO_ENTREGABLE_BADGE[entregable.estado]} className={cn("text-[10px]", className)}>
+        {etiquetaEstadoEntregable(entregable)}
+      </Badge>
+    );
+  }
+
+  return (
+    <Select
+      value={entregable.estado}
+      onValueChange={(v) =>
+        cambiarEstado.mutate({
+          id: entregable.id,
+          estado: v as EstadoEntregable,
+          actual: { fechaAprobado: entregable.fechaAprobado, fechaEntregado: entregable.fechaEntregado },
+        })
+      }
+    >
+      <SelectTrigger
+        className={cn(
+          "h-6 w-auto gap-1 border-none bg-transparent px-1.5 py-0 text-[10px] font-medium shadow-none hover:bg-bg-secondary",
+          className
+        )}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent onClick={(e) => e.stopPropagation()}>
+        {TODOS_LOS_ESTADOS.map((estado) => (
+          <SelectItem key={estado} value={estado}>
+            {etiquetaEstadoEntregable({ estado, tipo: entregable.tipo })}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
 }
 
 export function ArchivosPage() {
@@ -167,10 +217,8 @@ export function ArchivosPage() {
                     <td className="px-3 py-2 text-muted-foreground">
                       {formatFecha(e.fechaEntregado ?? e.fechaAprobado ?? e.fechaCompromiso)}
                     </td>
-                    <td className="px-3 py-2">
-                      <Badge variant={ESTADO_ENTREGABLE_BADGE[e.estado]} className="text-[10px]">
-                        {etiquetaEstadoEntregable(e)}
-                      </Badge>
+                    <td className="px-3 py-2" onClick={(ev) => ev.stopPropagation()}>
+                      <EstadoEntregableCelda entregable={e} />
                     </td>
                     <td className="px-3 py-2" onClick={(ev) => ev.stopPropagation()}>
                       {puedeBajarYCompartir ? (
@@ -249,10 +297,8 @@ export function ArchivosPage() {
                     ? `Entregado: ${formatFecha(e.fechaEntregado)}`
                     : `Fecha compromiso: ${formatFecha(e.fechaCompromiso)}`}
                 </p>
-                <div className="flex flex-wrap items-center gap-1">
-                  <Badge variant={ESTADO_ENTREGABLE_BADGE[e.estado]} className="text-[10px]">
-                    {etiquetaEstadoEntregable(e)}
-                  </Badge>
+                <div className="flex flex-wrap items-center gap-1" onClick={(ev) => ev.stopPropagation()}>
+                  <EstadoEntregableCelda entregable={e} />
                   {e.estado === "aprobado" && (
                     <Badge variant="success" className="text-[10px]">
                       Listo para subir

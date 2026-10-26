@@ -50,6 +50,24 @@ export function gestorTienePermiso(usuario: Usuario | null | undefined, permiso:
   return permisos[permiso] === true;
 }
 
+/**
+ * Determina si `useRequisiciones()` puede pedir la coleccion SIN filtro, o si tiene que acotar
+ * la query por campo (ver `listarRequisiciones`/`AlcanceRequisiciones` en requisicionesService.ts).
+ *
+ * OJO: esto NO es lo mismo que `gestorTienePermiso` — esa funcion es permisiva por defecto
+ * (para no bloquear UI a nadie que no sea gestor delegado), pero usarla para decidir el alcance
+ * de la QUERY dejaba a solicitante/colaborador_audiovisual/community pidiendo la coleccion
+ * entera sin filtro — Firestore evalua la regla de una query contra la FORMA de la query, y la
+ * regla de lectura de esos roles depende de `resource.data` (su propio uid), asi que una query
+ * sin `where` les rechaza el listado COMPLETO con permission-denied. Debe reflejar exactamente
+ * las ramas de `allow read` en firestore.rules que NO dependen de `resource.data`.
+ */
+export function puedeVerTodasLasRequisiciones(usuario: Usuario | null): boolean {
+  if (!usuario) return false;
+  if (puedeAprobarRequisiciones(usuario)) return true;
+  return Boolean(usuario.gestorRequisiciones?.activo && usuario.gestorRequisiciones.verRequisicionesDeOtros);
+}
+
 export function puedeVerMetricasGlobales(usuario: Usuario | null): boolean {
   if (!usuario) return false;
   return usuario.rol === "superadmin" || usuario.rol === "lider_audiovisual";

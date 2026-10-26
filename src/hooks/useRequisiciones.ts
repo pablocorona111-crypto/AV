@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
-import { gestorTienePermiso } from "@/lib/roles";
+import { puedeVerTodasLasRequisiciones } from "@/lib/roles";
 import {
   asignarGestorRequisicion,
   cambiarEstadoRequisicion,
@@ -13,14 +13,19 @@ import type { EstadoRequisicion, Requisicion } from "@/types";
 const QUERY_KEY = ["requisiciones"];
 
 /**
- * Sin `verRequisicionesDeOtros`, el gestor lee solo lo suyo (creado por el o asignado a el)
- * con queries acotadas por campo — requisito de las reglas de Firestore, ver
- * `listarRequisiciones`. El resto de roles sigue leyendo la coleccion completa igual que antes.
+ * Solo superadmin/lider/aprobador (o un gestor delegado con `verRequisicionesDeOtros`) piden la
+ * coleccion sin filtro. Todos los demas — solicitante, colaborador_audiovisual, community, o un
+ * gestor delegado sin ese permiso — leen con queries acotadas por campo (creado por el o
+ * asignado a el), porque asi lo exige la regla de lectura de Firestore (ver `listarRequisiciones`
+ * y `puedeVerTodasLasRequisiciones`). Antes esto se decidia con `gestorTienePermiso`, que es
+ * permisivo por defecto para cualquiera que no sea gestor delegado — eso dejaba a solicitante/
+ * colaborador/community pidiendo la coleccion entera sin filtro, y Firestore les rechazaba el
+ * listado COMPLETO con permission-denied.
  */
 export function useRequisiciones() {
   const { usuario } = useAuth();
   const alcance: AlcanceRequisiciones =
-    usuario && !gestorTienePermiso(usuario, "verRequisicionesDeOtros") ? { uid: usuario.id } : null;
+    usuario && !puedeVerTodasLasRequisiciones(usuario) ? { uid: usuario.id } : null;
 
   return useQuery({
     // El alcance entra en la key: si el lider cambia el permiso, se refetchea solo.

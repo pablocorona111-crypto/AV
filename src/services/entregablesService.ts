@@ -160,6 +160,22 @@ export async function marcarEntregado(id: string): Promise<void> {
   });
 }
 
+/** Cambio directo de estado (solo superadmin, desde el selector de la columna Estado en
+ * Archivos) — para corregir un entregable que quedo en el estado equivocado (ej. historico mal
+ * etiquetado) sin tener que pasar por todo el flujo normal de revision/aprobacion. Si el nuevo
+ * estado es aprobado/entregado y no tenia la fecha correspondiente, se pone ahora — mismo
+ * criterio que aprobarEntregable()/marcarEntregado(), para que las graficas sigan contando bien. */
+export async function cambiarEstadoEntregableDirecto(
+  id: string,
+  estado: EstadoEntregable,
+  actual: Pick<Entregable, "fechaAprobado" | "fechaEntregado">
+): Promise<void> {
+  const cambios: Partial<Entregable> = { estado };
+  if (estado === "aprobado" && !actual.fechaAprobado) cambios.fechaAprobado = new Date().toISOString();
+  if (estado === "entregado" && !actual.fechaEntregado) cambios.fechaEntregado = new Date().toISOString();
+  await actualizarEntregable(id, cambios);
+}
+
 /** Deja marcar la orientacion a mano cuando no se detecto sola (ej. video viejo sin etiqueta). */
 export async function etiquetarOrientacion(id: string, orientacionVideo: "vertical" | "horizontal"): Promise<void> {
   await actualizarEntregable(id, { orientacionVideo });
