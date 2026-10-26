@@ -11,6 +11,7 @@ import {
   useEnviarARevision,
   useEtiquetarOrientacion,
   useMarcarEntregado,
+  useReasignarResponsableEntregable,
   useRenombrarEntregable,
   useSolicitarCorrecciones,
 } from "@/hooks/useEntregables";
@@ -64,6 +65,7 @@ export function RevisarEntregableDialog({
   const { data: usuarios = [] } = useUsuarios();
   const { data: proyectos = [] } = useProyectos();
   const asignarProyecto = useAsignarProyectoEntregable();
+  const reasignarResponsable = useReasignarResponsableEntregable();
   const [comentario, setComentario] = useState("");
   const [momento, setMomento] = useState("");
   const [subiendo, setSubiendo] = useState(false);
@@ -661,8 +663,36 @@ export function RevisarEntregableDialog({
           ) : (
             nombreProyecto && <span>Proyecto: {nombreProyecto} ·</span>
           )}
-          <span>
-            {CATEGORIA_CONTENIDO_LABELS[entregable.tipo]} · Responsable: {nombreResponsable} · v{entregable.version}
+          <span className="flex items-center gap-1">
+            {CATEGORIA_CONTENIDO_LABELS[entregable.tipo]} ·{" "}
+            {usuario.rol === "superadmin" ? (
+              <>
+                Responsable:
+                <Select
+                  value={entregable.responsableId}
+                  onValueChange={(v) => reasignarResponsable.mutate({ id: entregable.id, responsableId: v })}
+                >
+                  <SelectTrigger className="h-6 w-auto gap-1 border-none bg-transparent px-1.5 py-0 text-xs font-medium text-text-primary shadow-none hover:bg-bg-secondary">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {/* Candidatos normales: quien puede subir material. Si el responsable actual
+                        no esta en ese grupo (ej. su cuenta cambio de rol), se agrega igual para
+                        que el Select no se quede sin opcion seleccionada. */}
+                    {usuarios
+                      .filter((u) => puedeSubirVideos(u) || u.id === entregable.responsableId)
+                      .map((u) => (
+                        <SelectItem key={u.id} value={u.id}>
+                          {u.nombre}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </>
+            ) : (
+              `Responsable: ${nombreResponsable}`
+            )}{" "}
+            · v{entregable.version}
           </span>
         </div>
 

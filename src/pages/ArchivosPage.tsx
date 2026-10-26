@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Download, Link2, Check, LayoutGrid, Table2 } from "lucide-react";
+import { Download, Link2, Check, LayoutGrid, Table2, Upload } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useIdToken } from "@/hooks/useIdToken";
 import { useProyectos } from "@/hooks/useProyectos";
@@ -79,6 +79,7 @@ function EstadoEntregableCelda({ entregable, className }: { entregable: Entregab
 }
 
 export function ArchivosPage() {
+  const { usuario } = useAuth();
   const { data: proyectos = [] } = useProyectos();
   const { data: entregables = [] } = useEntregables();
   const { data: usuarios = [] } = useUsuarios();
@@ -253,6 +254,14 @@ export function ArchivosPage() {
                             )}
                           </button>
                         </div>
+                      ) : !fileId && usuario?.rol === "superadmin" ? (
+                        <button
+                          type="button"
+                          onClick={() => setSeleccionadoId(e.id)}
+                          className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] font-medium hover:bg-bg-secondary"
+                        >
+                          <Upload className="h-3 w-3" /> Subir
+                        </button>
                       ) : (
                         <span className="text-xs text-muted-foreground">
                           {fileId ? "Pendiente de aprobar" : "Sin material"}

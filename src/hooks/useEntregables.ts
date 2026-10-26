@@ -5,6 +5,7 @@ import {
   aprobarEntregable,
   asignarProyectoEntregable,
   cambiarEstadoEntregableDirecto,
+  reasignarResponsableEntregable,
   renombrarEntregable,
   crearEntregable,
   crearEntregableHistorico,
@@ -52,6 +53,15 @@ export function useAsignarProyectoEntregable() {
   return useMutation({
     mutationFn: ({ id, proyectoId }: { id: string; proyectoId: string | null }) =>
       asignarProyectoEntregable(id, proyectoId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["entregables"] }),
+  });
+}
+
+export function useReasignarResponsableEntregable() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, responsableId }: { id: string; responsableId: string }) =>
+      reasignarResponsableEntregable(id, responsableId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["entregables"] }),
   });
 }

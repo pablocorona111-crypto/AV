@@ -86,6 +86,17 @@ export async function renombrarEntregable(id: string, nombre: string): Promise<v
   await updateDoc(doc(db, COLECCION, id), { nombre });
 }
 
+/** Reasignar el responsable (quien sube el material) de un entregable ya creado — util sobre
+ * todo para el historico cargado masivo, donde el responsable registrado a veces ni es una
+ * cuenta real. Solo superadmin lo hace (ver firestore.rules). */
+export async function reasignarResponsableEntregable(id: string, responsableId: string): Promise<void> {
+  if (!isFirebaseConfigured || !db) {
+    demoStore = demoStore.map((e) => (e.id === id ? { ...e, responsableId } : e));
+    return;
+  }
+  await updateDoc(doc(db, COLECCION, id), { responsableId });
+}
+
 /**
  * Carga historica (superadmin) — para meter de una vez un video/trabajo que ya estaba
  * confirmado (de hace una semana, un mes, etc.) y que nunca se registro en el sistema. A
