@@ -11,7 +11,7 @@ import {
 } from "firebase/firestore";
 import { db, isFirebaseConfigured } from "@/lib/firebase";
 import { DEMO_ENTREGABLES } from "@/data/demoData";
-import type { Entregable, EstadoEntregable } from "@/types";
+import type { CategoriaContenido, Entregable, EstadoEntregable } from "@/types";
 
 const COLECCION = "entregables";
 
@@ -84,6 +84,16 @@ export async function renombrarEntregable(id: string, nombre: string): Promise<v
     return;
   }
   await updateDoc(doc(db, COLECCION, id), { nombre });
+}
+
+/** Corregir la categoria de un entregable ya creado (ej. uno que nacio "Otros" porque todavia
+ * no existia "Fotografia" como opcion, o se eligio mal) — solo superadmin, desde Archivos. */
+export async function cambiarTipoEntregable(id: string, tipo: CategoriaContenido): Promise<void> {
+  if (!isFirebaseConfigured || !db) {
+    demoStore = demoStore.map((e) => (e.id === id ? { ...e, tipo } : e));
+    return;
+  }
+  await updateDoc(doc(db, COLECCION, id), { tipo });
 }
 
 /** Reasignar el responsable (quien sube el material) de un entregable ya creado — util sobre

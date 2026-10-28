@@ -4,7 +4,11 @@ import { useAuth } from "@/context/AuthContext";
 import { useIdToken } from "@/hooks/useIdToken";
 import { useProyectos } from "@/hooks/useProyectos";
 import { useEntregables, useUsuarios } from "@/hooks/useCatalogos";
-import { useAsignarProyectoEntregable, useCambiarEstadoEntregableDirecto } from "@/hooks/useEntregables";
+import {
+  useAsignarProyectoEntregable,
+  useCambiarEstadoEntregableDirecto,
+  useCambiarTipoEntregable,
+} from "@/hooks/useEntregables";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -17,12 +21,13 @@ import { extraerFileIdDrive } from "@/services/driveService";
 import { ESTADO_ENTREGABLE_BADGE, ESTADO_ENTREGABLE_LABELS, etiquetaEstadoEntregable, CATEGORIA_CONTENIDO_LABELS } from "@/lib/labels";
 import { dentroDelPeriodo, type Periodo } from "@/lib/periodo";
 import { cn, formatFecha } from "@/lib/utils";
-import type { Entregable, EstadoEntregable } from "@/types";
+import type { CategoriaContenido, Entregable, EstadoEntregable } from "@/types";
 
 type FiltroPeriodo = Periodo | "todos";
 type FiltroEstadoArchivos = EstadoEntregable | "todos" | "listos";
 
 const TODOS_LOS_ESTADOS = Object.keys(ESTADO_ENTREGABLE_LABELS) as EstadoEntregable[];
+const TODAS_LAS_CATEGORIAS = Object.keys(CATEGORIA_CONTENIDO_LABELS) as CategoriaContenido[];
 
 /** "Listos" junta aprobado+entregado — para que community no tenga que elegir un estado a la
  * vez cuando lo que quiere es ver/descargar todo lo que ya se puede usar. */
@@ -71,6 +76,38 @@ function EstadoEntregableCelda({ entregable, className }: { entregable: Entregab
         {TODOS_LOS_ESTADOS.map((estado) => (
           <SelectItem key={estado} value={estado}>
             {etiquetaEstadoEntregable({ estado, tipo: entregable.tipo })}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+/** Selector de categoria directo en la fila — solo superadmin. Corrige entregables que nacieron
+ * "Otros" (ej. antes de que existiera "Fotografia" como opcion) sin tener que abrir el dialogo. */
+function TipoEntregableCelda({ entregable }: { entregable: Entregable }) {
+  const { usuario } = useAuth();
+  const cambiarTipo = useCambiarTipoEntregable();
+
+  if (usuario?.rol !== "superadmin") {
+    return <span className="text-muted-foreground">{CATEGORIA_CONTENIDO_LABELS[entregable.tipo]}</span>;
+  }
+
+  return (
+    <Select
+      value={entregable.tipo}
+      onValueChange={(v) => cambiarTipo.mutate({ id: entregable.id, tipo: v as CategoriaContenido })}
+    >
+      <SelectTrigger
+        className="h-6 w-auto max-w-[180px] gap-1 border-none bg-transparent px-1.5 py-0 text-xs font-medium shadow-none hover:bg-bg-secondary"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent onClick={(e) => e.stopPropagation()}>
+        {TODAS_LAS_CATEGORIAS.map((tipo) => (
+          <SelectItem key={tipo} value={tipo}>
+            {CATEGORIA_CONTENIDO_LABELS[tipo]}
           </SelectItem>
         ))}
       </SelectContent>
@@ -261,7 +298,9 @@ export function ArchivosPage() {
                     <td className="px-3 py-2" onClick={(ev) => ev.stopPropagation()}>
                       <ProyectoEntregableCelda entregable={e} proyectos={proyectos} />
                     </td>
-                    <td className="px-3 py-2 text-muted-foreground">{CATEGORIA_CONTENIDO_LABELS[e.tipo]}</td>
+                    <td className="px-3 py-2" onClick={(ev) => ev.stopPropagation()}>
+                      <TipoEntregableCelda entregable={e} />
+                    </td>
                     <td className="px-3 py-2 text-muted-foreground">{nombreDe(e.responsableId)}</td>
                     <td className="px-3 py-2 text-muted-foreground">
                       {formatFecha(e.fechaEntregado ?? e.fechaAprobado ?? e.fechaCompromiso)}
