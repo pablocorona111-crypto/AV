@@ -7,7 +7,9 @@ import {
   Clock,
   Download,
   ExternalLink,
+  Image as ImageIcon,
   Link2,
+  MessageSquarePlus,
   Monitor,
   Pencil,
   Plus,
@@ -124,6 +126,7 @@ export function RevisarEntregableDialog({
     // Nuevo entregable o se reabrio el dialogo: siempre arranca viendo la version principal.
     setSlotActivo("principal");
     setEditandoNombre(false);
+    setFotoComentando(null);
   }, [entregable?.id, open]);
 
   useEffect(() => {
@@ -153,6 +156,9 @@ export function RevisarEntregableDialog({
   const [progresoFotos, setProgresoFotos] = useState<{ actual: number; total: number; pct: number } | null>(null);
   const [errorFotos, setErrorFotos] = useState<string | null>(null);
   const guardarFotos = useGuardarFotos();
+  // Sobre cual foto de la galeria es la observacion que se esta escribiendo (indice en
+  // `galeriaFotos`) — reemplaza al campo "minuto" de video, que no tiene sentido en una foto.
+  const [fotoComentando, setFotoComentando] = useState<number | null>(null);
 
   if (!entregable || !usuario) return null;
 
@@ -443,21 +449,29 @@ export function RevisarEntregableDialog({
     setEditandoNombre(false);
   };
 
+  // En video `momento` es un minuto escrito a mano ("0:45"). En una foto no hay minuto — lo que
+  // identifica a cual observacion se refiere es el NUMERO de foto, elegido tocando el icono de
+  // comentario en la galeria (`fotoComentando`, ver bloqueGaleriaFotos).
+  const momentoAEnviar = esFoto ? (fotoComentando != null ? `Foto ${fotoComentando + 1}` : "") : momento.trim();
+
   const onComentar = async () => {
     if (!comentario.trim()) return;
     await agregarComentario.mutateAsync({
       autorId: usuario.id,
       autorNombre: usuario.nombre,
       texto: comentario,
-      ...(momento.trim() ? { momento: momento.trim() } : {}),
+      ...(momentoAEnviar ? { momento: momentoAEnviar } : {}),
     });
     setComentario("");
     setMomento("");
+    setFotoComentando(null);
 
     if (!esResponsable) {
       notificarA(
         entregable.responsableId,
-        `${usuario.nombre} dejo una observacion en "${entregable.nombre}"${momento.trim() ? ` (min ${momento.trim()})` : ""}`
+        `${usuario.nombre} dejo una observacion en "${entregable.nombre}"${
+          momentoAEnviar ? ` (${esFoto ? momentoAEnviar : `min ${momentoAEnviar}`})` : ""
+        }`
       );
     }
   };
@@ -651,13 +665,32 @@ export function RevisarEntregableDialog({
       ) : (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {galeriaFotos.map((url, i) => (
-            <div key={url} className="group relative overflow-hidden rounded-md border border-border">
+            <div
+              key={url}
+              className={cn(
+                "group relative overflow-hidden rounded-md border",
+                fotoComentando === i ? "border-accent ring-2 ring-accent" : "border-border"
+              )}
+            >
               <a href={url} target="_blank" rel="noreferrer">
                 <MiniaturaVideo url={url} className="aspect-square" />
               </a>
               <span className="pointer-events-none absolute left-1.5 top-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-white">
                 {i + 1}
               </span>
+              {puedeComentar && !yaResuelto && (
+                <button
+                  type="button"
+                  onClick={() => setFotoComentando((actual) => (actual === i ? null : i))}
+                  className={cn(
+                    "absolute right-1.5 top-1.5 rounded p-1 text-white",
+                    fotoComentando === i ? "bg-accent text-accent-foreground" : "bg-black/60 hover:bg-black/80"
+                  )}
+                  title="Comentar sobre esta foto"
+                >
+                  <MessageSquarePlus className="h-3.5 w-3.5" />
+                </button>
+              )}
               {puedeEditarMaterial && (
                 <div className="absolute bottom-1.5 right-1.5 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                   <button
@@ -811,7 +844,15 @@ export function RevisarEntregableDialog({
                   <span className="text-xs font-semibold">{c.autorNombre}</span>
                   {c.momento && (
                     <span className="flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-medium text-text-primary">
-                      <Clock className="h-3 w-3" /> min {c.momento}
+                      {esFoto ? (
+                        <>
+                          <ImageIcon className="h-3 w-3" /> {c.momento}
+                        </>
+                      ) : (
+                        <>
+                          <Clock className="h-3 w-3" /> min {c.momento}
+                        </>
+                      )}
                     </span>
                   )}
                 </div>
@@ -822,25 +863,53 @@ export function RevisarEntregableDialog({
         </div>
         {puedeComentar && !yaResuelto && (
           <div className="space-y-1.5">
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Input
-                value={momento}
-                onChange={(e) => setMomento(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") onComentar();
-                }}
-                placeholder="min (ej. 0:45)"
-                className="w-full shrink-0 sm:w-28"
-              />
+            {esFoto ? (
+              fotoComentando != null && (
+                <div className="flex items-center justify-between gap-2 rounded-md bg-accent/15 px-2.5 py-1.5 text-xs font-medium text-text-primary">
+                  <span className="flex items-center gap-1.5">
+                    <ImageIcon className="h-3.5 w-3.5" /> Sobre la foto #{fotoComentando + 1}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setFotoComentando(null)}
+                    className="rounded p-0.5 text-muted-foreground hover:text-text-primary"
+                    title="Quitar foto seleccionada"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )
+            ) : (
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Input
+                  value={momento}
+                  onChange={(e) => setMomento(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") onComentar();
+                  }}
+                  placeholder="min (ej. 0:45)"
+                  className="w-full shrink-0 sm:w-28"
+                />
+                <Input
+                  value={comentario}
+                  onChange={(e) => setComentario(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") onComentar();
+                  }}
+                  placeholder="Ej. En esta toma, encuadre torcido"
+                />
+              </div>
+            )}
+            {esFoto && (
               <Input
                 value={comentario}
                 onChange={(e) => setComentario(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") onComentar();
                 }}
-                placeholder="Ej. En esta toma, encuadre torcido"
+                placeholder="Ej. Esta foto sale movida"
               />
-            </div>
+            )}
             <Button
               type="button"
               variant="outline"
@@ -851,9 +920,11 @@ export function RevisarEntregableDialog({
               Agregar observacion
             </Button>
             <p className="text-[11px] text-muted-foreground">
-              {usaPlayerPropio
-                ? "Se llena solo mientras reproduces."
-                : "Anota el minuto donde esta el cambio que pides."}
+              {esFoto
+                ? "Toca el icono de comentario en una foto de la galeria para amarrar la observacion a esa foto (opcional)."
+                : usaPlayerPropio
+                  ? "Se llena solo mientras reproduces."
+                  : "Anota el minuto donde esta el cambio que pides."}
             </p>
           </div>
         )}
