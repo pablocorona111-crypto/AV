@@ -48,6 +48,7 @@ export type CategoriaContenido =
   | "video_institucional"
   | "video_industrial"
   | "video_producto"
+  | "fotografia"
   | "fotografia_producto"
   | "fotografia_industrial"
   | "cobertura_evento"
@@ -189,6 +190,11 @@ export interface Entregable {
   orientacionVideoAlt?: "vertical" | "horizontal";
   urlRevisionAlt?: string;
   urlFinalAlt?: string;
+  /** Galeria ordenada de fotos para categorias de fotografia — el orden del arreglo ES el orden
+   * de la galeria (reordenar reescribe el arreglo completo). `urlRevision`/`urlFinal` siempre
+   * reflejan `fotos[0]` como portada, para que miniaturas/metricas que ya leen esos campos sigan
+   * funcionando igual que con un video, sin tener que tocarlas una por una. */
+  fotos?: string[];
   aprobadorId?: string;
   creadoEn: string;
   /** Cuando `estado` paso a "entregado" — para agrupar entregas por mes en la grafica del lider. */

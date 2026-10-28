@@ -9,7 +9,7 @@ import { useCrearEntregableHistorico } from "@/hooks/useEntregables";
 import { useAuth } from "@/context/AuthContext";
 import { subirArchivoADrive } from "@/services/driveService";
 import { mensajeErrorAuth } from "@/lib/authErrors";
-import { CATEGORIA_CONTENIDO_LABELS } from "@/lib/labels";
+import { CATEGORIA_CONTENIDO_LABELS, esCategoriaFotografia } from "@/lib/labels";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -75,7 +75,11 @@ export function CargarEntregableHistoricoDialog() {
     (u) => u.rol === "colaborador_audiovisual" || u.rol === "lider_audiovisual" || u.rol === "superadmin"
   );
 
-  const esDiseno = watch("tipo") === "diseno_grafico";
+  const tipoSeleccionado = watch("tipo");
+  const esDiseno = tipoSeleccionado === "diseno_grafico";
+  // Fotografia usa galeria ordenada (ver RevisarEntregableDialog) — aqui solo se carga la
+  // PRIMERA foto como registro historico; el resto se agrega despues desde ahi.
+  const esFoto = Boolean(tipoSeleccionado) && esCategoriaFotografia(tipoSeleccionado);
 
   const onSeleccionarArchivo = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -100,7 +104,7 @@ export function CargarEntregableHistoricoDialog() {
       const subido = await subirArchivoADrive(file, token, {
         nombre: `${nombreProyecto} - ${nombreEntregable}`,
         nombreCarpeta: nombreProyecto,
-        subcarpeta: esDiseno ? "Diseños" : "Videos",
+        subcarpeta: esDiseno ? "Diseños" : esFoto ? "Fotografias" : "Videos",
         onProgress: setProgreso,
       });
       setValue("urlFinal", subido.previewUrl, { shouldValidate: true });
@@ -267,11 +271,11 @@ export function CargarEntregableHistoricoDialog() {
           </div>
 
           <div className="space-y-1.5">
-            <Label>{esDiseno ? "Diseño" : "Video"}</Label>
+            <Label>{esDiseno ? "Diseño" : esFoto ? "Fotografia" : "Video"}</Label>
             <input
               ref={inputArchivoRef}
               type="file"
-              accept={esDiseno ? "image/*,.pdf,.ai,.psd,.fig,.sketch,.eps" : "video/*"}
+              accept={esDiseno ? "image/*,.pdf,.ai,.psd,.fig,.sketch,.eps" : esFoto ? "image/*" : "video/*"}
               className="hidden"
               onChange={onSeleccionarArchivo}
             />
@@ -282,7 +286,13 @@ export function CargarEntregableHistoricoDialog() {
               disabled={subiendo}
             >
               <Upload className="h-4 w-4" />
-              {subiendo ? `Subiendo... ${progreso}%` : esDiseno ? "Subir diseño a Drive" : "Subir video a Drive"}
+              {subiendo
+                ? `Subiendo... ${progreso}%`
+                : esDiseno
+                  ? "Subir diseño a Drive"
+                  : esFoto
+                    ? "Subir fotografia a Drive"
+                    : "Subir video a Drive"}
             </Button>
             {watch("urlFinal") && (
               <p className="truncate text-xs text-muted-foreground">Cargado: {watch("urlFinal")}</p>

@@ -34,6 +34,7 @@ export const CATEGORIA_CONTENIDO_LABELS: Record<CategoriaContenido, string> = {
   video_institucional: "Video institucional",
   video_industrial: "Video industrial",
   video_producto: "Video de producto",
+  fotografia: "Fotografia",
   fotografia_producto: "Fotografia de producto",
   fotografia_industrial: "Fotografia industrial",
   cobertura_evento: "Cobertura de evento",
@@ -57,12 +58,19 @@ export const ACCION_ENTREGA_LABELS: Record<CategoriaContenido, string> = {
   capacitacion: "grabado",
   motion_graphics: "animado",
   animacion_2d_3d: "animado",
+  fotografia: "fotografiado",
   fotografia_producto: "fotografiado",
   fotografia_industrial: "fotografiado",
   diseno_grafico: "diseñado",
   contenido_redes_sociales: "entregado",
   otros: "entregado",
 };
+
+/** Fotografia (generica, producto o industrial) usa galeria ordenada de imagenes en vez de un
+ * solo archivo de video — nada de orientacion horizontal/vertical ni reproductor de video. */
+export function esCategoriaFotografia(tipo: CategoriaContenido): boolean {
+  return tipo.startsWith("fotografia");
+}
 
 export const PRIORIDAD_LABELS: Record<Prioridad, string> = {
   baja: "Baja",

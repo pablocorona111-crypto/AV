@@ -13,6 +13,7 @@ import {
   enviarARevision,
   etiquetarOrientacion,
   etiquetarOrientacionAlt,
+  guardarFotos,
   listarComentarios,
   marcarEntregado,
   solicitarCorrecciones,
@@ -167,6 +168,15 @@ export function useEtiquetarOrientacionAlt() {
   return useMutation({
     mutationFn: ({ id, orientacionVideoAlt }: { id: string; orientacionVideoAlt: "vertical" | "horizontal" }) =>
       etiquetarOrientacionAlt(id, orientacionVideoAlt),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["entregables"] }),
+  });
+}
+
+export function useGuardarFotos() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, fotos, comoHistorico }: { id: string; fotos: string[]; comoHistorico: boolean }) =>
+      guardarFotos(id, fotos, { comoHistorico }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["entregables"] }),
   });
 }

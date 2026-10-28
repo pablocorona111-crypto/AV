@@ -212,6 +212,39 @@ export async function cambiarEstadoEntregableDirecto(
   await actualizarEntregable(id, cambios);
 }
 
+/** Guarda la galeria completa de fotos (agregar, borrar o reordenar siempre reescribe el
+ * arreglo entero — mas simple que updates incrementales y evita condiciones de carrera entre
+ * dos fotos subiendo a la vez). `urlRevision`/`urlFinal` se actualizan para apuntar a la
+ * PRIMERA foto como portada, igual que `enviarARevision`/`adjuntarMaterialHistorico` hacen con
+ * un video — asi el resto del sistema (miniaturas, metricas de "tiene material") no necesita
+ * saber que esto es una galeria. Mismo criterio que completandoHistorico en el dialogo: si el
+ * entregable ya estaba cerrado (aprobado/entregado), no se reabre a revision al tocar la galeria. */
+export async function guardarFotos(
+  id: string,
+  fotos: string[],
+  opciones: { comoHistorico: boolean }
+): Promise<void> {
+  const campoCover = opciones.comoHistorico ? "urlFinal" : "urlRevision";
+  if (!isFirebaseConfigured || !db) {
+    demoStore = demoStore.map((e) =>
+      e.id === id
+        ? {
+            ...e,
+            fotos,
+            [campoCover]: fotos[0],
+            ...(opciones.comoHistorico ? {} : { estado: "en_revision" as EstadoEntregable }),
+          }
+        : e
+    );
+    return;
+  }
+  await updateDoc(doc(db, COLECCION, id), {
+    fotos,
+    [campoCover]: fotos[0] ?? deleteField(),
+    ...(opciones.comoHistorico ? {} : { estado: "en_revision" }),
+  });
+}
+
 /** Deja marcar la orientacion a mano cuando no se detecto sola (ej. video viejo sin etiqueta). */
 export async function etiquetarOrientacion(id: string, orientacionVideo: "vertical" | "horizontal"): Promise<void> {
   await actualizarEntregable(id, { orientacionVideo });

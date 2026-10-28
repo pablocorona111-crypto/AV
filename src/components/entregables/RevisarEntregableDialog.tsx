@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import {
+  ArrowLeftCircle,
+  ArrowRightCircle,
   Check,
   CheckCircle2,
   Clock,
@@ -11,6 +13,7 @@ import {
   Plus,
   RotateCcw,
   Smartphone,
+  Trash2,
   Upload,
   X,
 } from "lucide-react";
@@ -26,6 +29,7 @@ import {
   useEnviarARevision,
   useEtiquetarOrientacion,
   useEtiquetarOrientacionAlt,
+  useGuardarFotos,
   useMarcarEntregado,
   useReasignarResponsableEntregable,
   useRenombrarEntregable,
@@ -38,9 +42,15 @@ import { crearNotificacion } from "@/services/notificacionesService";
 import { driveUrlAPreview } from "@/services/entregablesService";
 import { subirArchivoADrive, extraerFileIdDrive } from "@/services/driveService";
 import { DriveVideoPlayer, type MotivoErrorDrive } from "@/components/entregables/DriveVideoPlayer";
+import { MiniaturaVideo } from "@/components/entregables/MiniaturaVideo";
 import { mensajeErrorAuth } from "@/lib/authErrors";
 import { cn } from "@/lib/utils";
-import { ESTADO_ENTREGABLE_BADGE, etiquetaEstadoEntregable, CATEGORIA_CONTENIDO_LABELS } from "@/lib/labels";
+import {
+  ESTADO_ENTREGABLE_BADGE,
+  esCategoriaFotografia,
+  etiquetaEstadoEntregable,
+  CATEGORIA_CONTENIDO_LABELS,
+} from "@/lib/labels";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -167,10 +177,18 @@ export function RevisarEntregableDialog({
   // usa directo el iframe de vista previa de Drive (si hay link) — Drive previsualiza imagenes,
   // PDFs y la mayoria de formatos de diseño sin necesitar un visor a la medida.
   const esDiseno = entregable.tipo === "diseno_grafico";
+  // Fotografia (generica, producto o industrial) usa galeria ordenada de imagenes, no un solo
+  // archivo de video — nada de orientacion horizontal/vertical ni reproductor de video aplica
+  // aqui (ver bloqueGaleriaFotos mas abajo, que reemplaza a bloqueVideo para este tipo).
+  const esFoto = esCategoriaFotografia(entregable.tipo);
+  // Compatibilidad con entregables de fotografia creados ANTES de que existiera `fotos` (o
+  // cargados como historico con un solo archivo): se muestran como galeria de una sola foto en
+  // vez de quedar vacios.
+  const galeriaFotos = entregable.fotos ?? (linkPrincipal ? [linkPrincipal] : []);
   // Ya no hace falta `driveToken` para VER el video — el reproductor propio lo pide via
   // `/api/drive-video` con una cuenta de servicio fija, no con la sesion de Drive del usuario.
   // `driveToken` solo sigue haciendo falta para SUBIR videos nuevos (ver `onSeleccionarArchivo`).
-  const usaPlayerPropio = Boolean(fileIdActual && !errorPlayerPropio && !esDiseno);
+  const usaPlayerPropio = Boolean(fileIdActual && !errorPlayerPropio && !esDiseno && !esFoto);
   const modoVisor: "player" | "preview" | "link" | "vacio" = usaPlayerPropio
     ? "player"
     : preview
@@ -178,9 +196,9 @@ export function RevisarEntregableDialog({
       : linkActual
         ? "link"
         : "vacio";
-  // Solo se abre el layout ancho a dos columnas cuando de verdad hay un video que ver.
+  // Solo se abre el layout ancho a dos columnas cuando de verdad hay un video/foto que ver.
   // Para un link suelto, un estado vacio o el aviso de conectar Drive, un dialogo angosto se lee mejor.
-  const layoutLado = modoVisor === "player" || modoVisor === "preview";
+  const layoutLado = modoVisor === "player" || modoVisor === "preview" || esFoto;
 
   /**
    * Respeta `notificacionesSistema` del gestor de requisiciones: si el lider se lo apago, no se
@@ -307,6 +325,75 @@ export function RevisarEntregableDialog({
     }
   };
 
+  // Galeria de fotos: subir siempre AGREGA archivos nuevos al final (nunca reemplaza uno
+  // existente, a diferencia del video) — una sesion de fotos crece, no se "corrige" reemplazando
+  // la misma foto. Reordenar/quitar reescriben el arreglo completo via guardarFotos.
+  const inputFotosRef = useRef<HTMLInputElement>(null);
+  const [subiendoFotos, setSubiendoFotos] = useState(false);
+  const [progresoFotos, setProgresoFotos] = useState<{ actual: number; total: number; pct: number } | null>(null);
+  const [errorFotos, setErrorFotos] = useState<string | null>(null);
+  const guardarFotos = useGuardarFotos();
+
+  const onSeleccionarFotos = async (e: ChangeEvent<HTMLInputElement>) => {
+    const archivos = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (archivos.length === 0) return;
+
+    setErrorFotos(null);
+    setSubiendoFotos(true);
+    try {
+      const token = driveToken ?? (await conectarDrive());
+      if (!token) {
+        setErrorFotos("No se pudo conectar con Drive.");
+        return;
+      }
+      const nuevas: string[] = [];
+      for (let i = 0; i < archivos.length; i++) {
+        setProgresoFotos({ actual: i + 1, total: archivos.length, pct: 0 });
+        const subida = await subirArchivoADrive(archivos[i], token, {
+          nombre: `${nombreProyecto ?? "Sin proyecto"} - ${entregable.nombre} (foto ${galeriaFotos.length + nuevas.length + 1})`,
+          nombreCarpeta: nombreProyecto ?? "Sin proyecto",
+          subcarpeta: "Fotografias",
+          onProgress: (pct) => setProgresoFotos({ actual: i + 1, total: archivos.length, pct }),
+        });
+        nuevas.push(subida.previewUrl);
+      }
+      await guardarFotos.mutateAsync({
+        id: entregable.id,
+        fotos: [...galeriaFotos, ...nuevas],
+        comoHistorico: completandoHistorico,
+      });
+      if (!completandoHistorico) {
+        notificarRevisores(
+          `${nombreResponsable} agrego ${nuevas.length > 1 ? `${nuevas.length} fotos` : "una foto"} a "${entregable.nombre}".`
+        );
+      }
+    } catch (err) {
+      const mensaje = mensajeErrorAuth(err);
+      if (/sesion de Drive expiro|403/.test(mensaje)) limpiarDriveToken();
+      setErrorFotos(mensaje);
+    } finally {
+      setSubiendoFotos(false);
+      setProgresoFotos(null);
+    }
+  };
+
+  const onEliminarFoto = (url: string) => {
+    guardarFotos.mutate({
+      id: entregable.id,
+      fotos: galeriaFotos.filter((f) => f !== url),
+      comoHistorico: completandoHistorico,
+    });
+  };
+
+  const onMoverFoto = (indice: number, direccion: -1 | 1) => {
+    const destino = indice + direccion;
+    if (destino < 0 || destino >= galeriaFotos.length) return;
+    const reordenadas = [...galeriaFotos];
+    [reordenadas[indice], reordenadas[destino]] = [reordenadas[destino], reordenadas[indice]];
+    guardarFotos.mutate({ id: entregable.id, fotos: reordenadas, comoHistorico: completandoHistorico });
+  };
+
   const onAprobar = async () => {
     // Siempre aprueba la PRINCIPAL sin importar que pestaña se este viendo — "Aprobar" decide
     // sobre el entregable completo, no sobre una version puntual. Si la alterna tenia una
@@ -389,11 +476,12 @@ export function RevisarEntregableDialog({
   // Para el resto, sigue igual: solo el propio responsable, y solo antes de quedar aprobado.
   const puedeEditarMaterial =
     usuario.rol === "superadmin" || (esResponsable && entregable.estado !== "aprobado");
-  // La version alterna solo aplica a video (un diseño grafico no tiene "orientacion") y solo
-  // tiene sentido ofrecerla cuando ya existe la principal — primero se sube esa.
-  const puedeAgregarAlt = puedeEditarMaterial && puedeSubirVideos(usuario) && !esDiseno && Boolean(linkPrincipal);
+  // La version alterna solo aplica a video (un diseño grafico o una foto no tienen
+  // "orientacion") y solo tiene sentido ofrecerla cuando ya existe la principal — primero se sube esa.
+  const puedeAgregarAlt =
+    puedeEditarMaterial && puedeSubirVideos(usuario) && !esDiseno && !esFoto && Boolean(linkPrincipal);
 
-  const selectorDeVersion = (tieneAlt || puedeAgregarAlt) && !esDiseno && (
+  const selectorDeVersion = (tieneAlt || puedeAgregarAlt) && !esDiseno && !esFoto && (
     <div className="flex shrink-0 items-center gap-1.5">
       {([
         { slot: "principal" as const, orientacion: entregable.orientacionVideo, disponible: Boolean(linkPrincipal) },
@@ -542,7 +630,86 @@ export function RevisarEntregableDialog({
     </div>
   );
 
-  const bloqueSubirVideo = puedeEditarMaterial && puedeSubirVideos(usuario) && (
+  // Galeria ordenada: el numero en la esquina y el orden de la cuadricula SON el orden real
+  // (el mismo que se guarda en `fotos`) — mover con las flechas o quitar una foto reescribe el
+  // arreglo completo via onMoverFoto/onEliminarFoto.
+  const bloqueGaleriaFotos = (
+    <div className={cn("space-y-3", layoutLado && "w-full lg:w-auto lg:min-w-[280px] lg:max-w-xl")}>
+      {galeriaFotos.length === 0 ? (
+        <p className="rounded-md border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
+          Sin fotos cargadas todavia.
+        </p>
+      ) : (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {galeriaFotos.map((url, i) => (
+            <div key={url} className="group relative overflow-hidden rounded-md border border-border">
+              <a href={url} target="_blank" rel="noreferrer">
+                <MiniaturaVideo url={url} className="aspect-square" />
+              </a>
+              <span className="pointer-events-none absolute left-1.5 top-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                {i + 1}
+              </span>
+              {puedeEditarMaterial && (
+                <div className="absolute bottom-1.5 right-1.5 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                  <button
+                    type="button"
+                    onClick={() => onMoverFoto(i, -1)}
+                    disabled={i === 0}
+                    className="rounded bg-black/60 p-1 text-white hover:bg-black/80 disabled:opacity-30"
+                    title="Mover antes"
+                  >
+                    <ArrowLeftCircle className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onMoverFoto(i, 1)}
+                    disabled={i === galeriaFotos.length - 1}
+                    className="rounded bg-black/60 p-1 text-white hover:bg-black/80 disabled:opacity-30"
+                    title="Mover despues"
+                  >
+                    <ArrowRightCircle className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onEliminarFoto(url)}
+                    className="rounded bg-black/60 p-1 text-white hover:bg-destructive"
+                    title="Quitar foto"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  const bloqueSubirMaterial = puedeEditarMaterial && puedeSubirVideos(usuario) && esFoto && (
+    <div className="space-y-2 rounded-md border border-border p-3">
+      <Label>Subir fotografias</Label>
+      <input
+        ref={inputFotosRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={onSeleccionarFotos}
+      />
+      <Button type="button" className="w-full" onClick={() => inputFotosRef.current?.click()} disabled={subiendoFotos}>
+        <Upload className="h-4 w-4" />
+        {subiendoFotos && progresoFotos
+          ? `Subiendo foto ${progresoFotos.actual}/${progresoFotos.total}... ${progresoFotos.pct}%`
+          : galeriaFotos.length > 0
+            ? "Agregar mas fotos"
+            : "Subir fotografias a Drive"}
+      </Button>
+      {errorFotos && <p className="text-xs text-destructive">{errorFotos}</p>}
+    </div>
+  );
+
+  const bloqueSubirVideo = puedeEditarMaterial && puedeSubirVideos(usuario) && !esFoto && (
     <div className="space-y-2 rounded-md border border-border p-3">
       <Label>{esDiseno ? "Subir diseño" : "Subir video"}</Label>
       {/* Solo se pregunta la orientacion la primera vez — en una correccion/reemplazo ya se
@@ -703,6 +870,7 @@ export function RevisarEntregableDialog({
         </div>
       )}
 
+      {bloqueSubirMaterial}
       {bloqueSubirVideo}
     </div>
   );
@@ -885,7 +1053,7 @@ export function RevisarEntregableDialog({
               : "space-y-4 overflow-y-auto"
           )}
         >
-          {bloqueVideo}
+          {esFoto ? bloqueGaleriaFotos : bloqueVideo}
           {bloqueObservaciones}
         </div>
       </DialogContent>
