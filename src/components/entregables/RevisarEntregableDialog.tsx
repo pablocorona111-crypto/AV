@@ -759,7 +759,7 @@ export function RevisarEntregableDialog({
   // ancho — la columna de comentarios no necesita todo el espacio sobrante.
   const bloqueObservaciones = (
     <div className={cn("space-y-4", layoutLado && "min-w-0 flex-1 lg:min-w-[360px] lg:max-w-md")}>
-      {yaResuelto ? (
+      {yaResuelto && (
         <div className="space-y-2">
           <Label>Estado</Label>
           <div className="flex items-start gap-2.5 rounded-md border border-border bg-bg-secondary/40 p-3">
@@ -775,76 +775,81 @@ export function RevisarEntregableDialog({
             </div>
           </div>
         </div>
-      ) : (
-        <div className="space-y-2">
-          <Label>Observaciones</Label>
-          <div
-            className={cn(
-              "space-y-3 overflow-y-auto rounded-md border border-border bg-bg-secondary/40 p-3 scrollbar-thin",
-              layoutLado ? "max-h-[46vh]" : "max-h-56"
-            )}
-          >
-            {comentarios.length === 0 && (
-              <p className="py-2 text-center text-xs text-muted-foreground">Sin observaciones aun.</p>
-            )}
-            {comentarios.map((c) => (
-              <div key={c.id} className="flex items-start gap-2.5">
-                <Avatar className="h-7 w-7 shrink-0">
-                  <AvatarFallback className="text-[10px]">{iniciales(c.autorNombre)}</AvatarFallback>
-                </Avatar>
-                <div className="min-w-0 flex-1 rounded-lg rounded-tl-none bg-card p-2.5 shadow-card dark:bg-bg-secondary">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold">{c.autorNombre}</span>
-                    {c.momento && (
-                      <span className="flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-medium text-text-primary">
-                        <Clock className="h-3 w-3" /> min {c.momento}
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-0.5 text-sm">{c.texto}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-          {puedeComentar && (
-            <div className="space-y-1.5">
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Input
-                  value={momento}
-                  onChange={(e) => setMomento(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") onComentar();
-                  }}
-                  placeholder="min (ej. 0:45)"
-                  className="w-full shrink-0 sm:w-28"
-                />
-                <Input
-                  value={comentario}
-                  onChange={(e) => setComentario(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") onComentar();
-                  }}
-                  placeholder="Ej. En esta toma, encuadre torcido"
-                />
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={onComentar}
-                disabled={agregarComentario.isPending}
-              >
-                Agregar observacion
-              </Button>
-              <p className="text-[11px] text-muted-foreground">
-                {usaPlayerPropio
-                  ? "Se llena solo mientras reproduces."
-                  : "Anota el minuto donde esta el cambio que pides."}
-              </p>
-            </div>
-          )}
-        </div>
       )}
+      {/* El historial de observaciones se muestra SIEMPRE, aprobado/entregado o no — antes
+          desaparecia por completo al quedar resuelto (reemplazado por el bloque "Estado" de
+          arriba), asi que en un entregable que ya nacio aprobado/entregado (ej. casi toda la
+          fotografia, cargada como historico ya cerrado) nunca se alcanzaba a ver ningun
+          comentario, aunque los hubiera. Lo unico que sigue dependiendo de `yaResuelto` es poder
+          agregar uno NUEVO — no tiene sentido seguir corrigiendo algo que ya se aprobo/entrego. */}
+      <div className="space-y-2">
+        <Label>Observaciones</Label>
+        <div
+          className={cn(
+            "space-y-3 overflow-y-auto rounded-md border border-border bg-bg-secondary/40 p-3 scrollbar-thin",
+            layoutLado ? "max-h-[46vh]" : "max-h-56"
+          )}
+        >
+          {comentarios.length === 0 && (
+            <p className="py-2 text-center text-xs text-muted-foreground">Sin observaciones aun.</p>
+          )}
+          {comentarios.map((c) => (
+            <div key={c.id} className="flex items-start gap-2.5">
+              <Avatar className="h-7 w-7 shrink-0">
+                <AvatarFallback className="text-[10px]">{iniciales(c.autorNombre)}</AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 flex-1 rounded-lg rounded-tl-none bg-card p-2.5 shadow-card dark:bg-bg-secondary">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold">{c.autorNombre}</span>
+                  {c.momento && (
+                    <span className="flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-medium text-text-primary">
+                      <Clock className="h-3 w-3" /> min {c.momento}
+                    </span>
+                  )}
+                </div>
+                <p className="mt-0.5 text-sm">{c.texto}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+        {puedeComentar && !yaResuelto && (
+          <div className="space-y-1.5">
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Input
+                value={momento}
+                onChange={(e) => setMomento(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") onComentar();
+                }}
+                placeholder="min (ej. 0:45)"
+                className="w-full shrink-0 sm:w-28"
+              />
+              <Input
+                value={comentario}
+                onChange={(e) => setComentario(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") onComentar();
+                }}
+                placeholder="Ej. En esta toma, encuadre torcido"
+              />
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={onComentar}
+              disabled={agregarComentario.isPending}
+            >
+              Agregar observacion
+            </Button>
+            <p className="text-[11px] text-muted-foreground">
+              {usaPlayerPropio
+                ? "Se llena solo mientras reproduces."
+                : "Anota el minuto donde esta el cambio que pides."}
+            </p>
+          </div>
+        )}
+      </div>
 
       {esAprobador && (entregable.estado === "en_revision" || entregable.estado === "correcciones") && (
         <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-4">
