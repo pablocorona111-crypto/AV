@@ -188,6 +188,9 @@ export function RevisarEntregableDialog({
   // archivo de video — nada de orientacion horizontal/vertical ni reproductor de video aplica
   // aqui (ver bloqueGaleriaFotos mas abajo, que reemplaza a bloqueVideo para este tipo).
   const esFoto = esCategoriaFotografia(entregable.tipo);
+  // Para notificaciones/mensajes genericos — "tu video" no tiene sentido en un entregable que es
+  // una foto o un diseño.
+  const sustantivoMaterial = esFoto ? "fotografia" : esDiseno ? "diseño" : "video";
   // Compatibilidad con entregables de fotografia creados ANTES de que existiera `fotos` (o
   // cargados como historico con un solo archivo): se muestran como galeria de una sola foto en
   // vez de quedar vacios.
@@ -406,20 +409,25 @@ export function RevisarEntregableDialog({
       urlFinal: linkPrincipal,
       ...(entregable.urlRevisionAlt ? { urlFinalAlt: entregable.urlRevisionAlt } : {}),
     });
-    notificarA(entregable.responsableId, `Tu video "${entregable.nombre}" fue aprobado.`);
+    notificarA(entregable.responsableId, `Tu ${sustantivoMaterial} "${entregable.nombre}" fue aprobado.`);
   };
 
+  // Antes se podia pedir cambios sin haber escrito ninguna observacion — el responsable recibia
+  // "revisa las observaciones" y no habia ninguna que revisar. Si hay texto sin enviar en el
+  // cuadro de comentario, se guarda primero (para no perderlo); el boton en si queda deshabilitado
+  // si no hay NADA que explicar (ver el `disabled` en el JSX de abajo).
   const onSolicitarCorrecciones = async () => {
+    if (comentario.trim()) await onComentar();
     await solicitarCorrecciones.mutateAsync(entregable.id);
     notificarA(
       entregable.responsableId,
-      `Pidieron cambios en tu video "${entregable.nombre}". Revisa las observaciones.`
+      `Pidieron cambios en tu ${sustantivoMaterial} "${entregable.nombre}". Revisa las observaciones.`
     );
   };
 
   const onMarcarEntregado = async () => {
     await marcarEntregado.mutateAsync(entregable.id);
-    notificarA(entregable.responsableId, `Tu video "${entregable.nombre}" ya quedo entregado.`);
+    notificarA(entregable.responsableId, `Tu ${sustantivoMaterial} "${entregable.nombre}" ya quedo entregado.`);
   };
 
   const onEmpezarRenombrar = () => {
@@ -857,7 +865,12 @@ export function RevisarEntregableDialog({
             type="button"
             variant="outline"
             onClick={onSolicitarCorrecciones}
-            disabled={solicitarCorrecciones.isPending}
+            disabled={solicitarCorrecciones.isPending || (comentarios.length === 0 && !comentario.trim())}
+            title={
+              comentarios.length === 0 && !comentario.trim()
+                ? "Escribe primero que hay que corregir"
+                : undefined
+            }
           >
             <RotateCcw className="h-4 w-4" /> Solicitar cambios
           </Button>
