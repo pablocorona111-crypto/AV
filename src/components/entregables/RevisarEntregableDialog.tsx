@@ -146,6 +146,13 @@ export function RevisarEntregableDialog({
   const solicitarCorrecciones = useSolicitarCorrecciones();
   const marcarEntregado = useMarcarEntregado();
   const etiquetarOrientacion = useEtiquetarOrientacion();
+  // Galeria de fotos — hooks declarados aqui arriba (antes del `return null`) para no violar
+  // las reglas de hooks: todo lo de abajo depende de `entregable`/`usuario` ya existir.
+  const inputFotosRef = useRef<HTMLInputElement>(null);
+  const [subiendoFotos, setSubiendoFotos] = useState(false);
+  const [progresoFotos, setProgresoFotos] = useState<{ actual: number; total: number; pct: number } | null>(null);
+  const [errorFotos, setErrorFotos] = useState<string | null>(null);
+  const guardarFotos = useGuardarFotos();
 
   if (!entregable || !usuario) return null;
 
@@ -328,12 +335,6 @@ export function RevisarEntregableDialog({
   // Galeria de fotos: subir siempre AGREGA archivos nuevos al final (nunca reemplaza uno
   // existente, a diferencia del video) — una sesion de fotos crece, no se "corrige" reemplazando
   // la misma foto. Reordenar/quitar reescriben el arreglo completo via guardarFotos.
-  const inputFotosRef = useRef<HTMLInputElement>(null);
-  const [subiendoFotos, setSubiendoFotos] = useState(false);
-  const [progresoFotos, setProgresoFotos] = useState<{ actual: number; total: number; pct: number } | null>(null);
-  const [errorFotos, setErrorFotos] = useState<string | null>(null);
-  const guardarFotos = useGuardarFotos();
-
   const onSeleccionarFotos = async (e: ChangeEvent<HTMLInputElement>) => {
     const archivos = Array.from(e.target.files ?? []);
     e.target.value = "";
