@@ -96,6 +96,47 @@ export async function cambiarTipoEntregable(id: string, tipo: CategoriaContenido
   await updateDoc(doc(db, COLECCION, id), { tipo });
 }
 
+/** Quita TODO el material cargado (video/diseño/galeria de fotos, principal y alterna) y
+ * regresa el entregable a "pendiente" — no hay material, no tiene sentido que siga en
+ * revision/aprobado/entregado. Solo borra la referencia en el sistema; el archivo real se queda
+ * en Drive (no se toca desde aqui). Solo superadmin, desde Archivos. */
+export async function eliminarMaterialEntregable(id: string): Promise<void> {
+  if (!isFirebaseConfigured || !db) {
+    demoStore = demoStore.map((e) =>
+      e.id === id
+        ? {
+            ...e,
+            estado: "pendiente" as EstadoEntregable,
+            urlRevision: undefined,
+            urlFinal: undefined,
+            urlRevisionAlt: undefined,
+            urlFinalAlt: undefined,
+            orientacionVideo: undefined,
+            orientacionVideoAlt: undefined,
+            fotos: undefined,
+            aprobadorId: undefined,
+            fechaAprobado: undefined,
+            fechaEntregado: undefined,
+          }
+        : e
+    );
+    return;
+  }
+  await updateDoc(doc(db, COLECCION, id), {
+    estado: "pendiente",
+    urlRevision: deleteField(),
+    urlFinal: deleteField(),
+    urlRevisionAlt: deleteField(),
+    urlFinalAlt: deleteField(),
+    orientacionVideo: deleteField(),
+    orientacionVideoAlt: deleteField(),
+    fotos: deleteField(),
+    aprobadorId: deleteField(),
+    fechaAprobado: deleteField(),
+    fechaEntregado: deleteField(),
+  });
+}
+
 /** Reasignar el responsable (quien sube el material) de un entregable ya creado — util sobre
  * todo para el historico cargado masivo, donde el responsable registrado a veces ni es una
  * cuenta real. Solo superadmin lo hace (ver firestore.rules). */

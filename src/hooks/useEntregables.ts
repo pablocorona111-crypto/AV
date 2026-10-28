@@ -7,6 +7,7 @@ import {
   asignarProyectoEntregable,
   cambiarEstadoEntregableDirecto,
   cambiarTipoEntregable,
+  eliminarMaterialEntregable,
   reasignarResponsableEntregable,
   renombrarEntregable,
   crearEntregable,
@@ -65,6 +66,14 @@ export function useCambiarTipoEntregable() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, tipo }: { id: string; tipo: CategoriaContenido }) => cambiarTipoEntregable(id, tipo),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["entregables"] }),
+  });
+}
+
+export function useEliminarMaterialEntregable() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => eliminarMaterialEntregable(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["entregables"] }),
   });
 }

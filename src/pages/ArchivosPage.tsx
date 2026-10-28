@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Download, Link2, Check, LayoutGrid, Table2, Upload } from "lucide-react";
+import { Download, Link2, Check, LayoutGrid, Table2, Trash2, Upload } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useIdToken } from "@/hooks/useIdToken";
 import { useProyectos } from "@/hooks/useProyectos";
@@ -8,12 +8,14 @@ import {
   useAsignarProyectoEntregable,
   useCambiarEstadoEntregableDirecto,
   useCambiarTipoEntregable,
+  useEliminarMaterialEntregable,
 } from "@/hooks/useEntregables";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DemoBadge } from "@/components/DemoBadge";
 import { RevisarEntregableDialog } from "@/components/entregables/RevisarEntregableDialog";
 import { MiniaturaVideo } from "@/components/entregables/MiniaturaVideo";
@@ -167,6 +169,8 @@ export function ArchivosPage() {
   const { data: entregables = [] } = useEntregables();
   const { data: usuarios = [] } = useUsuarios();
   const [seleccionadoId, setSeleccionadoId] = useState<string | null>(null);
+  const [materialAEliminar, setMaterialAEliminar] = useState<Entregable | null>(null);
+  const eliminarMaterial = useEliminarMaterialEntregable();
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstadoArchivos>("todos");
   const [filtroPeriodo, setFiltroPeriodo] = useState<FiltroPeriodo>("todos");
@@ -309,51 +313,63 @@ export function ArchivosPage() {
                       <EstadoEntregableCelda entregable={e} />
                     </td>
                     <td className="px-3 py-2" onClick={(ev) => ev.stopPropagation()}>
-                      {puedeBajarYCompartir ? (
-                        <div className="flex gap-1">
-                          <a
-                            href={
-                              idToken
-                                ? `/api/drive-video?id=${encodeURIComponent(fileId!)}&download=1&nombre=${encodeURIComponent(e.nombre)}&token=${encodeURIComponent(idToken)}`
-                                : undefined
-                            }
-                            aria-disabled={!idToken}
-                            className={cn(
-                              "flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] font-medium hover:bg-bg-secondary",
-                              !idToken && "pointer-events-none opacity-50"
-                            )}
-                          >
-                            <Download className="h-3 w-3" /> Bajar
-                          </a>
+                      <div className="flex items-center gap-1">
+                        {puedeBajarYCompartir ? (
+                          <div className="flex gap-1">
+                            <a
+                              href={
+                                idToken
+                                  ? `/api/drive-video?id=${encodeURIComponent(fileId!)}&download=1&nombre=${encodeURIComponent(e.nombre)}&token=${encodeURIComponent(idToken)}`
+                                  : undefined
+                              }
+                              aria-disabled={!idToken}
+                              className={cn(
+                                "flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] font-medium hover:bg-bg-secondary",
+                                !idToken && "pointer-events-none opacity-50"
+                              )}
+                            >
+                              <Download className="h-3 w-3" /> Bajar
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => copiarLink(e.id, fileId!)}
+                              className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] font-medium hover:bg-bg-secondary"
+                            >
+                              {copiadoId === e.id ? (
+                                <>
+                                  <Check className="h-3 w-3" /> Copiado
+                                </>
+                              ) : (
+                                <>
+                                  <Link2 className="h-3 w-3" /> Link
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        ) : !fileId && usuario?.rol === "superadmin" ? (
                           <button
                             type="button"
-                            onClick={() => copiarLink(e.id, fileId!)}
+                            onClick={() => setSeleccionadoId(e.id)}
                             className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] font-medium hover:bg-bg-secondary"
                           >
-                            {copiadoId === e.id ? (
-                              <>
-                                <Check className="h-3 w-3" /> Copiado
-                              </>
-                            ) : (
-                              <>
-                                <Link2 className="h-3 w-3" /> Link
-                              </>
-                            )}
+                            <Upload className="h-3 w-3" /> Subir
                           </button>
-                        </div>
-                      ) : !fileId && usuario?.rol === "superadmin" ? (
-                        <button
-                          type="button"
-                          onClick={() => setSeleccionadoId(e.id)}
-                          className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] font-medium hover:bg-bg-secondary"
-                        >
-                          <Upload className="h-3 w-3" /> Subir
-                        </button>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">
-                          {fileId ? "Pendiente de aprobar" : "Sin material"}
-                        </span>
-                      )}
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            {fileId ? "Pendiente de aprobar" : "Sin material"}
+                          </span>
+                        )}
+                        {fileId && usuario?.rol === "superadmin" && (
+                          <button
+                            type="button"
+                            onClick={() => setMaterialAEliminar(e)}
+                            title="Eliminar material"
+                            className="flex items-center gap-1 rounded-md border border-border px-1.5 py-1 text-[11px] font-medium text-muted-foreground hover:border-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -403,6 +419,18 @@ export function ArchivosPage() {
                     </Badge>
                   )}
                 </div>
+                {!puedeBajarYCompartir && fileId && usuario?.rol === "superadmin" && (
+                  <button
+                    type="button"
+                    onClick={(ev) => {
+                      ev.stopPropagation();
+                      setMaterialAEliminar(e);
+                    }}
+                    className="flex w-full items-center justify-center gap-1 rounded-md border border-border py-1 text-[10px] font-medium text-muted-foreground hover:border-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="h-3 w-3" /> Eliminar material
+                  </button>
+                )}
                 {puedeBajarYCompartir && (
                   <div className="flex gap-1 pt-1">
                     <a
@@ -438,6 +466,19 @@ export function ArchivosPage() {
                         </>
                       )}
                     </button>
+                    {usuario?.rol === "superadmin" && (
+                      <button
+                        type="button"
+                        onClick={(ev) => {
+                          ev.stopPropagation();
+                          setMaterialAEliminar(e);
+                        }}
+                        title="Eliminar material"
+                        className="flex items-center justify-center rounded-md border border-border px-1.5 py-1 text-muted-foreground hover:border-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    )}
                   </div>
                 )}
               </CardContent>
@@ -461,6 +502,25 @@ export function ArchivosPage() {
         nombreResponsable={seleccionado ? nombreDe(seleccionado.responsableId) : ""}
         nombreProyecto={seleccionado ? proyectoDe(seleccionado.proyectoId) : undefined}
         nombreAprobador={seleccionado?.aprobadorId ? nombreDe(seleccionado.aprobadorId) : undefined}
+      />
+
+      <ConfirmDialog
+        open={Boolean(materialAEliminar)}
+        onOpenChange={(v) => !v && setMaterialAEliminar(null)}
+        title={`¿Eliminar el material de "${materialAEliminar?.nombre}"?`}
+        description={
+          <>
+            Quita el video/foto/diseño cargado (y la version alterna o la galeria completa, si
+            tenia) y regresa el entregable a "Pendiente". El archivo en Google Drive no se borra,
+            solo se quita la referencia aqui.
+          </>
+        }
+        confirmLabel="Eliminar material"
+        destructive
+        onConfirm={() => {
+          if (materialAEliminar) eliminarMaterial.mutate(materialAEliminar.id);
+          setMaterialAEliminar(null);
+        }}
       />
     </div>
   );
