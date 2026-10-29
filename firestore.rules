@@ -190,7 +190,14 @@ service cloud.firestore {
       match /comentarios/{comentarioId} {
         allow read: if usuarioAutenticado();
         allow create: if esSuperadmin() || esGestorRequisiciones();
-        allow update: if false;
+        // El contenido del comentario (texto, autor, momento) sigue sin poder editarse — lo
+        // UNICO permitido es que el responsable del entregable marque `corregido` al subir una
+        // correccion (ver marcarComentariosCorregidos en entregablesService.ts), para que
+        // community vea de una cuales observaciones ya se atendieron. `hasOnly(['corregido'])`
+        // garantiza que ningun otro campo cambie en esa escritura.
+        allow update: if esSuperadmin() ||
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['corregido']) &&
+            get(/databases/$(database)/documents/entregables/$(entregableId)).data.responsableId == request.auth.uid);
         allow delete: if esSuperadmin();
       }
     }
