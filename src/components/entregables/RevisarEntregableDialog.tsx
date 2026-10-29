@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  Copy,
   Download,
   ExternalLink,
   Image as ImageIcon,
@@ -17,6 +18,7 @@ import {
   Pencil,
   Plus,
   RotateCcw,
+  ScrollText,
   SendHorizontal,
   Smartphone,
   Trash2,
@@ -44,10 +46,13 @@ import {
   useReasignarResponsableEntregable,
   useRenombrarEntregable,
   useSolicitarCorrecciones,
+  useVincularGuionEntregable,
 } from "@/hooks/useEntregables";
+import { useGuiones } from "@/hooks/useGuiones";
 import { useIdToken } from "@/hooks/useIdToken";
 import { useProyectos } from "@/hooks/useProyectos";
 import { useUsuarios } from "@/hooks/useCatalogos";
+import { VistaPreviaGuion } from "@/components/guiones/VistaPreviaGuion";
 import { crearNotificacion } from "@/services/notificacionesService";
 import { driveUrlAPreview } from "@/services/entregablesService";
 import {
@@ -130,8 +135,12 @@ export function RevisarEntregableDialog({
   const { iniciarTarea, actualizarProgreso, marcarLista, marcarError } = useUploadQueue();
   const { data: usuarios = [] } = useUsuarios();
   const { data: proyectos = [] } = useProyectos();
+  const { data: guiones = [] } = useGuiones();
   const asignarProyecto = useAsignarProyectoEntregable();
   const reasignarResponsable = useReasignarResponsableEntregable();
+  const vincularGuion = useVincularGuionEntregable();
+  const [mostrandoGuion, setMostrandoGuion] = useState(false);
+  const [guionCopiado, setGuionCopiado] = useState(false);
   const [comentario, setComentario] = useState("");
   const [momento, setMomento] = useState("");
   const [subiendo, setSubiendo] = useState(false);
@@ -714,6 +723,13 @@ export function RevisarEntregableDialog({
     notificarA(entregable.responsableId, `Tu ${sustantivoMaterial} "${entregable.nombre}" ya quedo entregado.`);
   };
 
+  const onCopiarGuion = async () => {
+    if (!guionVinculado) return;
+    await navigator.clipboard.writeText(guionVinculado.contenido);
+    setGuionCopiado(true);
+    setTimeout(() => setGuionCopiado(false), 1500);
+  };
+
   const onEmpezarRenombrar = () => {
     setNombreEditado(entregable.nombre);
     setEditandoNombre(true);
@@ -803,6 +819,15 @@ export function RevisarEntregableDialog({
   // Para el resto, sigue igual: solo el propio responsable, y solo antes de quedar aprobado.
   const puedeEditarMaterial =
     usuario.rol === "superadmin" || (esResponsable && entregable.estado !== "aprobado");
+  // Vincular el guion (dialogo) ya aprobado del que sale este video — solo aplica a video (una
+  // foto o un diseño grafico no llevan dialogo). Cambiar el vinculo es mas permisivo que editar
+  // el material en si (es solo una referencia, no el archivo): tanto quien sube el video como
+  // quien lo aprueba pueden ajustarlo.
+  const puedeVincularGuion = !esFoto && !esDiseno && (puedeEditarMaterial || puedeComentar);
+  const guionesAprobadosDelProyecto = guiones.filter(
+    (g) => g.estado === "aprobado" && (!entregable.proyectoId || g.proyectoId === entregable.proyectoId)
+  );
+  const guionVinculado = entregable.guionId ? guiones.find((g) => g.id === entregable.guionId) : undefined;
   // La version alterna solo aplica a video (un diseño grafico o una foto no tienen
   // "orientacion") y solo tiene sentido ofrecerla cuando ya existe la principal — primero se sube esa.
   const puedeAgregarAlt =
@@ -1280,6 +1305,71 @@ export function RevisarEntregableDialog({
         esFoto && layoutLado && "lg:self-start lg:max-h-[68vh] lg:overflow-y-auto lg:pr-1 scrollbar-thin"
       )}
     >
+      {puedeVincularGuion && (guionVinculado || guionesAprobadosDelProyecto.length > 0) && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <Label className="flex items-center gap-1.5">
+              <ScrollText className="h-3.5 w-3.5" /> Guion
+            </Label>
+            {guionesAprobadosDelProyecto.length > 0 && (
+              <Select
+                value={entregable.guionId ?? "ninguno"}
+                onValueChange={(v) =>
+                  vincularGuion.mutate({ id: entregable.id, guionId: v === "ninguno" ? null : v })
+                }
+              >
+                <SelectTrigger className="h-7 w-auto gap-1 border-none bg-transparent px-1.5 py-0 text-xs font-medium shadow-none hover:bg-bg-secondary">
+                  <SelectValue placeholder="Vincular guion" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ninguno">Sin guion vinculado</SelectItem>
+                  {guionesAprobadosDelProyecto.map((g) => (
+                    <SelectItem key={g.id} value={g.id}>
+                      {g.titulo}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+          {guionVinculado ? (
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => setMostrandoGuion((v) => !v)}
+                className="flex w-full items-center justify-between rounded-md border border-border bg-bg-secondary/40 p-2.5 text-left text-sm font-medium hover:bg-bg-secondary"
+              >
+                <span className="truncate">{guionVinculado.titulo}</span>
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  {mostrandoGuion ? "Ocultar" : "Ver"}
+                </span>
+              </button>
+              {mostrandoGuion && (
+                <div className="space-y-2">
+                  <div className="max-h-[40vh] overflow-y-auto rounded-md scrollbar-thin">
+                    <VistaPreviaGuion guion={guionVinculado} />
+                  </div>
+                  <Button type="button" variant="outline" className="w-full" onClick={onCopiarGuion}>
+                    {guionCopiado ? (
+                      <>
+                        <Check className="h-4 w-4" /> Copiado
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4" /> Copiar todo el dialogo
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="rounded-md border border-dashed border-border p-2.5 text-xs text-muted-foreground">
+              Sin guion vinculado — elige uno aprobado arriba para poder ver/copiar su dialogo aqui.
+            </p>
+          )}
+        </div>
+      )}
       {yaResuelto && (
         <div className="space-y-2">
           <Label>Estado</Label>

@@ -5,6 +5,7 @@ import {
   agregarVersionAlterna,
   aprobarEntregable,
   asignarProyectoEntregable,
+  vincularGuionEntregable,
   cambiarEstadoEntregableDirecto,
   actualizarCarpetaFotos,
   cambiarTipoEntregable,
@@ -62,6 +63,15 @@ export function useAsignarProyectoEntregable() {
   return useMutation({
     mutationFn: ({ id, proyectoId }: { id: string; proyectoId: string | null }) =>
       asignarProyectoEntregable(id, proyectoId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["entregables"] }),
+  });
+}
+
+export function useVincularGuionEntregable() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, guionId }: { id: string; guionId: string | null }) =>
+      vincularGuionEntregable(id, guionId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["entregables"] }),
   });
 }

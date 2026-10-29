@@ -201,6 +201,10 @@ export interface Entregable {
   /** Fotos de `fotos` marcadas para borrar (triage rapido antes de confirmar) — no se eliminan
    * solas al marcarlas, esperan a que alguien confirme con el boton "Eliminar N marcadas". */
   fotosParaBorrar?: string[];
+  /** Guion (dialogo/subtitulos) ya APROBADO del que sale este video — para poder copiar texto
+   * del guion directo desde el dialogo de revision, sin tener que ir a buscarlo a la pestaña de
+   * Guiones. Solo tiene sentido en video (no en fotografia/diseño, que no llevan dialogo). */
+  guionId?: string;
   aprobadorId?: string;
   creadoEn: string;
   /** Cuando `estado` paso a "entregado" — para agrupar entregas por mes en la grafica del lider. */

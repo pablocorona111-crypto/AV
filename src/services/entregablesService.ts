@@ -81,6 +81,17 @@ export async function asignarProyectoEntregable(id: string, proyectoId: string |
   await updateDoc(doc(db, COLECCION, id), { proyectoId: proyectoId ?? deleteField() });
 }
 
+/** Vincula (o desvincula, con `null`) un guion ya aprobado a este entregable — para poder ver y
+ * copiar el dialogo del guion directo desde el dialogo de revision del video, sin ir a buscarlo
+ * a la pestaña de Guiones. */
+export async function vincularGuionEntregable(id: string, guionId: string | null): Promise<void> {
+  if (!isFirebaseConfigured || !db) {
+    demoStore = demoStore.map((e) => (e.id === id ? { ...e, guionId: guionId ?? undefined } : e));
+    return;
+  }
+  await updateDoc(doc(db, COLECCION, id), { guionId: guionId ?? deleteField() });
+}
+
 /** Renombrar un entregable ya creado — hace falta sobre todo para el historico cargado masivo,
  * que a veces nacio con un nombre crudo del Sheet original en vez de un nombre bien puesto. */
 export async function renombrarEntregable(id: string, nombre: string): Promise<void> {
