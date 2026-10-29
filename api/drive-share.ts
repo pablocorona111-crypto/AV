@@ -1,10 +1,10 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { JWT } from "google-auth-library";
+import { OAuth2Client } from "google-auth-library";
 import { createPublicKey, createVerify } from "node:crypto";
 
 /**
- * Comparte un archivo o carpeta (role: reader, type: anyone) con la cuenta impersonada (ver
- * `drive-upload-session.ts` para el detalle completo de la delegacion de dominio). El navegador
+ * Comparte un archivo o carpeta (role: reader, type: anyone) con la cuenta central del dueño del
+ * Drive (ver `drive-upload-session.ts` para el detalle completo del refresh token). El navegador
  * llama esto justo despues de terminar una subida (PUT directo a la sesion de Drive) para que el
  * archivo recien creado quede visible con el link, igual que antes hacia `compartirArchivo()` en
  * el cliente con el token de Drive de quien subia.
@@ -108,27 +108,24 @@ async function verificarIdTokenFirebase(req: VercelRequest): Promise<string> {
   return datos.sub;
 }
 
-const CORREO_CENTRAL = process.env.GOOGLE_DRIVE_IMPERSONATE_EMAIL || "marketing.becarios@grupo-ortiz.com";
-
 let clienteCacheado: { token: string; vence: number } | null = null;
 
-async function obtenerTokenImpersonado(): Promise<string> {
+async function obtenerTokenPropietario(): Promise<string> {
   if (clienteCacheado && clienteCacheado.vence > Date.now() + 60_000) return clienteCacheado.token;
 
-  const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const clavePrivada = (process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY ?? "").replace(/\\n/g, "\n");
-  if (!email || !clavePrivada) {
-    throw new Error("Faltan las variables GOOGLE_SERVICE_ACCOUNT_EMAIL / GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY.");
+  const clientId = process.env.GOOGLE_DRIVE_OWNER_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_DRIVE_OWNER_CLIENT_SECRET;
+  const refreshToken = process.env.GOOGLE_DRIVE_OWNER_REFRESH_TOKEN;
+  if (!clientId || !clientSecret || !refreshToken) {
+    throw new Error(
+      "Faltan GOOGLE_DRIVE_OWNER_CLIENT_ID / GOOGLE_DRIVE_OWNER_CLIENT_SECRET / GOOGLE_DRIVE_OWNER_REFRESH_TOKEN."
+    );
   }
 
-  const cliente = new JWT({
-    email,
-    key: clavePrivada,
-    scopes: ["https://www.googleapis.com/auth/drive"],
-    subject: CORREO_CENTRAL,
-  });
+  const cliente = new OAuth2Client(clientId, clientSecret);
+  cliente.setCredentials({ refresh_token: refreshToken });
   const { token } = await cliente.getAccessToken();
-  if (!token) throw new Error("Google no entrego token para la cuenta impersonada.");
+  if (!token) throw new Error("Google no entrego token para la cuenta del dueño.");
 
   clienteCacheado = { token, vence: Date.now() + 55 * 60 * 1000 };
   return token;
@@ -156,7 +153,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   let token: string;
   try {
-    token = await obtenerTokenImpersonado();
+    token = await obtenerTokenPropietario();
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : "No se pudo autenticar con Drive." });
     return;

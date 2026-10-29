@@ -1,25 +1,26 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { JWT } from "google-auth-library";
+import { OAuth2Client } from "google-auth-library";
 import { createPublicKey, createVerify } from "node:crypto";
 
 /**
- * Centraliza TODAS las subidas en una sola cuenta de Drive (la de la organizacion) en vez de la
- * cuenta personal de quien este logueado — antes cada quien subia con SU PROPIO permiso de Drive
- * (pedido via Firebase al conectar), asi que el material de la empresa quedaba repartido en el
- * Drive personal de cada colaborador que subiera algo. Esto usa delegacion de dominio completo
- * (domain-wide delegation): la cuenta de servicio actua COMO el correo de la organizacion
- * (`CORREO_CENTRAL`) para TODO — Workspace tiene que haberle dado permiso explicito a esa cuenta
- * de servicio primero (admin.google.com > Seguridad > Control de acceso y datos > Delegacion en
- * todo el dominio > agregar el Client ID de esta cuenta de servicio con el scope
- * "https://www.googleapis.com/auth/drive"). Sin ese paso (que solo un admin de Workspace puede
- * hacer), esto falla con 401/403 — no es un bug de este codigo, es el permiso pendiente.
+ * Centraliza TODAS las subidas en el Drive PERSONAL de pablocorona111@gmail.com, en vez de la
+ * cuenta de quien este logueado en ese momento — antes cada quien subia con SU PROPIO permiso de
+ * Drive (pedido via Firebase al conectar), asi que el material de la empresa quedaba repartido en
+ * el Drive personal de cada colaborador que subiera algo.
+ *
+ * Como es una cuenta Gmail normal (no Workspace), no aplica domain-wide delegation — se usa un
+ * REFRESH TOKEN que pablocorona111 genero UNA sola vez autorizando el acceso (ver
+ * `api/drive-authorize.ts`). Ese token no vence solo; el backend lo cambia por un access token
+ * nuevo cada vez que hace falta. Requiere `GOOGLE_DRIVE_OWNER_CLIENT_ID`,
+ * `GOOGLE_DRIVE_OWNER_CLIENT_SECRET` y `GOOGLE_DRIVE_OWNER_REFRESH_TOKEN` configuradas — sin eso
+ * esto falla con un error claro, no es un bug de este codigo, es el setup pendiente.
  *
  * Flujo completo (ver tambien `src/services/driveService.ts` -> `subirArchivoCentralizado`):
  * este endpoint resuelve/crea la carpeta destino y abre una SESION de subida reanudable
- * (`uploadType=resumable`) con la cuenta impersonada, y devuelve la URL de esa sesion. El
- * NAVEGADOR sube los bytes del archivo DIRECTO a esa URL (PUT) — un video grande nunca pasa por
- * esta funcion serverless (evita el limite de tamaño de body de Vercel) y de todos modos el
- * archivo queda en la cuenta central, no en la de quien subio.
+ * (`uploadType=resumable`) con la cuenta del dueño. El NAVEGADOR sube los bytes del archivo
+ * DIRECTO a esa URL (PUT) — un video grande nunca pasa por esta funcion serverless (evita el
+ * limite de tamaño de body de Vercel) y de todos modos el archivo queda en la cuenta central, no
+ * en la de quien subio.
  *
  * Los helpers de auth estan DUPLICADOS aqui y en los demas `api/*.ts` (Vercel no empaqueta
  * imports relativos fuera de `api/` en runtime ESM). Si tocas uno, toca los demas.
@@ -122,29 +123,24 @@ async function verificarIdTokenFirebase(req: VercelRequest): Promise<string> {
   return datos.sub;
 }
 
-// Correo de la organizacion al que se impersona para TODAS las subidas — override por variable
-// de entorno si algun dia cambia de dueño, sin tener que tocar codigo.
-const CORREO_CENTRAL = process.env.GOOGLE_DRIVE_IMPERSONATE_EMAIL || "marketing.becarios@grupo-ortiz.com";
-
 let clienteCacheado: { token: string; vence: number } | null = null;
 
-async function obtenerTokenImpersonado(): Promise<string> {
+async function obtenerTokenPropietario(): Promise<string> {
   if (clienteCacheado && clienteCacheado.vence > Date.now() + 60_000) return clienteCacheado.token;
 
-  const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const clavePrivada = (process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY ?? "").replace(/\\n/g, "\n");
-  if (!email || !clavePrivada) {
-    throw new Error("Faltan las variables GOOGLE_SERVICE_ACCOUNT_EMAIL / GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY.");
+  const clientId = process.env.GOOGLE_DRIVE_OWNER_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_DRIVE_OWNER_CLIENT_SECRET;
+  const refreshToken = process.env.GOOGLE_DRIVE_OWNER_REFRESH_TOKEN;
+  if (!clientId || !clientSecret || !refreshToken) {
+    throw new Error(
+      "Faltan GOOGLE_DRIVE_OWNER_CLIENT_ID / GOOGLE_DRIVE_OWNER_CLIENT_SECRET / GOOGLE_DRIVE_OWNER_REFRESH_TOKEN. Corre /api/drive-authorize primero."
+    );
   }
 
-  const cliente = new JWT({
-    email,
-    key: clavePrivada,
-    scopes: ["https://www.googleapis.com/auth/drive"],
-    subject: CORREO_CENTRAL,
-  });
+  const cliente = new OAuth2Client(clientId, clientSecret);
+  cliente.setCredentials({ refresh_token: refreshToken });
   const { token } = await cliente.getAccessToken();
-  if (!token) throw new Error("Google no entrego token para la cuenta impersonada.");
+  if (!token) throw new Error("Google no entrego token para la cuenta del dueño.");
 
   clienteCacheado = { token, vence: Date.now() + 55 * 60 * 1000 };
   return token;
@@ -218,12 +214,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   let token: string;
   try {
-    token = await obtenerTokenImpersonado();
+    token = await obtenerTokenPropietario();
   } catch (err) {
     res.status(500).json({
-      error:
-        (err instanceof Error ? err.message : "No se pudo autenticar con la cuenta central de Drive.") +
-        " Revisa que Workspace le haya dado delegacion de dominio completo a esta cuenta de servicio.",
+      error: err instanceof Error ? err.message : "No se pudo autenticar con la cuenta central de Drive.",
     });
     return;
   }
