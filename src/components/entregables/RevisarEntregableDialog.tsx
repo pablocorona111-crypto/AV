@@ -891,7 +891,14 @@ export function RevisarEntregableDialog({
     <div
       className={cn(
         "flex flex-col gap-3",
-        layoutLado && "w-full lg:w-auto lg:min-w-[320px] lg:max-w-[1900px]"
+        // Ancho EXPLICITO (no min/max sueltos) — el dialogo (`lg:w-fit` en DialogContent) se
+        // ajusta al ancho real de su contenido, y un grid de 3 columnas adentro de un
+        // contenedor sin ancho propio (`w-fit`/`w-auto`) se encoge a su "min-content" en vez de
+        // usar el espacio que sobra — por eso antes la galeria se veia angosta aunque el
+        // `max-w` permitido fuera enorme (nunca se llegaba a usar). `min(1400px,78vw)` le da una
+        // base real de la cual el grid si deriva columnas anchas, topada para no desbordar en
+        // pantallas chicas.
+        layoutLado && "w-full lg:w-[min(1400px,78vw)]"
       )}
     >
       {entregable.carpetaFotosUrl && (
@@ -946,7 +953,14 @@ export function RevisarEntregableDialog({
         </p>
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-          {galeriaFotos.map((url, i) => {
+          {/* Con al menos una foto ya marcada, un clic en CUALQUIER otra foto la suma a la
+              seleccion (ya no hace falta acertarle al iconito cada vez) — en vez de abrir la
+              vista ampliada, que es lo que hace un clic normal cuando no hay nada marcado
+              todavia. Doble clic SIEMPRE abre la vista ampliada, sea cual sea el modo, como
+              salida rapida sin tener que vaciar la seleccion primero. */}
+          {(() => {
+            const modoSeleccion = puedeComentar && !yaResuelto && fotosComentando.length > 0;
+            return galeriaFotos.map((url, i) => {
             const totalComentariosFoto = comentarios.filter((c) =>
               comentarioAplicaAFoto(c.momento, i + 1)
             ).length;
@@ -961,7 +975,21 @@ export function RevisarEntregableDialog({
                   : "ring-border hover:shadow-lg hover:shadow-black/10 hover:ring-text-primary/25"
               )}
             >
-              <button type="button" onClick={() => setFotoAmpliadaIndex(i)} className="block w-full">
+              <button
+                type="button"
+                onClick={() => {
+                  if (modoSeleccion) {
+                    setFotosComentando((actual) =>
+                      actual.includes(i) ? actual.filter((x) => x !== i) : [...actual, i]
+                    );
+                  } else {
+                    setFotoAmpliadaIndex(i);
+                  }
+                }}
+                onDoubleClick={() => setFotoAmpliadaIndex(i)}
+                className="block w-full"
+                title={modoSeleccion ? "Clic para sumar/quitar de la seleccion — doble clic para ver" : undefined}
+              >
                 <MiniaturaVideo url={url} className="aspect-square" ocultarPlay />
               </button>
               <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-black/60 px-2 py-1 text-[11px] font-semibold text-white backdrop-blur-sm">
@@ -1023,7 +1051,8 @@ export function RevisarEntregableDialog({
               )}
             </div>
             );
-          })}
+            });
+          })()}
         </div>
       )}
       </div>
