@@ -11,6 +11,7 @@ import {
   ExternalLink,
   Image as ImageIcon,
   Link2,
+  Loader2,
   MessageSquarePlus,
   Monitor,
   Pencil,
@@ -215,11 +216,22 @@ export function RevisarEntregableDialog({
   // (el de la columna de Observaciones) para que escribir en uno no pise lo que se tenia
   // empezado en el otro si la persona abre/cierra la vista ampliada a medias.
   const [comentarioLightbox, setComentarioLightbox] = useState("");
+  // Antes el <img> de la vista ampliada se insertaba sin alto reservado — hasta que el navegador
+  // terminaba de bajar los bytes reales (no solo pedirlos), su caja media ~0px, asi que el
+  // dialogo abria colapsado a solo el panel de comentarios de abajo (la imagen "todavia no
+  // salia"). Con esto se reserva un alto minimo desde el primer render y se tapa el <img> con un
+  // spinner hasta que `onLoad` confirma que si hay algo que mostrar.
+  const [fotoAmpliadaCargando, setFotoAmpliadaCargando] = useState(true);
 
   useEffect(() => {
     // Cambiar de foto en la vista ampliada (flechas) es, para el composer de ahi, una foto
-    // distinta — sin esto, un borrador sin enviar en la foto 3 se arrastraba a la foto 4.
+    // distinta — sin esto, un borrador sin enviar en la foto 3 se arrastraba a la foto 4. Y la
+    // CARGA es otra foto nueva — sin resetear esto, una foto ya cargada antes se quedaba tapada
+    // por el spinner (nunca vuelve a disparar `onLoad` si el navegador la sirve del cache sin
+    // red real de por medio en algunos casos) o, al reves, se mostraba la imagen VIEJA mientras
+    // cargaba la nueva.
     setComentarioLightbox("");
+    setFotoAmpliadaCargando(true);
   }, [fotoAmpliadaIndex]);
 
   if (!entregable || !usuario) return null;
@@ -1556,16 +1568,37 @@ export function RevisarEntregableDialog({
         imagen, panel de comentarios debajo con el mismo lenguaje visual que Observaciones:
         avatar + burbuja, badge "Corregido" en verde, composer en pildora). */}
     <Dialog open={fotoAmpliadaIndex != null} onOpenChange={(v) => !v && setFotoAmpliadaIndex(null)}>
-      <DialogContent className="flex max-h-[92vh] w-full max-w-[95vw] flex-col gap-0 overflow-hidden rounded-2xl border-white/10 bg-[#0B0B0C] p-0 sm:max-w-3xl [&>button]:z-20 [&>button]:rounded-full [&>button]:bg-black/50 [&>button]:p-1.5 [&>button]:text-white/90 [&>button]:backdrop-blur-sm [&>button]:hover:bg-black/70">
+      <DialogContent
+        overlayClassName="bg-black/90 backdrop-blur-sm"
+        className="flex max-h-[92vh] w-full max-w-[95vw] flex-col gap-0 overflow-hidden rounded-2xl border-white/10 bg-[#0B0B0C] p-0 sm:max-w-3xl [&>button]:z-20 [&>button]:rounded-full [&>button]:bg-black/50 [&>button]:p-1.5 [&>button]:text-white/90 [&>button]:backdrop-blur-sm [&>button]:hover:bg-black/70"
+      >
         {fotoAmpliadaUrl && (
           <>
-            <div className="group/stage relative flex w-full shrink-0 items-center justify-center bg-black">
+            {/* `min-h-[40vh]`: un <img> sin ancho/alto propios todavia (bytes sin terminar de
+                bajar) mide ~0px — sin este piso, el dialogo abria colapsado al tamaño del panel
+                de comentarios de abajo, como si la foto nunca fuera a aparecer. El <img> real
+                queda invisible (no desmontado, para que su `onLoad` si dispare) hasta que
+                `fotoAmpliadaCargando` se apague. */}
+            <div className="group/stage relative flex w-full min-h-[40vh] shrink-0 items-center justify-center bg-black">
               {fotoAmpliadaFileId && idToken ? (
-                <img
-                  src={`/api/drive-thumbnail?id=${encodeURIComponent(fotoAmpliadaFileId)}&token=${encodeURIComponent(idToken)}&size=1600`}
-                  alt=""
-                  className="max-h-[58vh] w-auto max-w-full object-contain"
-                />
+                <>
+                  {fotoAmpliadaCargando && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Loader2 className="h-6 w-6 animate-spin text-white/40" />
+                    </div>
+                  )}
+                  <img
+                    key={fotoAmpliadaFileId}
+                    src={`/api/drive-thumbnail?id=${encodeURIComponent(fotoAmpliadaFileId)}&token=${encodeURIComponent(idToken)}&size=1600`}
+                    alt=""
+                    onLoad={() => setFotoAmpliadaCargando(false)}
+                    onError={() => setFotoAmpliadaCargando(false)}
+                    className={cn(
+                      "max-h-[58vh] w-auto max-w-full object-contain",
+                      fotoAmpliadaCargando && "invisible"
+                    )}
+                  />
+                </>
               ) : (
                 <div className="flex h-72 w-full items-center justify-center text-sm text-white/50">
                   Cargando...

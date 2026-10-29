@@ -19,10 +19,15 @@ function esClickEnDatePicker(event: Event) {
 
 export const DialogContent = forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, onPointerDownOutside, onInteractOutside, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
+    /** Reemplaza el fondo (`.av-overlay`, el mismo gris semitransparente en todos los dialogos)
+     * por uno propio — ej. la vista ampliada de fotos quiere un negro mas oscuro para que la
+     * imagen resalte, sin oscurecer de mas el resto de dialogos de la app. */
+    overlayClassName?: string;
+  }
+>(({ className, overlayClassName, children, onPointerDownOutside, onInteractOutside, ...props }, ref) => (
   <DialogPrimitive.Portal>
-    <DialogPrimitive.Overlay className="av-overlay fixed inset-0 z-50" />
+    <DialogPrimitive.Overlay className={cn("fixed inset-0 z-50", overlayClassName ?? "av-overlay")} />
     <DialogPrimitive.Content
       ref={ref}
       onPointerDownOutside={(e) => {
