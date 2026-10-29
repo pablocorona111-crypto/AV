@@ -91,6 +91,15 @@ function parsearMomento(momento: string): number | null {
   return Number(m[1]) * 60 + Number(m[2]);
 }
 
+/** Si una observacion de fotografia ("Foto 5" o "Fotos 2, 5, 9") aplica a la foto `numero` (1-based,
+ * igual al numerito que se ve en la esquina de cada miniatura) — para filtrar los comentarios
+ * que se muestran dentro de la vista ampliada de esa foto en particular. */
+function comentarioAplicaAFoto(momento: string | undefined, numero: number): boolean {
+  if (!momento) return false;
+  const numeros = momento.match(/\d+/g)?.map(Number) ?? [];
+  return numeros.includes(numero);
+}
+
 const MENSAJE_ERROR_PLAYER: Record<MotivoErrorDrive, string> = {
   sin_acceso: "La carpeta de Drive con este video no esta compartida con la cuenta de servicio.",
   no_encontrado: "Este archivo ya no existe en Drive (fue borrado o movido).",
@@ -199,6 +208,16 @@ export function RevisarEntregableDialog({
   // Vista previa ampliada dentro del mismo dialogo (indice en `galeriaFotos`) — antes tocar una
   // foto mandaba a una pestaña nueva de Drive, sacando a la persona del flujo de revision.
   const [fotoAmpliadaIndex, setFotoAmpliadaIndex] = useState<number | null>(null);
+  // Comentario que se esta escribiendo DENTRO de la vista ampliada — separado de `comentario`
+  // (el de la columna de Observaciones) para que escribir en uno no pise lo que se tenia
+  // empezado en el otro si la persona abre/cierra la vista ampliada a medias.
+  const [comentarioLightbox, setComentarioLightbox] = useState("");
+
+  useEffect(() => {
+    // Cambiar de foto en la vista ampliada (flechas) es, para el composer de ahi, una foto
+    // distinta — sin esto, un borrador sin enviar en la foto 3 se arrastraba a la foto 4.
+    setComentarioLightbox("");
+  }, [fotoAmpliadaIndex]);
 
   if (!entregable || !usuario) return null;
 
@@ -663,6 +682,24 @@ export function RevisarEntregableDialog({
           momentoAEnviar ? ` (${esFoto ? momentoAEnviar : `min ${momentoAEnviar}`})` : ""
         }`
       );
+    }
+  };
+
+  /** Comentar DESDE la vista ampliada (ver bloque del lightbox mas abajo) — siempre amarrado a
+   * la foto que se esta viendo ahi, sin depender de la seleccion de `fotosComentando` de la
+   * galeria (son dos composers independientes). */
+  const onComentarLightbox = async () => {
+    if (!comentarioLightbox.trim() || fotoAmpliadaIndex == null) return;
+    const momento = `Foto ${fotoAmpliadaIndex + 1}`;
+    await agregarComentario.mutateAsync({
+      autorId: usuario.id,
+      autorNombre: usuario.nombre,
+      texto: comentarioLightbox,
+      momento,
+    });
+    setComentarioLightbox("");
+    if (!esResponsable) {
+      notificarA(entregable.responsableId, `${usuario.nombre} dejo una observacion en "${entregable.nombre}" (${momento})`);
     }
   };
 
@@ -1245,6 +1282,8 @@ export function RevisarEntregableDialog({
 
   const fotoAmpliadaUrl = fotoAmpliadaIndex != null ? galeriaFotos[fotoAmpliadaIndex] : null;
   const fotoAmpliadaFileId = fotoAmpliadaUrl ? extraerFileIdDrive(fotoAmpliadaUrl) : null;
+  const comentariosDeFotoAmpliada =
+    fotoAmpliadaIndex != null ? comentarios.filter((c) => comentarioAplicaAFoto(c.momento, fotoAmpliadaIndex + 1)) : [];
 
   return (
     <>
@@ -1441,7 +1480,7 @@ export function RevisarEntregableDialog({
         la persona del dialogo de revision. Ahora se ve grande aqui mismo, con flechas para pasar
         a la siguiente sin cerrar nada. */}
     <Dialog open={fotoAmpliadaIndex != null} onOpenChange={(v) => !v && setFotoAmpliadaIndex(null)}>
-      <DialogContent className="flex max-w-[95vw] flex-col items-center gap-3 border-white/10 bg-black/95 p-3 sm:max-w-4xl [&>button]:text-white">
+      <DialogContent className="flex max-h-[92vh] max-w-[95vw] flex-col items-center gap-3 overflow-y-auto border-white/10 bg-black/95 p-3 sm:max-w-4xl [&>button]:text-white">
         {fotoAmpliadaUrl && (
           <>
             <div className="relative flex w-full items-center justify-center">
@@ -1459,7 +1498,7 @@ export function RevisarEntregableDialog({
                 <img
                   src={`/api/drive-thumbnail?id=${encodeURIComponent(fotoAmpliadaFileId)}&token=${encodeURIComponent(idToken)}&size=1600`}
                   alt=""
-                  className="max-h-[75vh] w-auto max-w-full rounded-md object-contain"
+                  className="max-h-[60vh] w-auto max-w-full rounded-md object-contain"
                 />
               ) : (
                 <div className="flex h-64 w-full items-center justify-center text-sm text-white/50">
@@ -1489,6 +1528,48 @@ export function RevisarEntregableDialog({
               >
                 <ExternalLink className="h-3.5 w-3.5" /> Abrir en Drive
               </a>
+            </div>
+
+            {/* Comentar sin salir de la vista ampliada — antes solo se podia desde la columna
+                de Observaciones, afuera de este lightbox. Amarrado siempre a ESTA foto. */}
+            <div className="w-full space-y-2 border-t border-white/10 pt-3">
+              {comentariosDeFotoAmpliada.length > 0 && (
+                <div className="max-h-32 space-y-2 overflow-y-auto pr-1 scrollbar-thin">
+                  {comentariosDeFotoAmpliada.map((c) => (
+                    <div key={c.id} className="flex items-start gap-2 text-xs text-white/85">
+                      <span className="shrink-0 font-semibold text-white">{c.autorNombre}:</span>
+                      <span className="min-w-0 flex-1">{c.texto}</span>
+                      {c.corregido && (
+                        <CheckCircle2
+                          className="h-3.5 w-3.5 shrink-0 text-green-400"
+                          aria-label="Corregido"
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {puedeComentar && !yaResuelto && (
+                <div className="flex gap-2">
+                  <Input
+                    value={comentarioLightbox}
+                    onChange={(e) => setComentarioLightbox(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") onComentarLightbox();
+                    }}
+                    placeholder="Comentar sobre esta foto..."
+                    className="h-9 flex-1 border-white/20 bg-white/10 text-white placeholder:text-white/40"
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={onComentarLightbox}
+                    disabled={agregarComentario.isPending || !comentarioLightbox.trim()}
+                  >
+                    Enviar
+                  </Button>
+                </div>
+              )}
             </div>
           </>
         )}
