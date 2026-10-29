@@ -891,10 +891,7 @@ export function RevisarEntregableDialog({
     <div
       className={cn(
         "flex flex-col gap-3",
-        layoutLado && "w-full lg:w-auto lg:min-w-[320px] lg:max-w-[1900px]",
-        // Columna con su PROPIO scroll (independiente de Observaciones, que queda fija en su
-        // lugar) — solo en pantallas grandes, donde las dos columnas quedan lado a lado.
-        layoutLado && "lg:h-full"
+        layoutLado && "w-full lg:w-auto lg:min-w-[320px] lg:max-w-[1900px]"
       )}
     >
       {entregable.carpetaFotosUrl && (
@@ -942,7 +939,7 @@ export function RevisarEntregableDialog({
           {errorCarpeta && <p className="text-xs text-destructive">{errorCarpeta}</p>}
         </div>
       )}
-      <div className={cn("min-h-0", layoutLado && "lg:flex-1 lg:overflow-y-auto lg:pr-1 scrollbar-thin")}>
+      <div className={cn(layoutLado && "lg:max-h-[68vh] lg:overflow-y-auto lg:pr-1 scrollbar-thin")}>
       {galeriaFotos.length === 0 ? (
         <p className="rounded-md border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
           Sin fotos cargadas todavia.
@@ -1120,10 +1117,11 @@ export function RevisarEntregableDialog({
       className={cn(
         "space-y-4",
         layoutLado && "min-w-0 flex-1 lg:min-w-[360px] lg:max-w-md",
-        // En fotografia, esta columna queda FIJA mientras la galeria (bloqueGaleriaFotos) se
-        // desplaza con su propio scroll — si su contenido no cupiera igual, scrollea aparte
-        // (no se arrastra junto con las fotos).
-        esFoto && layoutLado && "lg:h-full lg:overflow-y-auto lg:pr-1 scrollbar-thin"
+        // En fotografia, esta columna NO se estira con `items-stretch` (se queda en su alto
+        // natural, `lg:self-start`) y tiene su propio tope/scroll en vh — asi queda fija en su
+        // lugar mientras la galeria (bloqueGaleriaFotos) se desplaza por su cuenta, en vez de
+        // arrastrarse junto con las fotos como un solo bloque.
+        esFoto && layoutLado && "lg:self-start lg:max-h-[68vh] lg:overflow-y-auto lg:pr-1 scrollbar-thin"
       )}
     >
       {yaResuelto && (
@@ -1503,16 +1501,17 @@ export function RevisarEntregableDialog({
             // "+ Agregar...") porque suman alto arriba del video. `lg:overflow-y-auto` deja que
             // la fila scrollee cuando de verdad no cabe, en vez de recortar contenido sin avisar.
             //
-            // Para fotografia especificamente: la fila YA NO scrollea completa en pantallas
-            // grandes (`lg:overflow-visible` la cancela) — cada columna maneja su propio scroll
-            // (`lg:h-full lg:overflow-y-auto` en bloqueGaleriaFotos y bloqueObservaciones, mas
-            // abajo). Asi Observaciones queda fija en su lugar mientras solo la galeria de fotos
-            // se desplaza, en vez de arrastrarse junto con las fotos como un solo bloque.
+            // Para fotografia: esta fila se deja TAL CUAL (con su overflow-y-auto normal) — un
+            // intento anterior de "cada columna con su propio scroll via lg:h-full" dependia de
+            // que la altura stretch del flexbox se propagara bien por varias capas anidadas
+            // (flex-col > flex-1/min-h-0 > h-full > overflow-y-auto); en produccion esa cadena
+            // no resolvia una altura real en algun caso, y el scroll de la galeria dejaba de
+            // funcionar por completo (fotos inaccesibles, sin forma de bajar a verlas). Ahora
+            // bloqueGaleriaFotos y bloqueObservaciones usan un `max-h` fijo en vh (mismo patron
+            // ya probado en video, diseño y el propio lightbox) — no depende de la altura del
+            // padre, asi que no se puede "romper" por la cadena de flexbox.
             layoutLado
-              ? cn(
-                  "flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto lg:flex-row lg:items-stretch lg:gap-6",
-                  esFoto && "lg:overflow-visible"
-                )
+              ? "flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto lg:flex-row lg:items-stretch lg:gap-6"
               : "space-y-4 overflow-y-auto"
           )}
         >
