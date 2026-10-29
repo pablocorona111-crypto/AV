@@ -46,6 +46,7 @@ import { driveUrlAPreview } from "@/services/entregablesService";
 import {
   subirArchivoADrive,
   extraerFileIdDrive,
+  extraerCarpetaIdDrive,
   compartirArchivo,
   resolverCarpetaDeArchivo,
 } from "@/services/driveService";
@@ -136,6 +137,7 @@ export function RevisarEntregableDialog({
     setSlotActivo("principal");
     setEditandoNombre(false);
     setFotosComentando([]);
+    setFotoAmpliadaIndex(null);
   }, [entregable?.id, open]);
 
   useEffect(() => {
@@ -165,12 +167,18 @@ export function RevisarEntregableDialog({
   const [progresoFotos, setProgresoFotos] = useState<{ actual: number; total: number; pct: number } | null>(null);
   const [errorFotos, setErrorFotos] = useState<string | null>(null);
   const guardarFotos = useGuardarFotos();
+  // Se detiene DESPUES de que termine de subir la foto en curso (no a la mitad) — evita dejar un
+  // archivo a medio subir en Drive.
+  const cancelarFotosRef = useRef(false);
   const actualizarCarpetaFotos = useActualizarCarpetaFotos();
   // Sobre cuales fotos de la galeria es la observacion que se esta escribiendo (indices en
   // `galeriaFotos`, puede ser mas de una) — reemplaza al campo "minuto" de video, que no tiene
   // sentido en una foto. Tocar el icono de una foto la agrega/quita de la seleccion — asi una
   // misma observacion ("estas 3 salen movidas") se amarra a varias de una vez.
   const [fotosComentando, setFotosComentando] = useState<number[]>([]);
+  // Vista previa ampliada dentro del mismo dialogo (indice en `galeriaFotos`) — antes tocar una
+  // foto mandaba a una pestaña nueva de Drive, sacando a la persona del flujo de revision.
+  const [fotoAmpliadaIndex, setFotoAmpliadaIndex] = useState<number | null>(null);
 
   if (!entregable || !usuario) return null;
 
@@ -361,6 +369,13 @@ export function RevisarEntregableDialog({
     e.target.value = "";
     if (archivos.length === 0) return;
 
+    // Carpeta YA conocida (de una subida anterior, o del backfill de "Obtener link") — subir
+    // directo ahi evita que una foto mas quede en una carpeta distinta si el proyecto se
+    // renombro o se borro desde entonces (`nombreProyecto` resolveria otra cosa, ej.
+    // "Proyecto eliminado"). Sin esto, "todas dentro" se rompia con el tiempo.
+    const carpetaIdConocida = entregable.carpetaFotosUrl ? extraerCarpetaIdDrive(entregable.carpetaFotosUrl) : null;
+
+    cancelarFotosRef.current = false;
     setErrorFotos(null);
     setSubiendoFotos(true);
     try {
@@ -372,27 +387,34 @@ export function RevisarEntregableDialog({
       const nuevas: string[] = [];
       let carpetaUrl: string | undefined;
       for (let i = 0; i < archivos.length; i++) {
+        if (cancelarFotosRef.current) break;
         setProgresoFotos({ actual: i + 1, total: archivos.length, pct: 0 });
         const subida = await subirArchivoADrive(archivos[i], token, {
           nombre: `${nombreProyecto ?? "Sin proyecto"} - ${entregable.nombre} (foto ${galeriaFotos.length + nuevas.length + 1})`,
           nombreCarpeta: nombreProyecto ?? "Sin proyecto",
           subcarpeta: "Fotografias",
+          carpetaIdDestino: carpetaIdConocida ?? undefined,
           onProgress: (pct) => setProgresoFotos({ actual: i + 1, total: archivos.length, pct }),
         });
         nuevas.push(subida.previewUrl);
         carpetaUrl ??= subida.carpetaUrl;
       }
-      await guardarFotos.mutateAsync({
-        id: entregable.id,
-        fotos: [...galeriaFotos, ...nuevas],
-        comoHistorico: completandoHistorico,
-        // Una vez que el entregable ya tiene carpeta conocida, no hace falta pisarla cada vez.
-        carpetaFotosUrl: entregable.carpetaFotosUrl ?? carpetaUrl,
-      });
-      if (!completandoHistorico) {
-        notificarRevisores(
-          `${nombreResponsable} agrego ${nuevas.length > 1 ? `${nuevas.length} fotos` : "una foto"} a "${entregable.nombre}".`
-        );
+      if (nuevas.length > 0) {
+        await guardarFotos.mutateAsync({
+          id: entregable.id,
+          fotos: [...galeriaFotos, ...nuevas],
+          comoHistorico: completandoHistorico,
+          // Una vez que el entregable ya tiene carpeta conocida, no hace falta pisarla cada vez.
+          carpetaFotosUrl: entregable.carpetaFotosUrl ?? carpetaUrl,
+        });
+        if (!completandoHistorico) {
+          notificarRevisores(
+            `${nombreResponsable} agrego ${nuevas.length > 1 ? `${nuevas.length} fotos` : "una foto"} a "${entregable.nombre}".`
+          );
+        }
+      }
+      if (cancelarFotosRef.current && nuevas.length < archivos.length) {
+        setErrorFotos(`Detenido: se subieron ${nuevas.length} de ${archivos.length} fotos.`);
       }
     } catch (err) {
       const mensaje = mensajeErrorAuth(err);
@@ -402,6 +424,10 @@ export function RevisarEntregableDialog({
       setSubiendoFotos(false);
       setProgresoFotos(null);
     }
+  };
+
+  const onDetenerSubidaFotos = () => {
+    cancelarFotosRef.current = true;
   };
 
   const onEliminarFoto = (url: string) => {
@@ -730,7 +756,7 @@ export function RevisarEntregableDialog({
   // (el mismo que se guarda en `fotos`) — mover con las flechas o quitar una foto reescribe el
   // arreglo completo via onMoverFoto/onEliminarFoto.
   const bloqueGaleriaFotos = (
-    <div className={cn("space-y-3", layoutLado && "w-full lg:w-auto lg:min-w-[280px] lg:max-w-xl")}>
+    <div className={cn("space-y-3", layoutLado && "w-full lg:w-auto lg:min-w-[280px] lg:max-w-3xl")}>
       {entregable.carpetaFotosUrl && (
         <div className="flex flex-wrap gap-1.5">
           <a
@@ -781,7 +807,7 @@ export function RevisarEntregableDialog({
           Sin fotos cargadas todavia.
         </p>
       ) : (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
           {galeriaFotos.map((url, i) => (
             <div
               key={url}
@@ -790,9 +816,9 @@ export function RevisarEntregableDialog({
                 fotosComentando.includes(i) ? "border-accent ring-2 ring-accent" : "border-border"
               )}
             >
-              <a href={url} target="_blank" rel="noreferrer">
+              <button type="button" onClick={() => setFotoAmpliadaIndex(i)} className="block w-full">
                 <MiniaturaVideo url={url} className="aspect-square" />
-              </a>
+              </button>
               <span className="pointer-events-none absolute left-1.5 top-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-white">
                 {i + 1}
               </span>
@@ -861,14 +887,26 @@ export function RevisarEntregableDialog({
         className="hidden"
         onChange={onSeleccionarFotos}
       />
-      <Button type="button" className="w-full" onClick={() => inputFotosRef.current?.click()} disabled={subiendoFotos}>
-        <Upload className="h-4 w-4" />
-        {subiendoFotos && progresoFotos
-          ? `Subiendo foto ${progresoFotos.actual}/${progresoFotos.total}... ${progresoFotos.pct}%`
-          : galeriaFotos.length > 0
-            ? "Agregar mas fotos"
-            : "Subir fotografias a Drive"}
-      </Button>
+      <div className="flex gap-1.5">
+        <Button
+          type="button"
+          className="flex-1"
+          onClick={() => inputFotosRef.current?.click()}
+          disabled={subiendoFotos}
+        >
+          <Upload className="h-4 w-4" />
+          {subiendoFotos && progresoFotos
+            ? `Subiendo foto ${progresoFotos.actual}/${progresoFotos.total}... ${progresoFotos.pct}%`
+            : galeriaFotos.length > 0
+              ? "Agregar mas fotos"
+              : "Subir fotografias a Drive"}
+        </Button>
+        {subiendoFotos && (
+          <Button type="button" variant="outline" onClick={onDetenerSubidaFotos} title="Se detiene al terminar la foto actual">
+            Detener
+          </Button>
+        )}
+      </div>
       {errorFotos && <p className="text-xs text-destructive">{errorFotos}</p>}
     </div>
   );
@@ -1090,7 +1128,11 @@ export function RevisarEntregableDialog({
     </div>
   );
 
+  const fotoAmpliadaUrl = fotoAmpliadaIndex != null ? galeriaFotos[fotoAmpliadaIndex] : null;
+  const fotoAmpliadaFileId = fotoAmpliadaUrl ? extraerFileIdDrive(fotoAmpliadaUrl) : null;
+
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/* layoutLado: el dialogo se ajusta al contenido real (video + panel), ni mas ancho ni mas
           angosto de lo que necesitan (`w-fit`). Y en vez de restarle al alto del dialogo un numero
@@ -1279,5 +1321,64 @@ export function RevisarEntregableDialog({
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* Vista previa ampliada: antes tocar una foto mandaba a Drive en pestaña nueva, sacando a
+        la persona del dialogo de revision. Ahora se ve grande aqui mismo, con flechas para pasar
+        a la siguiente sin cerrar nada. */}
+    <Dialog open={fotoAmpliadaIndex != null} onOpenChange={(v) => !v && setFotoAmpliadaIndex(null)}>
+      <DialogContent className="flex max-w-[95vw] flex-col items-center gap-3 border-white/10 bg-black/95 p-3 sm:max-w-4xl [&>button]:text-white">
+        {fotoAmpliadaUrl && (
+          <>
+            <div className="relative flex w-full items-center justify-center">
+              {fotoAmpliadaIndex! > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setFotoAmpliadaIndex((i) => (i != null ? i - 1 : i))}
+                  className="absolute left-1 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-1 text-white hover:bg-black/70"
+                  title="Foto anterior"
+                >
+                  <ArrowLeftCircle className="h-7 w-7" />
+                </button>
+              )}
+              {fotoAmpliadaFileId && idToken ? (
+                <img
+                  src={`/api/drive-thumbnail?id=${encodeURIComponent(fotoAmpliadaFileId)}&token=${encodeURIComponent(idToken)}&size=1600`}
+                  alt=""
+                  className="max-h-[75vh] w-auto max-w-full rounded-md object-contain"
+                />
+              ) : (
+                <div className="flex h-64 w-full items-center justify-center text-sm text-white/50">
+                  Cargando...
+                </div>
+              )}
+              {fotoAmpliadaIndex! < galeriaFotos.length - 1 && (
+                <button
+                  type="button"
+                  onClick={() => setFotoAmpliadaIndex((i) => (i != null ? i + 1 : i))}
+                  className="absolute right-1 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-1 text-white hover:bg-black/70"
+                  title="Siguiente foto"
+                >
+                  <ArrowRightCircle className="h-7 w-7" />
+                </button>
+              )}
+            </div>
+            <div className="flex w-full items-center justify-between text-xs text-white/60">
+              <span>
+                Foto {fotoAmpliadaIndex! + 1} de {galeriaFotos.length}
+              </span>
+              <a
+                href={fotoAmpliadaUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 hover:text-white"
+              >
+                <ExternalLink className="h-3.5 w-3.5" /> Abrir en Drive
+              </a>
+            </div>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

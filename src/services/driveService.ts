@@ -17,6 +17,12 @@ export function extraerFileIdDrive(url: string): string | null {
   return match ? match[1] : null;
 }
 
+/** Extrae el ID de CARPETA de un link `https://drive.google.com/drive/folders/{id}`. */
+export function extraerCarpetaIdDrive(url: string): string | null {
+  const match = url.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+  return match ? match[1] : null;
+}
+
 /** Resuelve la carpeta (`parents[0]`) de un archivo YA SUBIDO, con la sesion de Drive del
  * usuario — para backfill de `carpetaFotosUrl` en galerias viejas. A diferencia del endpoint
  * `/api/drive-folder` (cuenta de servicio), esto lo pide con la identidad real de quien esta
@@ -214,6 +220,13 @@ function linksDe(id: string, carpetaId?: string): ArchivoSubido {
  * "Videos" vs "Diseños") para que no quede todo revuelto en una sola carpeta. Si
  * `fileIdExistente` viene (ya habia un archivo para este entregable), reemplaza su contenido en
  * vez de crear uno nuevo — asi no se acumulan copias por cada correccion.
+ *
+ * `carpetaIdDestino`: si YA se conoce la carpeta exacta (ej. la galeria de fotos de este
+ * entregable ya tiene `carpetaFotosUrl` guardado de una subida anterior), se sube DIRECTO ahi —
+ * se salta por completo la busqueda/creacion por nombre. Sin esto, subir una foto mas a una
+ * sesion cuyo proyecto se renombro o se borro despues (nombreProyecto resuelve distinto, ej.
+ * "Proyecto eliminado") la mandaba a una carpeta NUEVA, dejando la galeria repartida en dos
+ * carpetas de Drive en vez de "todas dentro" de la misma.
  */
 export async function subirArchivoADrive(
   file: File,
@@ -223,10 +236,11 @@ export async function subirArchivoADrive(
     nombreCarpeta: string;
     subcarpeta?: string;
     fileIdExistente?: string;
+    carpetaIdDestino?: string;
     onProgress?: (porcentaje: number) => void;
   }
 ): Promise<ArchivoSubido> {
-  const { nombre, nombreCarpeta, subcarpeta, fileIdExistente, onProgress } = opciones;
+  const { nombre, nombreCarpeta, subcarpeta, fileIdExistente, carpetaIdDestino, onProgress } = opciones;
 
   if (fileIdExistente) {
     await reemplazarContenido(fileIdExistente, file, accessToken, onProgress);
@@ -234,11 +248,16 @@ export async function subirArchivoADrive(
     return linksDe(fileIdExistente);
   }
 
-  const raizId = await obtenerOCrearCarpeta(CARPETA_RAIZ, accessToken);
-  const carpetaProyectoId = await obtenerOCrearCarpeta(nombreCarpeta, accessToken, raizId);
-  const carpetaId = subcarpeta
-    ? await obtenerOCrearCarpeta(subcarpeta, accessToken, carpetaProyectoId)
-    : carpetaProyectoId;
+  let carpetaId: string;
+  if (carpetaIdDestino) {
+    carpetaId = carpetaIdDestino;
+  } else {
+    const raizId = await obtenerOCrearCarpeta(CARPETA_RAIZ, accessToken);
+    const carpetaProyectoId = await obtenerOCrearCarpeta(nombreCarpeta, accessToken, raizId);
+    carpetaId = subcarpeta
+      ? await obtenerOCrearCarpeta(subcarpeta, accessToken, carpetaProyectoId)
+      : carpetaProyectoId;
+  }
   const id = await subirContenidoNuevo(file, accessToken, nombre, carpetaId, onProgress);
   try {
     await compartirArchivo(id, accessToken);

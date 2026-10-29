@@ -196,7 +196,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // El link viene con un tamaño chico al final (ej. "=s220") — se cambia por uno mas grande.
-  const miniaturaGrande = data.thumbnailLink.replace(/=s\d+$/, "=s400");
+  // `size` opcional (ej. para la vista previa ampliada de una foto, mas grande que la miniatura
+  // de la cuadricula) — se acota entre 100 y 2000 para no pedirle a Drive un numero absurdo.
+  const sizeParam = Number(req.query.size);
+  const size = Number.isFinite(sizeParam) ? Math.min(2000, Math.max(100, Math.round(sizeParam))) : 400;
+  const miniaturaGrande = data.thumbnailLink.replace(/=s\d+$/, `=s${size}`);
   res.setHeader("Cache-Control", "private, max-age=3600");
   res.redirect(302, miniaturaGrande);
 }
