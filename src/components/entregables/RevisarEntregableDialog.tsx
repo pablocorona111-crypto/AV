@@ -885,9 +885,17 @@ export function RevisarEntregableDialog({
   // (el mismo que se guarda en `fotos`) — mover con las flechas o quitar una foto reescribe el
   // arreglo completo via onMoverFoto/onEliminarFoto.
   const bloqueGaleriaFotos = (
-    <div className={cn("space-y-3", layoutLado && "w-full lg:w-auto lg:min-w-[320px] lg:max-w-[1900px]")}>
+    <div
+      className={cn(
+        "flex flex-col gap-3",
+        layoutLado && "w-full lg:w-auto lg:min-w-[320px] lg:max-w-[1900px]",
+        // Columna con su PROPIO scroll (independiente de Observaciones, que queda fija en su
+        // lugar) — solo en pantallas grandes, donde las dos columnas quedan lado a lado.
+        layoutLado && "lg:h-full"
+      )}
+    >
       {entregable.carpetaFotosUrl && (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex shrink-0 flex-wrap gap-1.5">
           <a
             href={entregable.carpetaFotosUrl}
             target="_blank"
@@ -918,7 +926,7 @@ export function RevisarEntregableDialog({
         </div>
       )}
       {!entregable.carpetaFotosUrl && galeriaFotos.length > 0 && (
-        <div className="space-y-1">
+        <div className="shrink-0 space-y-1">
           <button
             type="button"
             onClick={onObtenerCarpeta}
@@ -931,6 +939,7 @@ export function RevisarEntregableDialog({
           {errorCarpeta && <p className="text-xs text-destructive">{errorCarpeta}</p>}
         </div>
       )}
+      <div className={cn("min-h-0", layoutLado && "lg:flex-1 lg:overflow-y-auto lg:pr-1 scrollbar-thin")}>
       {galeriaFotos.length === 0 ? (
         <p className="rounded-md border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
           Sin fotos cargadas todavia.
@@ -1002,6 +1011,7 @@ export function RevisarEntregableDialog({
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 
@@ -1088,7 +1098,16 @@ export function RevisarEntregableDialog({
   // hasta desbordar el dialogo. `lg:max-w-md` evita que se estire de mas cuando el dialogo es
   // ancho — la columna de comentarios no necesita todo el espacio sobrante.
   const bloqueObservaciones = (
-    <div className={cn("space-y-4", layoutLado && "min-w-0 flex-1 lg:min-w-[360px] lg:max-w-md")}>
+    <div
+      className={cn(
+        "space-y-4",
+        layoutLado && "min-w-0 flex-1 lg:min-w-[360px] lg:max-w-md",
+        // En fotografia, esta columna queda FIJA mientras la galeria (bloqueGaleriaFotos) se
+        // desplaza con su propio scroll — si su contenido no cupiera igual, scrollea aparte
+        // (no se arrastra junto con las fotos).
+        esFoto && layoutLado && "lg:h-full lg:overflow-y-auto lg:pr-1 scrollbar-thin"
+      )}
+    >
       {yaResuelto && (
         <div className="space-y-2">
           <Label>Estado</Label>
@@ -1465,8 +1484,17 @@ export function RevisarEntregableDialog({
             // notaba sobre todo al agregar la version alterna (tabs Horizontal/Vertical + boton
             // "+ Agregar...") porque suman alto arriba del video. `lg:overflow-y-auto` deja que
             // la fila scrollee cuando de verdad no cabe, en vez de recortar contenido sin avisar.
+            //
+            // Para fotografia especificamente: la fila YA NO scrollea completa en pantallas
+            // grandes (`lg:overflow-visible` la cancela) — cada columna maneja su propio scroll
+            // (`lg:h-full lg:overflow-y-auto` en bloqueGaleriaFotos y bloqueObservaciones, mas
+            // abajo). Asi Observaciones queda fija en su lugar mientras solo la galeria de fotos
+            // se desplaza, en vez de arrastrarse junto con las fotos como un solo bloque.
             layoutLado
-              ? "flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto lg:flex-row lg:items-stretch lg:gap-6"
+              ? cn(
+                  "flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto lg:flex-row lg:items-stretch lg:gap-6",
+                  esFoto && "lg:overflow-visible"
+                )
               : "space-y-4 overflow-y-auto"
           )}
         >
