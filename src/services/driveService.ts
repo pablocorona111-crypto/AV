@@ -17,6 +17,31 @@ export function extraerFileIdDrive(url: string): string | null {
   return match ? match[1] : null;
 }
 
+/** Resuelve la carpeta (`parents[0]`) de un archivo YA SUBIDO, con la sesion de Drive del
+ * usuario — para backfill de `carpetaFotosUrl` en galerias viejas. A diferencia del endpoint
+ * `/api/drive-folder` (cuenta de servicio), esto lo pide con la identidad real de quien esta
+ * conectado: si esa persona fue quien subio el archivo (o de algun modo ya tenia acceso de
+ * verdad, no solo via el link publico "cualquiera"), Drive SI le expone `parents` — la cuenta de
+ * servicio puede no verlo si solo tiene el permiso publico y nunca se le compartio la carpeta en
+ * si. Devuelve `null` (no lanza) si de todos modos no se pudo — el llamador cae al otro camino. */
+export async function resolverCarpetaDeArchivo(
+  fileId: string,
+  accessToken: string
+): Promise<{ carpetaId: string; carpetaUrl: string } | null> {
+  try {
+    const res = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}?fields=parents&supportsAllDrives=true`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as { parents?: string[] };
+    const carpetaId = data.parents?.[0];
+    return carpetaId ? { carpetaId, carpetaUrl: `https://drive.google.com/drive/folders/${carpetaId}` } : null;
+  } catch {
+    return null;
+  }
+}
+
 
 /** Arma un mensaje de error util a partir de la respuesta de la API de Drive — antes se tiraba
  * siempre el mismo texto generico ("No se pudo buscar/crear la carpeta en Drive"), sin decir

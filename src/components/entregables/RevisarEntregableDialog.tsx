@@ -43,7 +43,12 @@ import { useProyectos } from "@/hooks/useProyectos";
 import { useUsuarios } from "@/hooks/useCatalogos";
 import { crearNotificacion } from "@/services/notificacionesService";
 import { driveUrlAPreview } from "@/services/entregablesService";
-import { subirArchivoADrive, extraerFileIdDrive, compartirArchivo } from "@/services/driveService";
+import {
+  subirArchivoADrive,
+  extraerFileIdDrive,
+  compartirArchivo,
+  resolverCarpetaDeArchivo,
+} from "@/services/driveService";
 import { DriveVideoPlayer, type MotivoErrorDrive } from "@/components/entregables/DriveVideoPlayer";
 import { MiniaturaVideo } from "@/components/entregables/MiniaturaVideo";
 import { mensajeErrorAuth } from "@/lib/authErrors";
@@ -422,23 +427,41 @@ export function RevisarEntregableDialog({
   // tenia ya.
   const onObtenerCarpeta = async () => {
     const primerFileId = galeriaFotos[0] ? extraerFileIdDrive(galeriaFotos[0]) : null;
-    if (!primerFileId || !idToken) return;
+    if (!primerFileId) return;
     setErrorCarpeta(null);
     setResolviendoCarpeta(true);
     try {
-      const res = await fetch(
-        `/api/drive-folder?id=${encodeURIComponent(primerFileId)}&token=${encodeURIComponent(idToken)}`
-      );
-      const data = (await res.json()) as { carpetaId?: string; carpetaUrl?: string; error?: string };
-      if (!res.ok || !data.carpetaUrl) throw new Error(data.error || "No se pudo obtener la carpeta.");
-      if (driveToken && data.carpetaId) {
+      // Primero con la sesion de Drive de quien esta aqui (si ya conecto antes) — Drive le
+      // expone `parents` a quien de verdad tiene acceso al archivo, no solo via el permiso
+      // publico "cualquiera con el link" (que es lo unico que tiene la cuenta de servicio para
+      // fotos viejas cuya CARPETA nunca se compartio, solo el archivo). Si no hay driveToken o
+      // ese intento no resuelve nada, cae al endpoint con la cuenta de servicio.
+      let resultado = driveToken ? await resolverCarpetaDeArchivo(primerFileId, driveToken) : null;
+      if (!resultado && idToken) {
+        const res = await fetch(
+          `/api/drive-folder?id=${encodeURIComponent(primerFileId)}&token=${encodeURIComponent(idToken)}`
+        );
+        const data = (await res.json()) as { carpetaId?: string; carpetaUrl?: string; error?: string };
+        if (res.ok && data.carpetaId && data.carpetaUrl) {
+          resultado = { carpetaId: data.carpetaId, carpetaUrl: data.carpetaUrl };
+        } else if (!driveToken) {
+          // Sin driveToken no hubo primer intento que reportar — este SI es el error real.
+          throw new Error(data.error || "No se pudo obtener la carpeta.");
+        }
+      }
+      if (!resultado) {
+        throw new Error(
+          "No se pudo leer la carpeta de este archivo (puede que nunca se haya compartido). Conecta Drive e intenta de nuevo."
+        );
+      }
+      if (driveToken) {
         try {
-          await compartirArchivo(data.carpetaId, driveToken);
+          await compartirArchivo(resultado.carpetaId, driveToken);
         } catch {
           // si no se pudo compartir, el link igual se guarda — puede que ya estuviera compartida.
         }
       }
-      await actualizarCarpetaFotos.mutateAsync({ id: entregable.id, carpetaFotosUrl: data.carpetaUrl });
+      await actualizarCarpetaFotos.mutateAsync({ id: entregable.id, carpetaFotosUrl: resultado.carpetaUrl });
     } catch (err) {
       setErrorCarpeta(err instanceof Error ? err.message : "No se pudo obtener la carpeta.");
     } finally {
