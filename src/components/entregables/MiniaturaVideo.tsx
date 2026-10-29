@@ -22,6 +22,7 @@ export function MiniaturaVideo({
   orientacion,
   className,
   llenarAlto,
+  ocultarPlay,
 }: {
   url?: string;
   orientacion?: "vertical" | "horizontal";
@@ -29,6 +30,9 @@ export function MiniaturaVideo({
   /** En vez de forzar su propia proporcion (aspect-video/aspect-[3/4]), ocupa el alto que le
    * de el padre — para columnas tipo Kanban que achican las cards en vez de hacer scroll. */
   llenarAlto?: boolean;
+  /** Para una FOTO (no video) el circulo de play no tiene sentido — nada que "reproducir",
+   * tocar la miniatura solo abre la vista previa ampliada. */
+  ocultarPlay?: boolean;
 }) {
   const [intento, setIntento] = useState(0);
   const [visible, setVisible] = useState(true);
@@ -89,11 +93,13 @@ export function MiniaturaVideo({
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
       <div className="pointer-events-none absolute inset-0 bg-black/25 opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
 
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-        <div className="flex h-10 w-10 scale-75 items-center justify-center rounded-full bg-white/95 opacity-0 shadow-lg ring-1 ring-black/5 transition-all duration-200 ease-out group-hover:scale-100 group-hover:opacity-100">
-          <Play className="ml-0.5 h-4 w-4 fill-black text-black" />
+      {!ocultarPlay && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <div className="flex h-10 w-10 scale-75 items-center justify-center rounded-full bg-white/95 opacity-0 shadow-lg ring-1 ring-black/5 transition-all duration-200 ease-out group-hover:scale-100 group-hover:opacity-100">
+            <Play className="ml-0.5 h-4 w-4 fill-black text-black" />
+          </div>
         </div>
-      </div>
+      )}
 
       {orientacion && (
         <div className="pointer-events-none absolute right-1.5 top-1.5 flex items-center gap-1 rounded-full bg-black/55 px-1.5 py-1 backdrop-blur-sm">

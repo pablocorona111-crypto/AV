@@ -848,7 +848,7 @@ export function RevisarEntregableDialog({
   // (el mismo que se guarda en `fotos`) — mover con las flechas o quitar una foto reescribe el
   // arreglo completo via onMoverFoto/onEliminarFoto.
   const bloqueGaleriaFotos = (
-    <div className={cn("space-y-3", layoutLado && "w-full lg:w-auto lg:min-w-[320px] lg:max-w-[1600px]")}>
+    <div className={cn("space-y-3", layoutLado && "w-full lg:w-auto lg:min-w-[320px] lg:max-w-[1900px]")}>
       {entregable.carpetaFotosUrl && (
         <div className="flex flex-wrap gap-1.5">
           <a
@@ -899,7 +899,7 @@ export function RevisarEntregableDialog({
           Sin fotos cargadas todavia.
         </p>
       ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           {galeriaFotos.map((url, i) => (
             <div
               key={url}
@@ -909,7 +909,7 @@ export function RevisarEntregableDialog({
               )}
             >
               <button type="button" onClick={() => setFotoAmpliadaIndex(i)} className="block w-full">
-                <MiniaturaVideo url={url} className="aspect-square" />
+                <MiniaturaVideo url={url} className="aspect-square" ocultarPlay />
               </button>
               <span className="pointer-events-none absolute left-2 top-2 rounded bg-black/60 px-2 py-1 text-xs font-semibold text-white">
                 {i + 1}
