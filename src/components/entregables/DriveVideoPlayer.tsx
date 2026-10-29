@@ -56,6 +56,12 @@ export function formatoTiempo(segundos: number): string {
  *   puede renderizar una linea de 1px en un borde cuando un <video> esta en un contenedor con
  *   `overflow-hidden` + esquinas redondeadas (bug de compositing conocido). El 3% extra empuja
  *   ese borde fuera del area visible recortada, sin notarse como zoom.
+ * - `origin-bottom`: sin esto, el escalado crece parejo hacia los 4 lados desde el centro — el
+ *   borde DE ABAJO (donde el navegador dibuja los controles nativos: play, tiempo, volumen,
+ *   pantalla completa) se empuja hacia afuera igual que los demas y el `overflow-hidden` del
+ *   contenedor recorta un pedazo de esa barra ("se ve cortado debajo"). Con el origen del escalado
+ *   anclado abajo, el borde inferior NO se mueve — los controles quedan completos — y el 3% de
+ *   overscan se va todo hacia arriba/lados, donde no hay nada que se note cortado.
  */
 const ESCENARIO_BASE =
   "relative flex items-center justify-center overflow-hidden bg-black " +
@@ -174,7 +180,7 @@ export function DriveVideoPlayer({
             playsInline
             preload="auto"
             className={cn(
-              "h-full w-full scale-[1.03] object-cover [accent-color:#FB670B]",
+              "h-full w-full scale-[1.03] origin-bottom object-cover [accent-color:#FB670B]",
               "[&:fullscreen]:scale-100 [&:fullscreen]:object-contain [&:fullscreen]:bg-black",
               "[&:-webkit-full-screen]:scale-100 [&:-webkit-full-screen]:object-contain [&:-webkit-full-screen]:bg-black",
               cargando && "invisible"
@@ -255,7 +261,7 @@ export function DriveVideoPlayer({
             playsInline
             preload="auto"
             className={cn(
-              "h-full w-full scale-[1.03] object-cover [accent-color:#FB670B]",
+              "h-full w-full scale-[1.03] origin-bottom object-cover [accent-color:#FB670B]",
               "[&:fullscreen]:scale-100 [&:fullscreen]:object-contain [&:fullscreen]:bg-black",
               "[&:-webkit-full-screen]:scale-100 [&:-webkit-full-screen]:object-contain [&:-webkit-full-screen]:bg-black",
               cargando && "invisible"
