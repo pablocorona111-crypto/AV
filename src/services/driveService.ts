@@ -276,32 +276,71 @@ export async function subirArchivoADrive(
   return linksDe(id, carpetaId);
 }
 
-function subirBytesASesion(
-  file: File,
+// La API de Drive (a diferencia de Cloud Storage) no responde CORS en sus URLs de sesion
+// reanudable — el navegador NO puede hacer el PUT directo a googleapis.com (lo bloquea sin
+// siquiera mandar la peticion). Por eso el archivo pasa por `/api/drive-upload-chunk`, pero en
+// PEDAZOS de este tamaño para no chocar con el limite de ~4.5 MB de body de Vercel — un video de
+// cualquier tamaño sube igual, solo que en varias llamadas en vez de una.
+const TAMANO_CHUNK = 3 * 1024 * 1024;
+
+function subirUnChunk(
+  chunk: Blob,
   sessionUrl: string,
-  onProgress?: (porcentaje: number) => void
-): Promise<{ id: string }> {
+  idToken: string,
+  rangoBytes: string,
+  onProgress?: (porcentajeDelChunk: number) => void
+): Promise<{ status: number; body: string }> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open("PUT", sessionUrl);
-    xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+    xhr.open("PUT", "/api/drive-upload-chunk");
+    xhr.setRequestHeader("Authorization", `Bearer ${idToken}`);
+    xhr.setRequestHeader("X-Session-Url", sessionUrl);
+    xhr.setRequestHeader("Content-Range", rangoBytes);
+    xhr.setRequestHeader("Content-Type", "application/octet-stream");
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
     };
-    xhr.onload = () => {
-      if (xhr.status < 200 || xhr.status >= 300) {
-        reject(new Error(`No se pudo subir el archivo a Drive (codigo ${xhr.status}).`));
-        return;
-      }
-      try {
-        resolve(JSON.parse(xhr.responseText) as { id: string });
-      } catch {
-        reject(new Error("Drive no entrego el id del archivo subido."));
-      }
-    };
+    xhr.onload = () => resolve({ status: xhr.status, body: xhr.responseText });
     xhr.onerror = () => reject(new Error("Error de red al subir a Drive."));
-    xhr.send(file);
+    xhr.send(chunk);
   });
+}
+
+async function subirBytesPorChunks(
+  file: File,
+  sessionUrl: string,
+  idToken: string,
+  onProgress?: (porcentaje: number) => void
+): Promise<{ id: string }> {
+  const total = file.size || 1;
+  let subido = 0;
+
+  for (let inicio = 0; inicio < total; inicio += TAMANO_CHUNK) {
+    const fin = Math.min(inicio + TAMANO_CHUNK, total);
+    const chunk = file.slice(inicio, fin);
+    const rangoBytes = `bytes ${inicio}-${fin - 1}/${total}`;
+
+    const { status, body } = await subirUnChunk(chunk, sessionUrl, idToken, rangoBytes, (pctChunk) => {
+      if (!onProgress) return;
+      const subidoConEste = subido + (pctChunk / 100) * chunk.size;
+      onProgress(Math.round((subidoConEste / total) * 100));
+    });
+    subido = fin;
+
+    if (status === 200 || status === 201) {
+      try {
+        return JSON.parse(body) as { id: string };
+      } catch {
+        throw new Error("Drive no entrego el id del archivo subido.");
+      }
+    }
+    // 308 = "falta mas" (protocolo normal de subida reanudable) — sigue con el siguiente pedazo.
+    if (status !== 308) {
+      throw new Error(`No se pudo subir el archivo a Drive (codigo ${status}).`);
+    }
+  }
+
+  throw new Error("La subida termino sin que Drive confirmara el archivo.");
 }
 
 async function compartirEnDriveCentral(idToken: string, id: string): Promise<void> {
@@ -352,7 +391,7 @@ export async function subirArchivoCentralizado(
     throw new Error(sesionData.error || "No se pudo iniciar la subida a Drive.");
   }
 
-  const { id } = await subirBytesASesion(file, sesionData.sessionUrl, onProgress);
+  const { id } = await subirBytesPorChunks(file, sesionData.sessionUrl, idToken, onProgress);
   await compartirEnDriveCentral(idToken, id);
   if (sesionData.carpetaId && !fileIdExistente) {
     await compartirEnDriveCentral(idToken, sesionData.carpetaId);
