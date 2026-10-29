@@ -50,6 +50,7 @@ import {
   extraerCarpetaIdDrive,
   compartirArchivo,
   resolverCarpetaDeArchivo,
+  moverABasuraDrive,
 } from "@/services/driveService";
 import { DriveVideoPlayer, type MotivoErrorDrive } from "@/components/entregables/DriveVideoPlayer";
 import { MiniaturaVideo } from "@/components/entregables/MiniaturaVideo";
@@ -435,12 +436,29 @@ export function RevisarEntregableDialog({
     cancelarFotosRef.current = true;
   };
 
-  const onEliminarFoto = (url: string) => {
+  const onEliminarFoto = async (url: string) => {
+    setErrorFotos(null);
     guardarFotos.mutate({
       id: entregable.id,
       fotos: galeriaFotos.filter((f) => f !== url),
       comoHistorico: completandoHistorico,
     });
+    // La galeria ya se actualiza arriba sin esperar a Drive — "ya no la quiero" se refleja de
+    // inmediato aqui. Borrar el archivo de verdad es best-effort: si falla (ej. foto de antes de
+    // centralizar, sin permiso de edicion), se avisa pero la foto de todos modos ya desaparecio
+    // de la galeria.
+    const fileId = extraerFileIdDrive(url);
+    if (fileId && idToken) {
+      try {
+        await moverABasuraDrive(idToken, fileId);
+      } catch (err) {
+        setErrorFotos(
+          `La foto se quito de la galeria, pero no se pudo borrar en Drive: ${
+            err instanceof Error ? err.message : "error desconocido"
+          }`
+        );
+      }
+    }
   };
 
   const onMoverFoto = (indice: number, direccion: -1 | 1) => {

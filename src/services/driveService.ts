@@ -398,3 +398,19 @@ export async function subirArchivoCentralizado(
   }
   return linksDe(id, sesionData.carpetaId ?? undefined);
 }
+
+/** Manda un archivo de Drive a la papelera (no borrado permanente — recuperable desde la
+ * papelera de Drive por 30 dias) usando la cuenta central del dueño. Para cuando de verdad ya no
+ * se quiere el archivo, no solo quitar su referencia del sistema (eso es `eliminarMaterialEntregable`
+ * del lado de Firestore) — asi no hay que entrar a Drive a mano a borrarlo. */
+export async function moverABasuraDrive(idToken: string, fileId: string): Promise<void> {
+  const res = await fetch("/api/drive-delete", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+    body: JSON.stringify({ id: fileId }),
+  });
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(data.error || "No se pudo borrar el archivo en Drive.");
+  }
+}

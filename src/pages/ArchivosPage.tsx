@@ -20,7 +20,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DemoBadge } from "@/components/DemoBadge";
 import { RevisarEntregableDialog } from "@/components/entregables/RevisarEntregableDialog";
 import { MiniaturaVideo } from "@/components/entregables/MiniaturaVideo";
-import { extraerFileIdDrive } from "@/services/driveService";
+import { extraerFileIdDrive, moverABasuraDrive } from "@/services/driveService";
 import { ESTADO_ENTREGABLE_BADGE, ESTADO_ENTREGABLE_LABELS, etiquetaEstadoEntregable, CATEGORIA_CONTENIDO_LABELS } from "@/lib/labels";
 import { dentroDelPeriodo, type Periodo } from "@/lib/periodo";
 import { cn, formatFecha } from "@/lib/utils";
@@ -184,6 +184,14 @@ export function ArchivosPage() {
   // Un <a href> no manda headers, asi que el ID token va en la URL — mientras no este resuelto
   // el boton queda inerte en vez de llevar a un 401.
   const { token: idToken } = useIdToken();
+
+  /** Todos los archivos de Drive ligados a un entregable — principal, alterna y cada foto de la
+   * galeria, si tenia. Para borrarlos de Drive junto con quitar la referencia (ver
+   * "Eliminar material" mas abajo). */
+  const archivosDriveDe = (e: Entregable): string[] => {
+    const urls = [e.urlRevision, e.urlFinal, e.urlRevisionAlt, e.urlFinalAlt, ...(e.fotos ?? [])];
+    return [...new Set(urls.map((u) => (u ? extraerFileIdDrive(u) : null)).filter((id): id is string => Boolean(id)))];
+  };
 
   const copiarLink = async (id: string, fileId: string) => {
     await navigator.clipboard.writeText(`https://drive.google.com/file/d/${fileId}/view`);
@@ -562,14 +570,24 @@ export function ArchivosPage() {
         description={
           <>
             Quita el video/foto/diseño cargado (y la version alterna o la galeria completa, si
-            tenia) y regresa el entregable a "Pendiente". El archivo en Google Drive no se borra,
-            solo se quita la referencia aqui.
+            tenia) y regresa el entregable a "Pendiente". El archivo tambien se manda a la
+            papelera de Drive (recuperable ahi por 30 dias) — si es de antes de centralizar y no
+            se pudo borrar por permisos, la referencia aqui se quita igual.
           </>
         }
         confirmLabel="Eliminar material"
         destructive
         onConfirm={() => {
-          if (materialAEliminar) eliminarMaterial.mutate(materialAEliminar.id);
+          if (materialAEliminar) {
+            if (idToken) {
+              archivosDriveDe(materialAEliminar).forEach((fileId) => {
+                moverABasuraDrive(idToken, fileId).catch(() => {
+                  // ya se quita la referencia en Firestore igual — ver nota en el mensaje de arriba.
+                });
+              });
+            }
+            eliminarMaterial.mutate(materialAEliminar.id);
+          }
           setMaterialAEliminar(null);
         }}
       />
