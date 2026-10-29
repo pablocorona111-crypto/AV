@@ -161,91 +161,47 @@ export function DashboardPage() {
     .slice(0, 5);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            ¡Hola, {usuario?.nombre?.split(" ")[0] ?? "de nuevo"}!
-          </h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            Aqui tienes el resumen del departamento audiovisual.
-          </p>
+          <h1 className="text-xl font-bold">¡Hola, {usuario?.nombre?.split(" ")[0] ?? "de nuevo"}!</h1>
+          <p className="text-sm text-muted-foreground">Aqui tienes el resumen del departamento audiovisual.</p>
         </div>
         <DemoBadge />
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard icon={FileText} label="Requisiciones" value={requisiciones.length} hint="Este mes" />
-        <StatCard
-          icon={Clock}
-          label="Pendientes aprobacion"
-          value={pendientesAprobacion}
-          hint="Requieren revision"
-          iconBg="bg-amber-100 dark:bg-amber-400/20"
-        />
-        <StatCard
-          icon={Film}
-          label="En postproduccion"
-          value={enPostproduccion}
-          hint="Proyectos activos"
-          iconBg="bg-indigo-100 dark:bg-indigo-400/20"
-        />
-        <StatCard
-          icon={CheckCircle2}
-          label="Entregados"
-          value={entregadosEsteMes}
-          hint="Este mes"
-          iconBg="bg-green-100 dark:bg-green-400/20"
-        />
-        <StatCard
-          icon={AlertTriangle}
-          label="Entregas atrasadas"
-          value={entregasAtrasadas}
-          hint="Requieren atencion"
-          iconBg="bg-red-100 dark:bg-red-400/20"
-        />
+        <StatCard icon={Clock} label="Pendientes aprobacion" value={pendientesAprobacion} hint="Requieren revision" />
+        <StatCard icon={Film} label="En postproduccion" value={enPostproduccion} hint="Proyectos activos" />
+        <StatCard icon={CheckCircle2} label="Entregados" value={entregadosEsteMes} hint="Este mes" />
+        <StatCard icon={AlertTriangle} label="Entregas atrasadas" value={entregasAtrasadas} hint="Requieren atencion" iconBg="bg-red-100 dark:bg-red-400/20" />
         <StatCard icon={Clock} label="Cumplimiento" value={`${cumplimiento}%`} hint="A tiempo" />
-        <StatCard
-          icon={Camera}
-          label="Salidas programadas"
-          value={salidas.length}
-          hint="Proximos 7 dias"
-          iconBg="bg-sky-100 dark:bg-sky-400/20"
-        />
-        <StatCard
-          icon={Users}
-          label="Colaboradores"
-          value={colaboradoresDelEquipo.length}
-          hint="Audiovisuales en el equipo"
-          iconBg="bg-violet-100 dark:bg-violet-400/20"
-        />
+        <StatCard icon={Camera} label="Salidas programadas" value={salidas.length} hint="Proximos 7 dias" />
+        <StatCard icon={Users} label="Colaboradores" value={colaboradoresDelEquipo.length} hint="Audiovisuales en el equipo" />
       </div>
 
-      <Card className="rounded-xl">
-        <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+      <Card>
+        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold">Cumplimiento semanal</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Lunes a sabado · {cumplidosEstaSemana} de {entregablesDeEstaSemana.length || 0} con fecha compromiso
               esta semana
             </p>
           </div>
           <div className="flex items-center gap-3 sm:w-64">
             <Progress value={cumplimientoSemanal} className="h-2.5" />
-            <span className="w-12 shrink-0 text-right text-lg font-bold tabular-nums">
-              {cumplimientoSemanal}%
-            </span>
+            <span className="w-12 shrink-0 text-right text-lg font-bold">{cumplimientoSemanal}%</span>
           </div>
         </CardContent>
       </Card>
 
       {proyectosAtencion > 0 && (
-        <Card className="rounded-xl border-amber-300 bg-amber-50 dark:border-amber-400/30 dark:bg-amber-400/10">
+        <Card className="border-amber-300 bg-amber-50 dark:border-amber-400/30 dark:bg-amber-400/10">
           <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-200/70 dark:bg-amber-400/20">
-              <AlertTriangle className="h-[18px] w-[18px] text-amber-700 dark:text-amber-300" />
-            </div>
-            <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+            <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+            <p className="text-sm text-amber-900 dark:text-amber-200">
               {proyectosAtencion} proyecto(s) de prioridad alta/critica requieren atencion.
             </p>
           </CardContent>
@@ -253,8 +209,8 @@ export function DashboardPage() {
       )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Card className="rounded-xl lg:col-span-2">
-          <CardHeader className="pb-2">
+        <Card className="lg:col-span-2">
+          <CardHeader>
             <CardTitle>Produccion semanal</CardTitle>
           </CardHeader>
           <CardContent className="h-56">
@@ -271,8 +227,8 @@ export function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-xl">
-          <CardHeader className="pb-2">
+        <Card>
+          <CardHeader>
             <CardTitle>Tipo de entregables (mes)</CardTitle>
           </CardHeader>
           <CardContent>
@@ -294,17 +250,14 @@ export function DashboardPage() {
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div className="mt-2 space-y-0.5">
+            <div className="mt-2 space-y-1">
               {tipoEntregables.map((t) => (
-                <div
-                  key={t.name}
-                  className="flex items-center justify-between gap-2 rounded-md px-1.5 py-1 text-xs transition-colors hover:bg-bg-secondary/60"
-                >
+                <div key={t.name} className="flex items-center justify-between gap-2 text-xs">
                   <span className="flex min-w-0 items-center gap-1.5">
                     <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: t.color }} />
                     <span className="truncate">{t.name}</span>
                   </span>
-                  <span className="shrink-0 font-semibold tabular-nums">{t.value}%</span>
+                  <span className="shrink-0 font-medium">{t.value}%</span>
                 </div>
               ))}
             </div>
@@ -313,8 +266,8 @@ export function DashboardPage() {
       </div>
 
       {puedeVerMetricasGlobales(usuario) && (
-        <Card className="rounded-xl">
-          <CardHeader className="pb-2">
+        <Card>
+          <CardHeader>
             <CardTitle>Trabajos cumplidos por mes</CardTitle>
           </CardHeader>
           <CardContent className="h-48">
@@ -338,14 +291,14 @@ export function DashboardPage() {
       )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Card className="rounded-xl lg:col-span-2">
-          <CardHeader className="flex-row items-center justify-between pb-2">
+        <Card className="lg:col-span-2">
+          <CardHeader className="flex-row items-center justify-between">
             <CardTitle>Requisiciones recientes</CardTitle>
           </CardHeader>
           <CardContent className="overflow-x-auto">
             <table className="w-full min-w-[560px] text-sm">
               <thead>
-                <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <tr className="border-b border-border text-left text-xs text-muted-foreground">
                   <th className="py-2 font-medium">Folio</th>
                   <th className="py-2 font-medium">Titulo</th>
                   <th className="py-2 font-medium">Prioridad</th>
@@ -355,10 +308,7 @@ export function DashboardPage() {
               </thead>
               <tbody>
                 {requisiciones.slice(0, 5).map((r) => (
-                  <tr
-                    key={r.id}
-                    className="border-b border-border transition-colors last:border-0 hover:bg-bg-secondary/50"
-                  >
+                  <tr key={r.id} className="border-b border-border last:border-0">
                     <td className="py-2.5 font-medium">{r.folio}</td>
                     <td className="py-2.5">{r.titulo}</td>
                     <td className="py-2.5">{CATEGORIA_CONTENIDO_LABELS[r.tipoContenido]}</td>
@@ -375,53 +325,50 @@ export function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-xl">
-          <CardHeader className="pb-2">
+        <Card>
+          <CardHeader>
             <CardTitle>Carga de trabajo del equipo</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3">
             {colaboradores.length === 0 && (
               <p className="py-6 text-center text-sm text-muted-foreground">
                 Sin colaboradores registrados en Equipo todavia.
               </p>
             )}
             {colaboradores.map((c) => (
-              <div key={c.id} className="space-y-1.5">
+              <div key={c.id} className="space-y-1">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-medium">{c.nombre}</span>
-                  <span className="font-semibold tabular-nums text-muted-foreground">{c.cargaReal}%</span>
+                  <span className="text-muted-foreground">{c.cargaReal}%</span>
                 </div>
-                <Progress value={c.cargaReal} className="h-2" />
+                <Progress value={c.cargaReal} />
               </div>
             ))}
           </CardContent>
         </Card>
       </div>
 
-      <Card className="rounded-xl">
-        <CardHeader className="pb-2">
+      <Card>
+        <CardHeader>
           <CardTitle>Actividad reciente</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-1">
+        <CardContent className="space-y-4">
           {actividadReciente.length === 0 && (
             <p className="py-6 text-center text-sm text-muted-foreground">Sin actividad registrada todavia.</p>
           )}
           {actividadReciente.map((a, i) => (
-            <div
-              key={i}
-              className="flex items-start gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-bg-secondary/50"
-            >
-              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#C1EB1F]/20">
-                <a.icono className="h-4 w-4 text-text-primary/80" />
+            <div key={i} className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-bg-secondary">
+                <a.icono className="h-3.5 w-3.5 text-text-primary/70" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm leading-snug">{a.texto}</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">{a.detalle}</p>
-                <p className="mt-0.5 text-xs text-muted-foreground sm:hidden">
+                <p className="text-sm">{a.texto}</p>
+                <p className="text-xs text-muted-foreground">{a.detalle}</p>
+                <p className="text-xs text-muted-foreground sm:hidden">
                   {formatDistanceToNow(a.cuando, { addSuffix: true, locale: es })}
                 </p>
               </div>
-              <span className="hidden shrink-0 pt-0.5 text-xs text-muted-foreground sm:inline">
+              <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">
                 {formatDistanceToNow(a.cuando, { addSuffix: true, locale: es })}
               </span>
             </div>
