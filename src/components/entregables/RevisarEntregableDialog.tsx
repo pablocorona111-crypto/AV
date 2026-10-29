@@ -130,7 +130,7 @@ export function RevisarEntregableDialog({
     // Nuevo entregable o se reabrio el dialogo: siempre arranca viendo la version principal.
     setSlotActivo("principal");
     setEditandoNombre(false);
-    setFotoComentando(null);
+    setFotosComentando([]);
   }, [entregable?.id, open]);
 
   useEffect(() => {
@@ -161,9 +161,11 @@ export function RevisarEntregableDialog({
   const [errorFotos, setErrorFotos] = useState<string | null>(null);
   const guardarFotos = useGuardarFotos();
   const actualizarCarpetaFotos = useActualizarCarpetaFotos();
-  // Sobre cual foto de la galeria es la observacion que se esta escribiendo (indice en
-  // `galeriaFotos`) — reemplaza al campo "minuto" de video, que no tiene sentido en una foto.
-  const [fotoComentando, setFotoComentando] = useState<number | null>(null);
+  // Sobre cuales fotos de la galeria es la observacion que se esta escribiendo (indices en
+  // `galeriaFotos`, puede ser mas de una) — reemplaza al campo "minuto" de video, que no tiene
+  // sentido en una foto. Tocar el icono de una foto la agrega/quita de la seleccion — asi una
+  // misma observacion ("estas 3 salen movidas") se amarra a varias de una vez.
+  const [fotosComentando, setFotosComentando] = useState<number[]>([]);
 
   if (!entregable || !usuario) return null;
 
@@ -490,9 +492,17 @@ export function RevisarEntregableDialog({
   };
 
   // En video `momento` es un minuto escrito a mano ("0:45"). En una foto no hay minuto — lo que
-  // identifica a cual observacion se refiere es el NUMERO de foto, elegido tocando el icono de
-  // comentario en la galeria (`fotoComentando`, ver bloqueGaleriaFotos).
-  const momentoAEnviar = esFoto ? (fotoComentando != null ? `Foto ${fotoComentando + 1}` : "") : momento.trim();
+  // identifica a cual observacion se refiere es el (o los) NUMERO(S) de foto, elegidos tocando
+  // el icono de comentario en la galeria (`fotosComentando`, ver bloqueGaleriaFotos) — una misma
+  // observacion puede amarrarse a varias fotos de un jalon.
+  const numerosFotoComentando = [...fotosComentando].sort((a, b) => a - b).map((i) => i + 1);
+  const momentoAEnviar = esFoto
+    ? numerosFotoComentando.length > 0
+      ? numerosFotoComentando.length === 1
+        ? `Foto ${numerosFotoComentando[0]}`
+        : `Fotos ${numerosFotoComentando.join(", ")}`
+      : ""
+    : momento.trim();
 
   const onComentar = async () => {
     if (!comentario.trim()) return;
@@ -504,7 +514,7 @@ export function RevisarEntregableDialog({
     });
     setComentario("");
     setMomento("");
-    setFotoComentando(null);
+    setFotosComentando([]);
 
     if (!esResponsable) {
       notificarA(
@@ -754,7 +764,7 @@ export function RevisarEntregableDialog({
               key={url}
               className={cn(
                 "group relative overflow-hidden rounded-md border",
-                fotoComentando === i ? "border-accent ring-2 ring-accent" : "border-border"
+                fotosComentando.includes(i) ? "border-accent ring-2 ring-accent" : "border-border"
               )}
             >
               <a href={url} target="_blank" rel="noreferrer">
@@ -766,12 +776,16 @@ export function RevisarEntregableDialog({
               {puedeComentar && !yaResuelto && (
                 <button
                   type="button"
-                  onClick={() => setFotoComentando((actual) => (actual === i ? null : i))}
+                  onClick={() =>
+                    setFotosComentando((actual) =>
+                      actual.includes(i) ? actual.filter((x) => x !== i) : [...actual, i]
+                    )
+                  }
                   className={cn(
                     "absolute right-1.5 top-1.5 rounded p-1 text-white",
-                    fotoComentando === i ? "bg-accent text-accent-foreground" : "bg-black/60 hover:bg-black/80"
+                    fotosComentando.includes(i) ? "bg-accent text-accent-foreground" : "bg-black/60 hover:bg-black/80"
                   )}
-                  title="Comentar sobre esta foto"
+                  title="Marcar esta foto para comentar (toca varias para amarrar la misma observacion a todas)"
                 >
                   <MessageSquarePlus className="h-3.5 w-3.5" />
                 </button>
@@ -949,16 +963,19 @@ export function RevisarEntregableDialog({
         {puedeComentar && !yaResuelto && (
           <div className="space-y-1.5">
             {esFoto ? (
-              fotoComentando != null && (
+              numerosFotoComentando.length > 0 && (
                 <div className="flex items-center justify-between gap-2 rounded-md bg-accent/15 px-2.5 py-1.5 text-xs font-medium text-text-primary">
                   <span className="flex items-center gap-1.5">
-                    <ImageIcon className="h-3.5 w-3.5" /> Sobre la foto #{fotoComentando + 1}
+                    <ImageIcon className="h-3.5 w-3.5" />
+                    {numerosFotoComentando.length === 1
+                      ? `Sobre la foto #${numerosFotoComentando[0]}`
+                      : `Sobre las fotos #${numerosFotoComentando.join(", #")}`}
                   </span>
                   <button
                     type="button"
-                    onClick={() => setFotoComentando(null)}
+                    onClick={() => setFotosComentando([])}
                     className="rounded p-0.5 text-muted-foreground hover:text-text-primary"
-                    title="Quitar foto seleccionada"
+                    title="Quitar fotos seleccionadas"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -1006,7 +1023,7 @@ export function RevisarEntregableDialog({
             </Button>
             <p className="text-[11px] text-muted-foreground">
               {esFoto
-                ? "Toca el icono de comentario en una foto de la galeria para amarrar la observacion a esa foto (opcional)."
+                ? "Toca el icono de comentario en una o varias fotos de la galeria para amarrar la observacion a esas fotos (opcional)."
                 : usaPlayerPropio
                   ? "Se llena solo mientras reproduces."
                   : "Anota el minuto donde esta el cambio que pides."}

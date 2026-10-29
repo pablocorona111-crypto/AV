@@ -157,9 +157,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   let metaRes: Response;
   try {
-    metaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=parents`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    // `supportsAllDrives=true`: sin esto, Drive puede omitir o fallar en archivos que viven
+    // dentro de una Unidad compartida (comun en cuentas de organizacion) — con cuenta personal
+    // es un parametro inofensivo que no cambia nada.
+    metaRes = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}?fields=parents&supportsAllDrives=true`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
   } catch {
     res.status(502).json({ error: "No se pudo consultar Drive." });
     return;
