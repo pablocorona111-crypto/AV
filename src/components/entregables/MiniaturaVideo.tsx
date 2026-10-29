@@ -88,10 +88,15 @@ export function MiniaturaVideo({
         </div>
       )}
 
-      {/* Velo permanente y suave abajo: mantiene legible el badge sobre cualquier fotograma.
-          Al pasar el mouse se oscurece todo el recuadro para que resalte el boton de play. */}
+      {/* Velo permanente y suave abajo: mantiene legible el badge sobre cualquier fotograma. */}
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
-      <div className="pointer-events-none absolute inset-0 bg-black/25 opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
+      {/* Al pasar el mouse se oscurece todo el recuadro para que resalte el boton de play — en
+          una FOTO (`ocultarPlay`) no hay play que resaltar, asi que este oscurecido de mas no
+          aporta nada (solo apaga la foto sin motivo); ahi los botones de accion de la galeria
+          (mover/eliminar/comentar) ya traen su propio fondo oscuro, no necesitan este extra. */}
+      {!ocultarPlay && (
+        <div className="pointer-events-none absolute inset-0 bg-black/25 opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
+      )}
 
       {!ocultarPlay && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">

@@ -898,12 +898,12 @@ export function RevisarEntregableDialog({
       )}
     >
       {entregable.carpetaFotosUrl && (
-        <div className="flex shrink-0 flex-wrap gap-1.5">
+        <div className="flex shrink-0 flex-wrap gap-2">
           <a
             href={entregable.carpetaFotosUrl}
             target="_blank"
             rel="noreferrer"
-            className="flex items-center gap-1.5 rounded-md border border-border bg-bg-secondary px-2.5 py-1.5 text-xs font-medium hover:bg-border/60"
+            className="flex items-center gap-1.5 rounded-full border border-border bg-bg-secondary px-3 py-1.5 text-xs font-medium transition-colors hover:bg-border/60"
           >
             <ExternalLink className="h-3.5 w-3.5" /> Ver todas las fotos en Drive
           </a>
@@ -914,7 +914,7 @@ export function RevisarEntregableDialog({
               setCarpetaCopiada(true);
               setTimeout(() => setCarpetaCopiada(false), 1500);
             }}
-            className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-bg-secondary"
+            className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-bg-secondary"
           >
             {carpetaCopiada ? (
               <>
@@ -934,7 +934,7 @@ export function RevisarEntregableDialog({
             type="button"
             onClick={onObtenerCarpeta}
             disabled={resolviendoCarpeta || !idToken}
-            className="flex items-center gap-1.5 rounded-md border border-dashed border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-bg-secondary disabled:opacity-60"
+            className="flex items-center gap-1.5 rounded-full border border-dashed border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-bg-secondary disabled:opacity-60"
           >
             <ExternalLink className="h-3.5 w-3.5" />
             {resolviendoCarpeta ? "Buscando la carpeta..." : "Obtener link para compartir todas las fotos"}
@@ -949,20 +949,32 @@ export function RevisarEntregableDialog({
         </p>
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-          {galeriaFotos.map((url, i) => (
+          {galeriaFotos.map((url, i) => {
+            const totalComentariosFoto = comentarios.filter((c) =>
+              comentarioAplicaAFoto(c.momento, i + 1)
+            ).length;
+            const seleccionada = fotosComentando.includes(i);
+            return (
             <div
               key={url}
               className={cn(
-                "group relative overflow-hidden rounded-md border",
-                fotosComentando.includes(i) ? "border-accent ring-2 ring-accent" : "border-border"
+                "group relative overflow-hidden rounded-xl ring-1 transition-all duration-200",
+                seleccionada
+                  ? "ring-2 ring-accent"
+                  : "ring-border hover:shadow-lg hover:shadow-black/10 hover:ring-text-primary/25"
               )}
             >
               <button type="button" onClick={() => setFotoAmpliadaIndex(i)} className="block w-full">
                 <MiniaturaVideo url={url} className="aspect-square" ocultarPlay />
               </button>
-              <span className="pointer-events-none absolute left-2 top-2 rounded bg-black/60 px-2 py-1 text-xs font-semibold text-white">
+              <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-black/60 px-2 py-1 text-[11px] font-semibold text-white backdrop-blur-sm">
                 {i + 1}
               </span>
+              {totalComentariosFoto > 0 && (
+                <span className="pointer-events-none absolute bottom-2 left-2 flex items-center gap-1 rounded-full bg-black/60 px-2 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
+                  <MessageSquarePlus className="h-3 w-3" /> {totalComentariosFoto}
+                </span>
+              )}
               {puedeComentar && !yaResuelto && (
                 <button
                   type="button"
@@ -972,46 +984,49 @@ export function RevisarEntregableDialog({
                     )
                   }
                   className={cn(
-                    "absolute right-2 top-2 rounded-md p-1.5 text-white",
-                    fotosComentando.includes(i) ? "bg-accent text-accent-foreground" : "bg-black/60 hover:bg-black/80"
+                    "absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full backdrop-blur-sm transition-colors",
+                    seleccionada
+                      ? "bg-accent text-accent-foreground"
+                      : "bg-black/50 text-white hover:bg-black/75"
                   )}
                   title="Marcar esta foto para comentar (toca varias para amarrar la misma observacion a todas)"
                 >
-                  <MessageSquarePlus className="h-5 w-5" />
+                  <MessageSquarePlus className="h-4 w-4" />
                 </button>
               )}
               {puedeEditarMaterial && (
-                <div className="absolute bottom-2 right-2 flex gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
+                <div className="absolute bottom-2 right-2 flex gap-1.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
                   <button
                     type="button"
                     onClick={() => onMoverFoto(i, -1)}
                     disabled={i === 0}
-                    className="rounded-md bg-black/60 p-1.5 text-white hover:bg-black/80 disabled:opacity-30"
+                    className="flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm transition-colors hover:bg-black/75 disabled:opacity-30"
                     title="Mover antes"
                   >
-                    <ArrowLeftCircle className="h-5 w-5" />
+                    <ArrowLeftCircle className="h-4 w-4" />
                   </button>
                   <button
                     type="button"
                     onClick={() => onMoverFoto(i, 1)}
                     disabled={i === galeriaFotos.length - 1}
-                    className="rounded-md bg-black/60 p-1.5 text-white hover:bg-black/80 disabled:opacity-30"
+                    className="flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm transition-colors hover:bg-black/75 disabled:opacity-30"
                     title="Mover despues"
                   >
-                    <ArrowRightCircle className="h-5 w-5" />
+                    <ArrowRightCircle className="h-4 w-4" />
                   </button>
                   <button
                     type="button"
                     onClick={() => onEliminarFoto(url)}
-                    className="rounded-md bg-black/60 p-1.5 text-white hover:bg-destructive"
+                    className="flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm transition-colors hover:bg-destructive"
                     title="Quitar foto"
                   >
-                    <Trash2 className="h-5 w-5" />
+                    <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
       </div>
