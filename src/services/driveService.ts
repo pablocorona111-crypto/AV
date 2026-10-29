@@ -393,7 +393,9 @@ export async function subirArchivoCentralizado(
 
   const { id } = await subirBytesPorChunks(file, sesionData.sessionUrl, idToken, onProgress);
   await compartirEnDriveCentral(idToken, id);
-  if (sesionData.carpetaId && !fileIdExistente) {
+  // Cada subida crea un archivo NUEVO ahora (ver drive-upload-session.ts) — la carpeta siempre
+  // viene resuelta, se comparte siempre (barato e idempotente si ya lo estaba).
+  if (sesionData.carpetaId) {
     await compartirEnDriveCentral(idToken, sesionData.carpetaId);
   }
   return linksDe(id, sesionData.carpetaId ?? undefined);

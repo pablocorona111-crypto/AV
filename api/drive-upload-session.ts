@@ -223,39 +223,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // Reemplazar contenido de un archivo YA existente: sesion reanudable con PATCH, sin tocar
-    // carpeta (el archivo ya vive donde vive) — SOLO funciona si la cuenta central ya es dueña de
-    // ese archivo (ej. se creo despues de centralizar). Para un archivo de ANTES (vivia en el
-    // Drive personal de quien lo subio entonces, la cuenta central solo tiene permiso de lector
-    // publico), Drive responde 403/404 — en ese caso no se reporta error: se sigue de largo y se
-    // sube como archivo NUEVO en la carpeta correcta (exactamente "vuelve a subir y que quede en
-    // su lugar correcto", sin que la persona tenga que saber por que fallo lo otro).
-    if (body.fileIdExistente) {
-      const sesionRes = await fetch(
-        `https://www.googleapis.com/upload/drive/v3/files/${body.fileIdExistente}?uploadType=resumable&fields=id`,
-        {
-          method: "PATCH",
-          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json; charset=UTF-8" },
-          body: JSON.stringify({ name: body.nombre }),
-        }
-      );
-      if (sesionRes.ok) {
-        const sessionUrl = sesionRes.headers.get("location");
-        if (!sessionUrl) {
-          res.status(502).json({ error: "Drive no entrego la URL de sesion." });
-          return;
-        }
-        res.status(200).json({ sessionUrl, carpetaId: null });
-        return;
-      }
-      // Sigue de largo (fallback a "crear nuevo") solo si es cosa de permiso/no-encontrado —
-      // cualquier otro error (ej. 401 de credenciales mal puestas) si se reporta tal cual.
-      if (sesionRes.status !== 403 && sesionRes.status !== 404) {
-        res.status(sesionRes.status).json({ error: "No se pudo abrir la sesion de subida (reemplazo)." });
-        return;
-      }
-    }
-
+    // Ya NO se intenta reemplazar el contenido de `fileIdExistente` en el mismo archivo: eso solo
+    // funciona si la cuenta central YA es dueña de ese archivo (ej. se creo despues de
+    // centralizar) — para uno de ANTES (vivia en el Drive personal de quien lo subio entonces),
+    // Drive puede dejar ABRIR la sesion de reemplazo pero rechazar el PUT de los bytes ya
+    // avanzada la subida (403 a medias, el peor caso). Mas simple y confiable: cada subida crea
+    // un archivo NUEVO en la carpeta correcta siempre — "vuelve a subir y que quede en su lugar",
+    // sin intentar adivinar si el reemplazo en el mismo archivo va a funcionar o no.
     let carpetaId = body.carpetaIdDestino ?? null;
     if (!carpetaId) {
       const raizId = await obtenerOCrearCarpeta(CARPETA_RAIZ, token);

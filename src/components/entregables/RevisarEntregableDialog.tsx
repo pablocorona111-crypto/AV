@@ -20,6 +20,7 @@ import {
   X,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useUploadQueue } from "@/context/UploadQueueContext";
 import { puedeAprobarEntregables, puedeSubirVideos, esGestorRequisiciones, gestorTienePermiso } from "@/lib/roles";
 import {
   useAdjuntarMaterialHistorico,
@@ -99,6 +100,7 @@ export function RevisarEntregableDialog({
   nombreAprobador?: string;
 }) {
   const { usuario, driveToken, limpiarDriveToken } = useAuth();
+  const { iniciarTarea, actualizarProgreso, marcarLista, marcarError } = useUploadQueue();
   const { data: usuarios = [] } = useUsuarios();
   const { data: proyectos = [] } = useProyectos();
   const asignarProyecto = useAsignarProyectoEntregable();
@@ -275,6 +277,9 @@ export function RevisarEntregableDialog({
     setErrorSubida(null);
     setSubiendo(true);
     setProgreso(0);
+    // Tarea en la cola GLOBAL (ver UploadQueueContext) — sigue corriendo y mostrando su progreso
+    // aunque la persona cierre este dialogo antes de que termine.
+    const tareaId = iniciarTarea(`${esDiseno ? "Diseño" : "Video"}: ${entregable.nombre}`);
     try {
       const fileIdExistente = linkPrincipal ? extraerFileIdDrive(linkPrincipal) ?? undefined : undefined;
       const subido = await subirArchivoCentralizado(file, idToken, {
@@ -282,7 +287,10 @@ export function RevisarEntregableDialog({
         nombreCarpeta: nombreProyecto ?? "Sin proyecto",
         subcarpeta: esDiseno ? "Diseños" : "Videos",
         fileIdExistente,
-        onProgress: setProgreso,
+        onProgress: (pct) => {
+          setProgreso(pct);
+          actualizarProgreso(tareaId, pct);
+        },
       });
       // Si la orientacion ya se sabia (correccion/reemplazo de un video previo) se mantiene esa
       // — solo se usa lo elegido a mano cuando es la primera subida.
@@ -309,10 +317,12 @@ export function RevisarEntregableDialog({
         );
       }
       setSlotActivo("principal");
+      marcarLista(tareaId);
     } catch (err) {
       const mensaje = mensajeErrorAuth(err);
       if (/sesion de Drive expiro|403/.test(mensaje)) limpiarDriveToken();
       setErrorSubida(mensaje);
+      marcarError(tareaId, mensaje);
     } finally {
       setSubiendo(false);
     }
@@ -337,6 +347,7 @@ export function RevisarEntregableDialog({
     setErrorSubidaAlt(null);
     setSubiendoAlt(true);
     setProgresoAlt(0);
+    const tareaId = iniciarTarea(`Video (${orientacionAltSugerida}): ${entregable.nombre}`);
     try {
       const fileIdExistente = linkAlt ? extraerFileIdDrive(linkAlt) ?? undefined : undefined;
       const subido = await subirArchivoCentralizado(file, idToken, {
@@ -344,7 +355,10 @@ export function RevisarEntregableDialog({
         nombreCarpeta: nombreProyecto ?? "Sin proyecto",
         subcarpeta: "Videos",
         fileIdExistente,
-        onProgress: setProgresoAlt,
+        onProgress: (pct) => {
+          setProgresoAlt(pct);
+          actualizarProgreso(tareaId, pct);
+        },
       });
       await agregarVersionAlterna.mutateAsync({
         id: entregable.id,
@@ -353,6 +367,7 @@ export function RevisarEntregableDialog({
         comoHistorico: completandoHistorico,
       });
       setSlotActivo("alt");
+      marcarLista(tareaId);
       if (!completandoHistorico) {
         notificarRevisores(
           `${nombreResponsable} agrego la version ${orientacionAltSugerida} de "${entregable.nombre}".`
@@ -362,6 +377,7 @@ export function RevisarEntregableDialog({
       const mensaje = mensajeErrorAuth(err);
       if (/sesion de Drive expiro|403/.test(mensaje)) limpiarDriveToken();
       setErrorSubidaAlt(mensaje);
+      marcarError(tareaId, mensaje);
     } finally {
       setSubiendoAlt(false);
     }
@@ -388,6 +404,9 @@ export function RevisarEntregableDialog({
     cancelarFotosRef.current = false;
     setErrorFotos(null);
     setSubiendoFotos(true);
+    const tareaId = iniciarTarea(
+      `${archivos.length > 1 ? `${archivos.length} fotos` : "Foto"}: ${entregable.nombre}`
+    );
     try {
       const nuevas: string[] = [];
       let carpetaUrl: string | undefined;
@@ -399,7 +418,10 @@ export function RevisarEntregableDialog({
           nombreCarpeta: nombreProyecto ?? "Sin proyecto",
           subcarpeta: "Fotografias",
           carpetaIdDestino: carpetaIdConocida ?? undefined,
-          onProgress: (pct) => setProgresoFotos({ actual: i + 1, total: archivos.length, pct }),
+          onProgress: (pct) => {
+            setProgresoFotos({ actual: i + 1, total: archivos.length, pct });
+            actualizarProgreso(tareaId, Math.round(((i + pct / 100) / archivos.length) * 100));
+          },
         });
         nuevas.push(subida.previewUrl);
         carpetaUrl ??= subida.carpetaUrl;
@@ -421,11 +443,15 @@ export function RevisarEntregableDialog({
       }
       if (cancelarFotosRef.current && nuevas.length < archivos.length) {
         setErrorFotos(`Detenido: se subieron ${nuevas.length} de ${archivos.length} fotos.`);
+        marcarLista(tareaId);
+      } else {
+        marcarLista(tareaId);
       }
     } catch (err) {
       const mensaje = mensajeErrorAuth(err);
       if (/sesion de Drive expiro|403/.test(mensaje)) limpiarDriveToken();
       setErrorFotos(mensaje);
+      marcarError(tareaId, mensaje);
     } finally {
       setSubiendoFotos(false);
       setProgresoFotos(null);
