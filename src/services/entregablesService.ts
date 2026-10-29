@@ -301,6 +301,19 @@ export async function actualizarCarpetaFotos(id: string, carpetaFotosUrl: string
   await actualizarEntregable(id, { carpetaFotosUrl });
 }
 
+/** Marca (o desmarca) fotos "para borrar" — un triage rapido antes de confirmar: no borra nada
+ * todavia, solo guarda la lista de cuales se van a eliminar cuando alguien confirme con el
+ * boton de borrado masivo (ver bloqueGaleriaFotos en RevisarEntregableDialog.tsx). */
+export async function marcarFotosParaBorrar(id: string, fotosParaBorrar: string[]): Promise<void> {
+  if (!isFirebaseConfigured || !db) {
+    demoStore = demoStore.map((e) => (e.id === id ? { ...e, fotosParaBorrar } : e));
+    return;
+  }
+  await updateDoc(doc(db, COLECCION, id), {
+    fotosParaBorrar: fotosParaBorrar.length > 0 ? fotosParaBorrar : deleteField(),
+  });
+}
+
 export async function guardarFotos(
   id: string,
   fotos: string[],

@@ -20,6 +20,7 @@ import {
   guardarFotos,
   listarComentarios,
   marcarComentariosCorregidos,
+  marcarFotosParaBorrar,
   marcarEntregado,
   solicitarCorrecciones,
 } from "@/services/entregablesService";
@@ -224,6 +225,15 @@ export function useGuardarFotos() {
       comoHistorico: boolean;
       carpetaFotosUrl?: string;
     }) => guardarFotos(id, fotos, { comoHistorico, carpetaFotosUrl }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["entregables"] }),
+  });
+}
+
+export function useMarcarFotosParaBorrar() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, fotosParaBorrar }: { id: string; fotosParaBorrar: string[] }) =>
+      marcarFotosParaBorrar(id, fotosParaBorrar),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["entregables"] }),
   });
 }

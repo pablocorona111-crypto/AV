@@ -39,6 +39,7 @@ import {
   useActualizarCarpetaFotos,
   useGuardarFotos,
   useMarcarComentariosCorregidos,
+  useMarcarFotosParaBorrar,
   useMarcarEntregado,
   useReasignarResponsableEntregable,
   useRenombrarEntregable,
@@ -187,6 +188,7 @@ export function RevisarEntregableDialog({
   const { data: comentarios = [] } = useComentarios(entregable?.id ?? "");
   const agregarComentario = useAgregarComentario(entregable?.id ?? "");
   const marcarComentariosCorregidos = useMarcarComentariosCorregidos(entregable?.id ?? "");
+  const marcarFotosParaBorrar = useMarcarFotosParaBorrar();
   const enviarARevision = useEnviarARevision();
   const adjuntarMaterialHistorico = useAdjuntarMaterialHistorico();
   const aprobar = useAprobarEntregable();
@@ -233,6 +235,30 @@ export function RevisarEntregableDialog({
     setComentarioLightbox("");
     setFotoAmpliadaCargando(true);
   }, [fotoAmpliadaIndex]);
+
+  // Total de fotos calculado ANTES del `return null` de abajo (con encadenado opcional, por si
+  // `entregable` todavia no llega) para poder usarlo como dependencia de este efecto — las
+  // reglas de hooks exigen que todos los hooks se declaren antes de cualquier return condicional.
+  const totalFotosParaTeclado = entregable?.fotos?.length ?? (entregable?.urlRevision || entregable?.urlFinal ? 1 : 0);
+
+  useEffect(() => {
+    // Flechas del teclado para moverse entre fotos en la vista ampliada, sin tener que buscar
+    // los botones con el mouse. Solo mientras esa vista este abierta, y SOLO si el foco no esta
+    // en un campo de texto (si no, escribir un comentario y mover el cursor con las flechas
+    // cambiaria de foto por accidente).
+    if (fotoAmpliadaIndex == null) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (e.key === "ArrowLeft") {
+        setFotoAmpliadaIndex((i) => (i != null && i > 0 ? i - 1 : i));
+      } else if (e.key === "ArrowRight") {
+        setFotoAmpliadaIndex((i) => (i != null && i < totalFotosParaTeclado - 1 ? i + 1 : i));
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [fotoAmpliadaIndex, totalFotosParaTeclado]);
 
   if (!entregable || !usuario) return null;
 
@@ -559,6 +585,42 @@ export function RevisarEntregableDialog({
             err instanceof Error ? err.message : "error desconocido"
           }`
         );
+      }
+    }
+  };
+
+  // Triage rapido: marcar una foto para borrar NO la borra todavia — solo la deja señalada (ring
+  // rojo + opacidad baja en la miniatura) para revisar la sesion completa de un jalon y confirmar
+  // el borrado masivo al final (ver onEliminarFotosMarcadas), en vez de decidir foto por foto.
+  const fotosParaBorrar = entregable.fotosParaBorrar ?? [];
+  const onAlternarParaBorrar = (url: string, marcar: boolean) => {
+    const actual = entregable.fotosParaBorrar ?? [];
+    const nuevo = marcar ? [...new Set([...actual, url])] : actual.filter((u) => u !== url);
+    marcarFotosParaBorrar.mutate({ id: entregable.id, fotosParaBorrar: nuevo });
+  };
+
+  const onEliminarFotosMarcadas = async () => {
+    const marcadas = entregable.fotosParaBorrar ?? [];
+    if (marcadas.length === 0) return;
+    setErrorFotos(null);
+    // Una sola escritura con el arreglo YA filtrado — si se llamara onEliminarFoto() una vez por
+    // cada marcada, cada llamada calcularia su `fotos.filter` contra el MISMO arreglo original
+    // (closure sin refrescar entre llamadas) y solo sobreviviria el ultimo intento, perdiendo las
+    // demas.
+    await guardarFotos.mutateAsync({
+      id: entregable.id,
+      fotos: galeriaFotos.filter((f) => !marcadas.includes(f)),
+      comoHistorico: completandoHistorico,
+    });
+    marcarFotosParaBorrar.mutate({ id: entregable.id, fotosParaBorrar: [] });
+    for (const url of marcadas) {
+      const fileId = extraerFileIdDrive(url);
+      if (fileId && idToken) {
+        try {
+          await moverABasuraDrive(idToken, fileId);
+        } catch {
+          // best-effort — la foto ya se quito de la galeria de todos modos.
+        }
       }
     }
   };
@@ -958,6 +1020,19 @@ export function RevisarEntregableDialog({
           {errorCarpeta && <p className="text-xs text-destructive">{errorCarpeta}</p>}
         </div>
       )}
+      {puedeEditarMaterial && fotosParaBorrar.length > 0 && (
+        <button
+          type="button"
+          onClick={onEliminarFotosMarcadas}
+          disabled={guardarFotos.isPending}
+          className="flex shrink-0 items-center gap-1.5 self-start rounded-full border border-destructive/40 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/20"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          {guardarFotos.isPending
+            ? "Eliminando..."
+            : `Eliminar ${fotosParaBorrar.length} foto${fotosParaBorrar.length > 1 ? "s" : ""} marcada${fotosParaBorrar.length > 1 ? "s" : ""}`}
+        </button>
+      )}
       <div className={cn(layoutLado && "lg:max-h-[68vh] lg:overflow-y-auto lg:pr-1 scrollbar-thin")}>
       {galeriaFotos.length === 0 ? (
         <p className="rounded-md border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
@@ -977,14 +1052,17 @@ export function RevisarEntregableDialog({
               comentarioAplicaAFoto(c.momento, i + 1)
             ).length;
             const seleccionada = fotosComentando.includes(i);
+            const marcadaParaBorrar = fotosParaBorrar.includes(url);
             return (
             <div
               key={url}
               className={cn(
                 "group relative overflow-hidden rounded-xl ring-1 transition-all duration-200",
-                seleccionada
-                  ? "ring-2 ring-accent"
-                  : "ring-border hover:shadow-lg hover:shadow-black/10 hover:ring-text-primary/25"
+                marcadaParaBorrar
+                  ? "ring-2 ring-destructive"
+                  : seleccionada
+                    ? "ring-2 ring-accent"
+                    : "ring-border hover:shadow-lg hover:shadow-black/10 hover:ring-text-primary/25"
               )}
             >
               <button
@@ -1002,11 +1080,48 @@ export function RevisarEntregableDialog({
                 className="block w-full"
                 title={modoSeleccion ? "Clic para sumar/quitar de la seleccion — doble clic para ver" : undefined}
               >
-                <MiniaturaVideo url={url} className="aspect-square" ocultarPlay />
+                <MiniaturaVideo
+                  url={url}
+                  className={cn("aspect-square", marcadaParaBorrar && "opacity-50")}
+                  ocultarPlay
+                />
               </button>
               <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-black/60 px-2 py-1 text-[11px] font-semibold text-white backdrop-blur-sm">
                 {i + 1}
               </span>
+              {puedeEditarMaterial && (
+                // Triage "guardar/borrar": siempre visibles (no solo en hover) para poder ver de
+                // un vistazo el estado de toda la sesion. Mutuamente excluyentes — tocar uno
+                // apaga el otro.
+                <div className="absolute left-2 top-10 flex flex-col gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => onAlternarParaBorrar(url, false)}
+                    className={cn(
+                      "flex h-7 w-7 items-center justify-center rounded-full backdrop-blur-sm transition-colors",
+                      !marcadaParaBorrar
+                        ? "bg-green-500/90 text-white"
+                        : "bg-black/50 text-white/70 hover:bg-black/75"
+                    )}
+                    title="Esta foto esta bien (mantener)"
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onAlternarParaBorrar(url, true)}
+                    className={cn(
+                      "flex h-7 w-7 items-center justify-center rounded-full backdrop-blur-sm transition-colors",
+                      marcadaParaBorrar
+                        ? "bg-destructive text-destructive-foreground"
+                        : "bg-black/50 text-white/70 hover:bg-black/75"
+                    )}
+                    title="Marcar para borrar"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
               {totalComentariosFoto > 0 && (
                 <span className="pointer-events-none absolute bottom-2 left-2 flex items-center gap-1 rounded-full bg-black/60 px-2 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
                   <MessageSquarePlus className="h-3 w-3" /> {totalComentariosFoto}

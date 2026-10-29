@@ -198,6 +198,9 @@ export interface Entregable {
   /** Carpeta de Drive donde viven TODAS las fotos de la sesion (no solo la portada) — para un
    * link que abra la galeria completa en Drive de un jalon, en vez de una por una. */
   carpetaFotosUrl?: string;
+  /** Fotos de `fotos` marcadas para borrar (triage rapido antes de confirmar) — no se eliminan
+   * solas al marcarlas, esperan a que alguien confirme con el boton "Eliminar N marcadas". */
+  fotosParaBorrar?: string[];
   aprobadorId?: string;
   creadoEn: string;
   /** Cuando `estado` paso a "entregado" — para agrupar entregas por mes en la grafica del lider. */
