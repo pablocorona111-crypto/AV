@@ -805,7 +805,7 @@ export function RevisarEntregableDialog({
   // (el mismo que se guarda en `fotos`) — mover con las flechas o quitar una foto reescribe el
   // arreglo completo via onMoverFoto/onEliminarFoto.
   const bloqueGaleriaFotos = (
-    <div className={cn("space-y-3", layoutLado && "w-full lg:w-auto lg:min-w-[280px] lg:max-w-3xl")}>
+    <div className={cn("space-y-3", layoutLado && "w-full lg:w-auto lg:min-w-[280px] lg:max-w-5xl")}>
       {entregable.carpetaFotosUrl && (
         <div className="flex flex-wrap gap-1.5">
           <a
@@ -856,7 +856,7 @@ export function RevisarEntregableDialog({
           Sin fotos cargadas todavia.
         </p>
       ) : (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
           {galeriaFotos.map((url, i) => (
             <div
               key={url}
