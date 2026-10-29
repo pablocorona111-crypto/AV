@@ -8,6 +8,7 @@ import {
   query,
   serverTimestamp,
   updateDoc,
+  writeBatch,
 } from "firebase/firestore";
 import { db, isFirebaseConfigured } from "@/lib/firebase";
 import { DEMO_ENTREGABLES } from "@/data/demoData";
@@ -135,6 +136,24 @@ export async function eliminarMaterialEntregable(id: string): Promise<void> {
     fechaAprobado: deleteField(),
     fechaEntregado: deleteField(),
   });
+}
+
+/** Borra el entregable COMPLETO (no solo su material) — incluye sus comentarios, Firestore no
+ * los borra solo por borrar el documento padre. El archivo real en Drive no se toca (igual que
+ * `eliminarMaterialEntregable`): esto es "ya no quiero este registro en el sistema", no "borra el
+ * archivo". Solo superadmin/lider (ver firestore.rules) — usado desde Archivos y al borrar un
+ * proyecto completo con sus entregables ligados (ver eliminarProyecto en proyectosService). */
+export async function eliminarEntregable(id: string): Promise<void> {
+  if (!isFirebaseConfigured || !db) {
+    demoStore = demoStore.filter((e) => e.id !== id);
+    delete demoComentarios[id];
+    return;
+  }
+  const comentariosSnap = await getDocs(collection(db, COLECCION, id, "comentarios"));
+  const batch = writeBatch(db);
+  comentariosSnap.docs.forEach((c) => batch.delete(c.ref));
+  batch.delete(doc(db, COLECCION, id));
+  await batch.commit();
 }
 
 /** Reasignar el responsable (quien sube el material) de un entregable ya creado — util sobre

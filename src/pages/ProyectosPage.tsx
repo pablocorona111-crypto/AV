@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
 import { useProyectos, useActualizarProyecto, useEliminarProyecto } from "@/hooks/useProyectos";
+import { useEliminarEntregable } from "@/hooks/useEntregables";
 import { useEntregables, useUsuarios } from "@/hooks/useCatalogos";
 import { useGuiones } from "@/hooks/useGuiones";
 import { useAuth } from "@/context/AuthContext";
@@ -30,15 +31,24 @@ export function ProyectosPage() {
   const { data: guiones = [] } = useGuiones();
   const [seleccionado, setSeleccionado] = useState<Proyecto | null>(null);
   const [aEliminar, setAEliminar] = useState<Proyecto | null>(null);
+  // Por default un entregable ligado se queda huerfano (sin proyecto) al borrar el proyecto —
+  // esta casilla es para cuando de plano ya no se quiere nada de eso tampoco (ej. se cancelo todo
+  // el trabajo), no solo el proyecto.
+  const [tambienEntregables, setTambienEntregables] = useState(false);
   const eliminar = useEliminarProyecto();
+  const eliminarEntregableLigado = useEliminarEntregable();
   const actualizarProyecto = useActualizarProyecto();
 
   const nombreDe = (id: string) => usuarios.find((u) => u.id === id)?.nombre ?? "Usuario eliminado";
 
   const confirmarEliminar = () => {
     if (!aEliminar) return;
+    if (tambienEntregables) {
+      entregables.filter((e) => e.proyectoId === aEliminar.id).forEach((e) => eliminarEntregableLigado.mutate(e.id));
+    }
     eliminar.mutate(aEliminar.id);
     setAEliminar(null);
+    setTambienEntregables(false);
     setSeleccionado(null);
   };
 
@@ -227,22 +237,44 @@ export function ProyectosPage() {
 
       <ConfirmDialog
         open={Boolean(aEliminar)}
-        onOpenChange={(v) => !v && setAEliminar(null)}
+        onOpenChange={(v) => {
+          if (!v) {
+            setAEliminar(null);
+            setTambienEntregables(false);
+          }
+        }}
         title={`¿Eliminar el proyecto "${aEliminar?.nombre}"?`}
         description={
           aEliminar && (
             <>
               {(() => {
-                const entregablesLigados = entregables.filter((e) => e.proyectoId === aEliminar.id).length;
+                const entregablesLigados = entregables.filter((e) => e.proyectoId === aEliminar.id);
                 const guionesLigados = guiones.filter((g) => g.proyectoId === aEliminar.id).length;
-                return entregablesLigados || guionesLigados ? (
-                  <p>
-                    Tiene {guionesLigados} guion(es) y {entregablesLigados} entregable(s) ligados — se quedaran
-                    huerfanos (sin proyecto).
-                  </p>
-                ) : null;
+                if (entregablesLigados.length === 0 && guionesLigados === 0) return null;
+                return (
+                  <div className="space-y-2">
+                    <p>
+                      Tiene {guionesLigados} guion(es) y {entregablesLigados.length} entregable(s) ligados.
+                    </p>
+                    {entregablesLigados.length > 0 && (
+                      <label className="flex items-start gap-2 rounded-md border border-border bg-bg-secondary/40 p-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={tambienEntregables}
+                          onChange={(e) => setTambienEntregables(e.target.checked)}
+                          className="mt-0.5"
+                        />
+                        <span>
+                          Tambien eliminar sus {entregablesLigados.length} entregable(s) (material, galeria de
+                          fotos y observaciones). Sin marcar, se quedan huerfanos (sin proyecto) en vez de
+                          borrarse.
+                        </span>
+                      </label>
+                    )}
+                  </div>
+                );
               })()}
-              <p className="mt-1">Esta accion no se puede deshacer.</p>
+              <p className="mt-2">Esta accion no se puede deshacer.</p>
             </>
           )
         }

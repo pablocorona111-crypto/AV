@@ -8,6 +8,7 @@ import {
   cambiarEstadoEntregableDirecto,
   actualizarCarpetaFotos,
   cambiarTipoEntregable,
+  eliminarEntregable,
   eliminarMaterialEntregable,
   reasignarResponsableEntregable,
   renombrarEntregable,
@@ -84,6 +85,14 @@ export function useEliminarMaterialEntregable() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => eliminarMaterialEntregable(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["entregables"] }),
+  });
+}
+
+export function useEliminarEntregable() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => eliminarEntregable(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["entregables"] }),
   });
 }

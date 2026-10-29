@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Download, FolderOpen, Link2, Check, LayoutGrid, Table2, Trash2, Upload } from "lucide-react";
+import { Download, FolderOpen, Link2, Check, LayoutGrid, Table2, Trash, Trash2, Upload } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useIdToken } from "@/hooks/useIdToken";
 import { useProyectos } from "@/hooks/useProyectos";
@@ -8,6 +8,7 @@ import {
   useAsignarProyectoEntregable,
   useCambiarEstadoEntregableDirecto,
   useCambiarTipoEntregable,
+  useEliminarEntregable,
   useEliminarMaterialEntregable,
 } from "@/hooks/useEntregables";
 import { Card, CardContent } from "@/components/ui/card";
@@ -171,6 +172,8 @@ export function ArchivosPage() {
   const [seleccionadoId, setSeleccionadoId] = useState<string | null>(null);
   const [materialAEliminar, setMaterialAEliminar] = useState<Entregable | null>(null);
   const eliminarMaterial = useEliminarMaterialEntregable();
+  const [entregableAEliminar, setEntregableAEliminar] = useState<Entregable | null>(null);
+  const eliminarEntregable = useEliminarEntregable();
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstadoArchivos>("todos");
   const [filtroPeriodo, setFiltroPeriodo] = useState<FiltroPeriodo>("todos");
@@ -388,10 +391,20 @@ export function ArchivosPage() {
                           <button
                             type="button"
                             onClick={() => setMaterialAEliminar(e)}
-                            title="Eliminar material"
+                            title="Eliminar material (deja el entregable, solo quita el archivo)"
                             className="flex items-center gap-1 rounded-md border border-border px-1.5 py-1 text-[11px] font-medium text-muted-foreground hover:border-destructive hover:text-destructive"
                           >
                             <Trash2 className="h-3 w-3" />
+                          </button>
+                        )}
+                        {usuario?.rol === "superadmin" && (
+                          <button
+                            type="button"
+                            onClick={() => setEntregableAEliminar(e)}
+                            title="Eliminar este entregable por completo"
+                            className="flex items-center gap-1 rounded-md border border-border px-1.5 py-1 text-[11px] font-medium text-muted-foreground hover:border-destructive hover:text-destructive"
+                          >
+                            <Trash className="h-3 w-3" />
                           </button>
                         )}
                       </div>
@@ -498,10 +511,23 @@ export function ArchivosPage() {
                           ev.stopPropagation();
                           setMaterialAEliminar(e);
                         }}
-                        title="Eliminar material"
+                        title="Eliminar material (deja el entregable, solo quita el archivo)"
                         className="flex items-center justify-center rounded-md border border-border px-1.5 py-1 text-muted-foreground hover:border-destructive hover:text-destructive"
                       >
                         <Trash2 className="h-3 w-3" />
+                      </button>
+                    )}
+                    {usuario?.rol === "superadmin" && (
+                      <button
+                        type="button"
+                        onClick={(ev) => {
+                          ev.stopPropagation();
+                          setEntregableAEliminar(e);
+                        }}
+                        title="Eliminar este entregable por completo"
+                        className="flex items-center justify-center rounded-md border border-border px-1.5 py-1 text-muted-foreground hover:border-destructive hover:text-destructive"
+                      >
+                        <Trash className="h-3 w-3" />
                       </button>
                     )}
                   </div>
@@ -545,6 +571,26 @@ export function ArchivosPage() {
         onConfirm={() => {
           if (materialAEliminar) eliminarMaterial.mutate(materialAEliminar.id);
           setMaterialAEliminar(null);
+        }}
+      />
+
+      <ConfirmDialog
+        open={Boolean(entregableAEliminar)}
+        onOpenChange={(v) => !v && setEntregableAEliminar(null)}
+        title={`¿Eliminar el entregable "${entregableAEliminar?.nombre}"?`}
+        description={
+          <>
+            Borra el registro completo (incluidas sus observaciones) — no solo el material. El
+            archivo en Google Drive no se borra, solo desaparece de aqui. Esta accion no se puede
+            deshacer.
+          </>
+        }
+        confirmLabel="Eliminar entregable"
+        destructive
+        confirmarTexto="ELIMINAR"
+        onConfirm={() => {
+          if (entregableAEliminar) eliminarEntregable.mutate(entregableAEliminar.id);
+          setEntregableAEliminar(null);
         }}
       />
     </div>

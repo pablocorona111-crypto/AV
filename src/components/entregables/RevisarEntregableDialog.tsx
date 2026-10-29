@@ -1155,8 +1155,12 @@ export function RevisarEntregableDialog({
             <Badge variant={ESTADO_ENTREGABLE_BADGE[entregable.estado]}>
               {etiquetaEstadoEntregable(entregable)}
             </Badge>
-            {fileIdActual && (entregable.estado === "aprobado" || entregable.estado === "entregado") && (
+            {fileIdActual && (
               <div className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
+                {/* Copiar el link NO espera a que este aprobado — en revision tambien sirve
+                    mandarselo a alguien mas para que opine, sin tener que esperar. Descargar si
+                    se queda solo para lo ya aprobado/entregado (regla de negocio: no repartir el
+                    archivo final antes de que este listo de verdad). */}
                 <button
                   type="button"
                   onClick={async () => {
@@ -1176,20 +1180,22 @@ export function RevisarEntregableDialog({
                     </>
                   )}
                 </button>
-                <a
-                  href={
-                    idToken
-                      ? `/api/drive-video?id=${encodeURIComponent(fileIdActual)}&download=1&nombre=${encodeURIComponent(entregable.nombre)}&token=${encodeURIComponent(idToken)}`
-                      : undefined
-                  }
-                  aria-disabled={!idToken}
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs font-medium hover:bg-bg-secondary",
-                    !idToken && "pointer-events-none opacity-50"
-                  )}
-                >
-                  <Download className="h-3.5 w-3.5" /> Descargar
-                </a>
+                {(entregable.estado === "aprobado" || entregable.estado === "entregado") && (
+                  <a
+                    href={
+                      idToken
+                        ? `/api/drive-video?id=${encodeURIComponent(fileIdActual)}&download=1&nombre=${encodeURIComponent(entregable.nombre)}&token=${encodeURIComponent(idToken)}`
+                        : undefined
+                    }
+                    aria-disabled={!idToken}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs font-medium hover:bg-bg-secondary",
+                      !idToken && "pointer-events-none opacity-50"
+                    )}
+                  >
+                    <Download className="h-3.5 w-3.5" /> Descargar
+                  </a>
+                )}
               </div>
             )}
           </div>
