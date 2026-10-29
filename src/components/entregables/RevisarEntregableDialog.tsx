@@ -53,7 +53,11 @@ import {
   resolverCarpetaDeArchivo,
   moverABasuraDrive,
 } from "@/services/driveService";
-import { DriveVideoPlayer, type MotivoErrorDrive } from "@/components/entregables/DriveVideoPlayer";
+import {
+  DriveVideoPlayer,
+  type DriveVideoPlayerHandle,
+  type MotivoErrorDrive,
+} from "@/components/entregables/DriveVideoPlayer";
 import { MiniaturaVideo } from "@/components/entregables/MiniaturaVideo";
 import { mensajeErrorAuth } from "@/lib/authErrors";
 import { cn } from "@/lib/utils";
@@ -76,6 +80,15 @@ const SIN_PROYECTO_VALOR = "sin-proyecto";
 
 function iniciales(nombre: string) {
   return nombre.split(" ").slice(0, 2).map((p) => p[0]).join("").toUpperCase();
+}
+
+/** "0:45" o "1:05" -> segundos. `null` si no es un minuto de video reconocible (ej. el "Foto 3"
+ * de una galeria de fotos) — para ordenar las observaciones por minuto y poder saltar el video
+ * ahi con un clic. */
+function parsearMomento(momento: string): number | null {
+  const m = momento.match(/^(\d+):(\d{1,2})$/);
+  if (!m) return null;
+  return Number(m[1]) * 60 + Number(m[2]);
 }
 
 const MENSAJE_ERROR_PLAYER: Record<MotivoErrorDrive, string> = {
@@ -132,6 +145,8 @@ export function RevisarEntregableDialog({
   // el boton queda inerte en vez de llevar a un 401.
   const { token: idToken } = useIdToken();
   const inputArchivoRef = useRef<HTMLInputElement>(null);
+  // Para saltar al minuto exacto de una observacion con un clic (ver bloqueObservaciones).
+  const videoPlayerRef = useRef<DriveVideoPlayerHandle>(null);
   const renombrar = useRenombrarEntregable();
   const agregarVersionAlterna = useAgregarVersionAlterna();
   const etiquetarOrientacionAlt = useEtiquetarOrientacionAlt();
@@ -222,6 +237,19 @@ export function RevisarEntregableDialog({
   // Para notificaciones/mensajes genericos — "tu video" no tiene sentido en un entregable que es
   // una foto o un diseño.
   const sustantivoMaterial = esFoto ? "fotografia" : esDiseno ? "diseño" : "video";
+  // En video, las observaciones se leen mejor en el orden en que pasan EN el video, no en el
+  // orden en que se escribieron — las sin minuto reconocible (o las de una galeria de fotos,
+  // "Foto 3") se quedan al final, sin reordenar entre ellas.
+  const comentariosOrdenados = esFoto
+    ? comentarios
+    : [...comentarios].sort((a, b) => {
+        const ta = a.momento ? parsearMomento(a.momento) : null;
+        const tb = b.momento ? parsearMomento(b.momento) : null;
+        if (ta == null && tb == null) return 0;
+        if (ta == null) return 1;
+        if (tb == null) return -1;
+        return ta - tb;
+      });
   // Compatibilidad con entregables de fotografia creados ANTES de que existiera `fotos` (o
   // cargados como historico con un solo archivo): se muestran como galeria de una sola foto en
   // vez de quedar vacios.
@@ -741,6 +769,7 @@ export function RevisarEntregableDialog({
 
       {modoVisor === "player" && fileIdActual && (
         <DriveVideoPlayer
+          ref={videoPlayerRef}
           fileId={fileIdActual}
           orientacion={orientacion}
           onMomentoPausa={setMomento}
@@ -1057,7 +1086,10 @@ export function RevisarEntregableDialog({
           {comentarios.length === 0 && (
             <p className="py-2 text-center text-xs text-muted-foreground">Sin observaciones aun.</p>
           )}
-          {comentarios.map((c) => (
+          {comentariosOrdenados.map((c) => {
+            const segundosMomento = !esFoto && c.momento ? parsearMomento(c.momento) : null;
+            const puedeSaltar = segundosMomento != null && usaPlayerPropio;
+            return (
             <div key={c.id} className="flex items-start gap-2.5">
               <Avatar className="h-7 w-7 shrink-0">
                 <AvatarFallback className="text-[10px]">{iniciales(c.autorNombre)}</AvatarFallback>
@@ -1066,17 +1098,28 @@ export function RevisarEntregableDialog({
                 <div className="flex flex-wrap items-center gap-1.5">
                   <span className="text-xs font-semibold">{c.autorNombre}</span>
                   {c.momento && (
-                    <span className="flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-medium text-text-primary">
-                      {esFoto ? (
-                        <>
-                          <ImageIcon className="h-3 w-3" /> {c.momento}
-                        </>
-                      ) : (
-                        <>
-                          <Clock className="h-3 w-3" /> min {c.momento}
-                        </>
-                      )}
-                    </span>
+                    puedeSaltar ? (
+                      <button
+                        type="button"
+                        onClick={() => videoPlayerRef.current?.seekTo(segundosMomento)}
+                        className="flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-medium text-text-primary hover:bg-accent/25"
+                        title="Saltar a este momento del video"
+                      >
+                        <Clock className="h-3 w-3" /> min {c.momento}
+                      </button>
+                    ) : (
+                      <span className="flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-medium text-text-primary">
+                        {esFoto ? (
+                          <>
+                            <ImageIcon className="h-3 w-3" /> {c.momento}
+                          </>
+                        ) : (
+                          <>
+                            <Clock className="h-3 w-3" /> min {c.momento}
+                          </>
+                        )}
+                      </span>
+                    )
                   )}
                   {c.corregido && (
                     <span
@@ -1090,7 +1133,8 @@ export function RevisarEntregableDialog({
                 <p className="mt-0.5 text-sm">{c.texto}</p>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
         {puedeComentar && !yaResuelto && (
           <div className="space-y-1.5">

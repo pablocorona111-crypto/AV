@@ -1,9 +1,15 @@
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { Clock, Loader2 } from "lucide-react";
 import { useIdToken } from "@/hooks/useIdToken";
 import { cn } from "@/lib/utils";
 
 export type MotivoErrorDrive = "sin_acceso" | "no_encontrado" | "desconocido";
+
+/** Lo que el padre puede pedirle al reproductor desde afuera — ej. saltar al minuto exacto de
+ * una observacion al tocarla (ver RevisarEntregableDialog.tsx). */
+export interface DriveVideoPlayerHandle {
+  seekTo: (segundos: number) => void;
+}
 
 /**
  * El <video> del navegador solo avisa "fallo" sin decir por que (403 sin acceso, 404 borrado,
@@ -67,25 +73,35 @@ const ESCENARIO_BASE =
   "relative flex items-center justify-center overflow-hidden bg-black " +
   "w-full max-h-[60vh] min-h-[180px] " +
   "lg:h-full lg:w-auto lg:max-w-full lg:max-h-none lg:min-h-[160px]";
-export function DriveVideoPlayer({
-  fileId,
-  orientacion,
-  onMomentoPausa,
-  onError,
-  onOrientacion,
-  onRatio,
-}: {
-  fileId: string;
-  orientacion?: "vertical" | "horizontal" | null;
-  onMomentoPausa?: (tiempo: string) => void;
-  onError?: (motivo: MotivoErrorDrive) => void;
-  onOrientacion?: (orientacion: "vertical" | "horizontal") => void;
-  onRatio?: (ratio: number) => void;
-}) {
+export const DriveVideoPlayer = forwardRef<
+  DriveVideoPlayerHandle,
+  {
+    fileId: string;
+    orientacion?: "vertical" | "horizontal" | null;
+    onMomentoPausa?: (tiempo: string) => void;
+    onError?: (motivo: MotivoErrorDrive) => void;
+    onOrientacion?: (orientacion: "vertical" | "horizontal") => void;
+    onRatio?: (ratio: number) => void;
+  }
+>(function DriveVideoPlayer({ fileId, orientacion, onMomentoPausa, onError, onOrientacion, onRatio }, ref) {
   const [cargando, setCargando] = useState(true);
   const [bufereando, setBufereando] = useState(false);
   const [ratio, setRatio] = useState<number | null>(null);
   const [intento, setIntento] = useState(0);
+  // El <video> real (vertical u horizontal, solo uno montado a la vez) — expone `seekTo` al
+  // padre para saltar al minuto exacto de una observacion con un clic (ver
+  // RevisarEntregableDialog.tsx).
+  const videoRef = useRef<HTMLVideoElement>(null);
+  useImperativeHandle(ref, () => ({
+    seekTo: (segundos: number) => {
+      const v = videoRef.current;
+      if (!v) return;
+      v.currentTime = segundos;
+      v.play().catch(() => {
+        // autoplay bloqueado o similar — el usuario igual ve el video ya posicionado, le da play el mismo.
+      });
+    },
+  }));
   // Solo para no llamar a `onMomentoPausa` en cada frame (timeupdate dispara varias veces por
   // segundo) — se avisa al padre nada mas cuando el segundo ENTERO realmente cambio.
   const ultimoSegundoRef = useRef<number | null>(null);
@@ -174,6 +190,7 @@ export function DriveVideoPlayer({
         )}
         {src && (
           <video
+            ref={videoRef}
             key={`${fileId}-${intento}`}
             src={src}
             controls
@@ -255,6 +272,7 @@ export function DriveVideoPlayer({
         )}
         {src && (
           <video
+            ref={videoRef}
             key={`${fileId}-${intento}`}
             src={src}
             controls
@@ -298,4 +316,4 @@ export function DriveVideoPlayer({
       </div>
     </div>
   );
-}
+});
