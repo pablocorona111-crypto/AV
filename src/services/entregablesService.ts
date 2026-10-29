@@ -27,6 +27,10 @@ export interface ComentarioEntregable {
   /** Marcador de tiempo en el video, ej. "0:45" — opcional. */
   momento?: string;
   creadoEn: string;
+  /** El responsable ya subio una correccion desde que se dejo esta observacion — no significa
+   * que el aprobador ya la revalido, solo que de su lado ya quedo atendida. Se marca solo al
+   * subir material de nuevo (ver marcarComentariosCorregidos), nunca a mano. */
+  corregido?: boolean;
 }
 
 /** Catalogosservice.listarEntregables() lee este mismo arreglo en modo demo — si no, lo creado
@@ -361,6 +365,24 @@ export async function agregarComentario(
     ...data,
     creadoEn: serverTimestamp(),
   });
+}
+
+/** Marca TODAS las observaciones pendientes de un entregable como "corregido" — se llama sola
+ * al subir material de nuevo (video, diseño o fotos), nunca a mano: el responsable no revisa
+ * observacion por observacion, sube la correccion y de ahi se asume que ya atendio todo lo que
+ * estaba pendiente hasta ese momento. El aprobador ve la etiqueta al revisar de nuevo. */
+export async function marcarComentariosCorregidos(entregableId: string): Promise<void> {
+  if (!isFirebaseConfigured || !db) {
+    const lista = demoComentarios[entregableId] ?? [];
+    demoComentarios[entregableId] = lista.map((c) => (c.corregido ? c : { ...c, corregido: true }));
+    return;
+  }
+  const snap = await getDocs(collection(db, COLECCION, entregableId, "comentarios"));
+  const pendientes = snap.docs.filter((d) => !d.data().corregido);
+  if (pendientes.length === 0) return;
+  const batch = writeBatch(db);
+  pendientes.forEach((d) => batch.update(d.ref, { corregido: true }));
+  await batch.commit();
 }
 
 /** Convierte un link normal de Google Drive a su variante embebible (iframe). */

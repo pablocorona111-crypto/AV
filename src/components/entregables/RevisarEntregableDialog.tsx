@@ -33,6 +33,7 @@ import {
   useEtiquetarOrientacionAlt,
   useActualizarCarpetaFotos,
   useGuardarFotos,
+  useMarcarComentariosCorregidos,
   useMarcarEntregado,
   useReasignarResponsableEntregable,
   useRenombrarEntregable,
@@ -154,6 +155,7 @@ export function RevisarEntregableDialog({
 
   const { data: comentarios = [] } = useComentarios(entregable?.id ?? "");
   const agregarComentario = useAgregarComentario(entregable?.id ?? "");
+  const marcarComentariosCorregidos = useMarcarComentariosCorregidos(entregable?.id ?? "");
   const enviarARevision = useEnviarARevision();
   const adjuntarMaterialHistorico = useAdjuntarMaterialHistorico();
   const aprobar = useAprobarEntregable();
@@ -296,6 +298,11 @@ export function RevisarEntregableDialog({
           urlRevision: subido.previewUrl,
           ...(esDiseno ? {} : { orientacionVideo: orientacionAEnviar }),
         });
+        // Quien sube ya corrigio lo que se le pidio — las observaciones pendientes quedan
+        // marcadas "corregido" para que el aprobador vea de una cuales ya se atendieron al
+        // volver a revisar (no significa que el aprobador ya este de acuerdo, solo que del lado
+        // del responsable ya quedaron atendidas).
+        if (yaHabiaVideo) marcarComentariosCorregidos.mutate();
         notificarRevisores(
           `${nombreResponsable} ${yaHabiaVideo ? "actualizo" : "agrego"} el video de "${entregable.nombre}".`
         );
@@ -405,6 +412,7 @@ export function RevisarEntregableDialog({
           carpetaFotosUrl: entregable.carpetaFotosUrl ?? carpetaUrl,
         });
         if (!completandoHistorico) {
+          if (galeriaFotos.length > 0) marcarComentariosCorregidos.mutate();
           notificarRevisores(
             `${nombreResponsable} agrego ${nuevas.length > 1 ? `${nuevas.length} fotos` : "una foto"} a "${entregable.nombre}".`
           );
@@ -997,7 +1005,7 @@ export function RevisarEntregableDialog({
                 <AvatarFallback className="text-[10px]">{iniciales(c.autorNombre)}</AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1 rounded-lg rounded-tl-none bg-card p-2.5 shadow-card dark:bg-bg-secondary">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-1.5">
                   <span className="text-xs font-semibold">{c.autorNombre}</span>
                   {c.momento && (
                     <span className="flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-medium text-text-primary">
@@ -1010,6 +1018,14 @@ export function RevisarEntregableDialog({
                           <Clock className="h-3 w-3" /> min {c.momento}
                         </>
                       )}
+                    </span>
+                  )}
+                  {c.corregido && (
+                    <span
+                      className="flex items-center gap-1 rounded-full bg-green-500/15 px-2 py-0.5 text-[11px] font-medium text-green-600 dark:text-green-400"
+                      title="El responsable ya subio una correccion desde esta observacion"
+                    >
+                      <CheckCircle2 className="h-3 w-3" /> Corregido
                     </span>
                   )}
                 </div>

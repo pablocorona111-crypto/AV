@@ -19,6 +19,7 @@ import {
   etiquetarOrientacionAlt,
   guardarFotos,
   listarComentarios,
+  marcarComentariosCorregidos,
   marcarEntregado,
   solicitarCorrecciones,
 } from "@/services/entregablesService";
@@ -239,6 +240,14 @@ export function useAgregarComentario(entregableId: string) {
   return useMutation({
     mutationFn: (data: { autorId: string; autorNombre: string; texto: string; momento?: string }) =>
       agregarComentario(entregableId, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["comentarios", entregableId] }),
+  });
+}
+
+export function useMarcarComentariosCorregidos(entregableId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => marcarComentariosCorregidos(entregableId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["comentarios", entregableId] }),
   });
 }
