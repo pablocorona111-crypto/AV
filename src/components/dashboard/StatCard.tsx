@@ -18,19 +18,23 @@ export function StatCard({
   iconBg?: string;
 }) {
   return (
-    <Card>
-      <CardContent className="flex items-center gap-2.5 p-3 sm:gap-3 sm:p-4">
-        <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-md sm:h-10 sm:w-10", iconBg)}>
-          <Icon className="h-4 w-4 text-text-primary sm:h-5 sm:w-5" />
+    <Card className="rounded-xl transition-shadow duration-200 hover:shadow-md">
+      <CardContent className="flex flex-col gap-3 p-4">
+        <div
+          className={cn(
+            "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl sm:h-11 sm:w-11",
+            iconBg
+          )}
+        >
+          <Icon className="h-5 w-5 text-text-primary" />
         </div>
         <div className="min-w-0">
-          <p className="text-xs text-muted-foreground">{label}</p>
           <div className="flex items-baseline gap-2">
-            <p className="text-xl font-bold leading-tight">{value}</p>
+            <p className="text-2xl font-bold leading-tight tracking-tight">{value}</p>
             {trend && (
               <span
                 className={cn(
-                  "text-xs font-medium",
+                  "text-xs font-semibold",
                   trend.positive ? "text-green-600 dark:text-green-400" : "text-destructive"
                 )}
               >
@@ -38,7 +42,8 @@ export function StatCard({
               </span>
             )}
           </div>
-          {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
+          <p className="mt-0.5 truncate text-xs font-medium text-muted-foreground">{label}</p>
+          {hint && <p className="mt-1.5 text-[11px] text-muted-foreground/80">{hint}</p>}
         </div>
       </CardContent>
     </Card>
