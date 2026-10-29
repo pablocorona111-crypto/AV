@@ -5,6 +5,10 @@ export interface ArchivoSubido {
   id: string;
   previewUrl: string;
   viewUrl: string;
+  /** Carpeta de Drive donde quedo el archivo — solo en subidas nuevas (no al reemplazar
+   * contenido de un `fileIdExistente`, ahi no se vuelve a resolver la carpeta). */
+  carpetaId?: string;
+  carpetaUrl?: string;
 }
 
 /** Extrae el ID de archivo de Drive de cualquier link (view, preview, open?id=...). */
@@ -167,11 +171,12 @@ async function compartirArchivo(fileId: string, accessToken: string): Promise<vo
   if (!res.ok) throw new Error("No se pudo compartir el archivo en Drive.");
 }
 
-function linksDe(id: string): ArchivoSubido {
+function linksDe(id: string, carpetaId?: string): ArchivoSubido {
   return {
     id,
     previewUrl: `https://drive.google.com/file/d/${id}/preview`,
     viewUrl: `https://drive.google.com/file/d/${id}/view`,
+    ...(carpetaId ? { carpetaId, carpetaUrl: `https://drive.google.com/drive/folders/${carpetaId}` } : {}),
   };
 }
 
@@ -212,5 +217,14 @@ export async function subirArchivoADrive(
   } catch {
     // si falla compartir, el archivo igual quedo subido y el dueño lo puede ver.
   }
-  return linksDe(id);
+  // La CARPETA tambien se comparte (no solo cada archivo) — asi un link a la carpeta completa
+  // (ej. para mandar "aqui estan todas las fotos de la sesion") abre para cualquiera, no solo
+  // para quien ya tenia acceso de antes. Falla silenciosa iguaL que el archivo: si no se pudo
+  // compartir, el archivo de adentro igual quedo visible por su propio permiso.
+  try {
+    await compartirArchivo(carpetaId, accessToken);
+  } catch {
+    // la carpeta puede ya estar compartida (otra foto de la misma sesion la comparte primero).
+  }
+  return linksDe(id, carpetaId);
 }

@@ -273,7 +273,7 @@ export async function cambiarEstadoEntregableDirecto(
 export async function guardarFotos(
   id: string,
   fotos: string[],
-  opciones: { comoHistorico: boolean }
+  opciones: { comoHistorico: boolean; carpetaFotosUrl?: string }
 ): Promise<void> {
   const campoCover = opciones.comoHistorico ? "urlFinal" : "urlRevision";
   if (!isFirebaseConfigured || !db) {
@@ -283,6 +283,7 @@ export async function guardarFotos(
             ...e,
             fotos,
             [campoCover]: fotos[0],
+            ...(opciones.carpetaFotosUrl ? { carpetaFotosUrl: opciones.carpetaFotosUrl } : {}),
             ...(opciones.comoHistorico ? {} : { estado: "en_revision" as EstadoEntregable }),
           }
         : e
@@ -292,6 +293,7 @@ export async function guardarFotos(
   await updateDoc(doc(db, COLECCION, id), {
     fotos,
     [campoCover]: fotos[0] ?? deleteField(),
+    ...(opciones.carpetaFotosUrl ? { carpetaFotosUrl: opciones.carpetaFotosUrl } : {}),
     ...(opciones.comoHistorico ? {} : { estado: "en_revision" }),
   });
 }

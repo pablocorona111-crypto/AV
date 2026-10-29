@@ -193,8 +193,17 @@ export function useEtiquetarOrientacionAlt() {
 export function useGuardarFotos() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, fotos, comoHistorico }: { id: string; fotos: string[]; comoHistorico: boolean }) =>
-      guardarFotos(id, fotos, { comoHistorico }),
+    mutationFn: ({
+      id,
+      fotos,
+      comoHistorico,
+      carpetaFotosUrl,
+    }: {
+      id: string;
+      fotos: string[];
+      comoHistorico: boolean;
+      carpetaFotosUrl?: string;
+    }) => guardarFotos(id, fotos, { comoHistorico, carpetaFotosUrl }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["entregables"] }),
   });
 }

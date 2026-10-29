@@ -195,6 +195,9 @@ export interface Entregable {
    * reflejan `fotos[0]` como portada, para que miniaturas/metricas que ya leen esos campos sigan
    * funcionando igual que con un video, sin tener que tocarlas una por una. */
   fotos?: string[];
+  /** Carpeta de Drive donde viven TODAS las fotos de la sesion (no solo la portada) — para un
+   * link que abra la galeria completa en Drive de un jalon, en vez de una por una. */
+  carpetaFotosUrl?: string;
   aprobadorId?: string;
   creadoEn: string;
   /** Cuando `estado` paso a "entregado" — para agrupar entregas por mes en la grafica del lider. */

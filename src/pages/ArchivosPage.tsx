@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Download, Link2, Check, LayoutGrid, Table2, Trash2, Upload } from "lucide-react";
+import { Download, FolderOpen, Link2, Check, LayoutGrid, Table2, Trash2, Upload } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useIdToken } from "@/hooks/useIdToken";
 import { useProyectos } from "@/hooks/useProyectos";
@@ -175,6 +175,7 @@ export function ArchivosPage() {
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstadoArchivos>("todos");
   const [filtroPeriodo, setFiltroPeriodo] = useState<FiltroPeriodo>("todos");
   const [copiadoId, setCopiadoId] = useState<string | null>(null);
+  const [carpetaCopiadaId, setCarpetaCopiadaId] = useState<string | null>(null);
   const [vista, setVista] = useState<"cuadricula" | "tabla">("tabla");
   // Los botones "Bajar" apuntan a `/api/drive-video`, que ahora exige sesion de AV Control.
   // Un <a href> no manda headers, asi que el ID token va en la URL — mientras no este resuelto
@@ -185,6 +186,12 @@ export function ArchivosPage() {
     await navigator.clipboard.writeText(`https://drive.google.com/file/d/${fileId}/view`);
     setCopiadoId(id);
     setTimeout(() => setCopiadoId((actual) => (actual === id ? null : actual)), 1500);
+  };
+
+  const copiarCarpeta = async (id: string, url: string) => {
+    await navigator.clipboard.writeText(url);
+    setCarpetaCopiadaId(id);
+    setTimeout(() => setCarpetaCopiadaId((actual) => (actual === id ? null : actual)), 1500);
   };
 
   const seleccionado = entregables.find((e) => e.id === seleccionadoId) ?? null;
@@ -358,6 +365,24 @@ export function ArchivosPage() {
                           <span className="text-xs text-muted-foreground">
                             {fileId ? "Pendiente de aprobar" : "Sin material"}
                           </span>
+                        )}
+                        {e.carpetaFotosUrl && (
+                          <button
+                            type="button"
+                            onClick={() => copiarCarpeta(e.id, e.carpetaFotosUrl!)}
+                            title="Copiar link de la carpeta con todas las fotos"
+                            className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] font-medium hover:bg-bg-secondary"
+                          >
+                            {carpetaCopiadaId === e.id ? (
+                              <>
+                                <Check className="h-3 w-3" /> Copiado
+                              </>
+                            ) : (
+                              <>
+                                <FolderOpen className="h-3 w-3" /> Carpeta
+                              </>
+                            )}
+                          </button>
                         )}
                         {fileId && usuario?.rol === "superadmin" && (
                           <button

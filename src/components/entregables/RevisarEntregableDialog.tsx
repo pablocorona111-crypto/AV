@@ -101,6 +101,7 @@ export function RevisarEntregableDialog({
   const [errorSubida, setErrorSubida] = useState<string | null>(null);
   const [errorPlayerPropio, setErrorPlayerPropio] = useState<MotivoErrorDrive | null>(null);
   const [linkCopiado, setLinkCopiado] = useState(false);
+  const [carpetaCopiada, setCarpetaCopiada] = useState(false);
   const [orientacion, setOrientacion] = useState<"vertical" | "horizontal" | null>(null);
   const [ratioReal, setRatioReal] = useState<number | null>(null);
   const [orientacionSubida, setOrientacionSubida] = useState<"vertical" | "horizontal">("horizontal");
@@ -358,6 +359,7 @@ export function RevisarEntregableDialog({
         return;
       }
       const nuevas: string[] = [];
+      let carpetaUrl: string | undefined;
       for (let i = 0; i < archivos.length; i++) {
         setProgresoFotos({ actual: i + 1, total: archivos.length, pct: 0 });
         const subida = await subirArchivoADrive(archivos[i], token, {
@@ -367,11 +369,14 @@ export function RevisarEntregableDialog({
           onProgress: (pct) => setProgresoFotos({ actual: i + 1, total: archivos.length, pct }),
         });
         nuevas.push(subida.previewUrl);
+        carpetaUrl ??= subida.carpetaUrl;
       }
       await guardarFotos.mutateAsync({
         id: entregable.id,
         fotos: [...galeriaFotos, ...nuevas],
         comoHistorico: completandoHistorico,
+        // Una vez que el entregable ya tiene carpeta conocida, no hace falta pisarla cada vez.
+        carpetaFotosUrl: entregable.carpetaFotosUrl ?? carpetaUrl,
       });
       if (!completandoHistorico) {
         notificarRevisores(
@@ -658,6 +663,37 @@ export function RevisarEntregableDialog({
   // arreglo completo via onMoverFoto/onEliminarFoto.
   const bloqueGaleriaFotos = (
     <div className={cn("space-y-3", layoutLado && "w-full lg:w-auto lg:min-w-[280px] lg:max-w-xl")}>
+      {entregable.carpetaFotosUrl && (
+        <div className="flex flex-wrap gap-1.5">
+          <a
+            href={entregable.carpetaFotosUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1.5 rounded-md border border-border bg-bg-secondary px-2.5 py-1.5 text-xs font-medium hover:bg-border/60"
+          >
+            <ExternalLink className="h-3.5 w-3.5" /> Ver todas las fotos en Drive
+          </a>
+          <button
+            type="button"
+            onClick={async () => {
+              await navigator.clipboard.writeText(entregable.carpetaFotosUrl!);
+              setCarpetaCopiada(true);
+              setTimeout(() => setCarpetaCopiada(false), 1500);
+            }}
+            className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-bg-secondary"
+          >
+            {carpetaCopiada ? (
+              <>
+                <Check className="h-3.5 w-3.5" /> Copiado
+              </>
+            ) : (
+              <>
+                <Link2 className="h-3.5 w-3.5" /> Compartir carpeta
+              </>
+            )}
+          </button>
+        </div>
+      )}
       {galeriaFotos.length === 0 ? (
         <p className="rounded-md border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
           Sin fotos cargadas todavia.
