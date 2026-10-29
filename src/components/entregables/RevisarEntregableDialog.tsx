@@ -1021,14 +1021,14 @@ export function RevisarEntregableDialog({
                     )
                   }
                   className={cn(
-                    "absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full backdrop-blur-sm transition-colors",
+                    "absolute right-2 top-2 flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-sm transition-colors",
                     seleccionada
                       ? "bg-accent text-accent-foreground"
                       : "bg-black/50 text-white hover:bg-black/75"
                   )}
                   title="Marcar esta foto para comentar (toca varias para amarrar la misma observacion a todas)"
                 >
-                  <MessageSquarePlus className="h-4 w-4" />
+                  <MessageSquarePlus className="h-5 w-5" />
                 </button>
               )}
               {puedeEditarMaterial && (
