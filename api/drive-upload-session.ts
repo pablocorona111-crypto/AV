@@ -223,13 +223,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // Ya NO se intenta reemplazar el contenido de `fileIdExistente` en el mismo archivo: eso solo
-    // funciona si la cuenta central YA es dueña de ese archivo (ej. se creo despues de
-    // centralizar) — para uno de ANTES (vivia en el Drive personal de quien lo subio entonces),
-    // Drive puede dejar ABRIR la sesion de reemplazo pero rechazar el PUT de los bytes ya
-    // avanzada la subida (403 a medias, el peor caso). Mas simple y confiable: cada subida crea
-    // un archivo NUEVO en la carpeta correcta siempre — "vuelve a subir y que quede en su lugar",
-    // sin intentar adivinar si el reemplazo en el mismo archivo va a funcionar o no.
+    // Reemplazar el contenido de `fileIdExistente` en el MISMO archivo — solo si se pide
+    // explicitamente (el cliente no lo pide en el reintento tras un 403 a medias, ver
+    // `subirArchivoCentralizado` en driveService.ts). Esto SOLO funciona si la cuenta central ya
+    // es dueña de ese archivo (se creo despues de centralizar); para uno de ANTES (vivia en el
+    // Drive personal de quien lo subio entonces), Drive puede dejar ABRIR esta sesion pero
+    // rechazar el PUT de los bytes ya avanzada la subida — ese caso lo detecta y resuelve el
+    // CLIENTE (no se puede saber aqui, la sesion en si se abre bien).
+    if (body.fileIdExistente) {
+      const sesionRes = await fetch(
+        `https://www.googleapis.com/upload/drive/v3/files/${body.fileIdExistente}?uploadType=resumable&fields=id`,
+        {
+          method: "PATCH",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json; charset=UTF-8" },
+          body: JSON.stringify({ name: body.nombre }),
+        }
+      );
+      if (sesionRes.ok) {
+        const sessionUrl = sesionRes.headers.get("location");
+        if (!sessionUrl) {
+          res.status(502).json({ error: "Drive no entrego la URL de sesion." });
+          return;
+        }
+        res.status(200).json({ sessionUrl, carpetaId: null });
+        return;
+      }
+      if (sesionRes.status !== 403 && sesionRes.status !== 404) {
+        res.status(sesionRes.status).json({ error: "No se pudo abrir la sesion de subida (reemplazo)." });
+        return;
+      }
+      // 403/404 al ABRIR la sesion (no al subir bytes): sigue de largo, crea uno nuevo.
+    }
+
     let carpetaId = body.carpetaIdDestino ?? null;
     if (!carpetaId) {
       const raizId = await obtenerOCrearCarpeta(CARPETA_RAIZ, token);

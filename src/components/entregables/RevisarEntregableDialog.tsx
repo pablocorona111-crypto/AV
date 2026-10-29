@@ -819,7 +819,7 @@ export function RevisarEntregableDialog({
   // (el mismo que se guarda en `fotos`) — mover con las flechas o quitar una foto reescribe el
   // arreglo completo via onMoverFoto/onEliminarFoto.
   const bloqueGaleriaFotos = (
-    <div className={cn("space-y-3", layoutLado && "w-full lg:w-auto lg:min-w-[280px] lg:max-w-5xl")}>
+    <div className={cn("space-y-3", layoutLado && "w-full lg:w-auto lg:min-w-[320px] lg:max-w-7xl")}>
       {entregable.carpetaFotosUrl && (
         <div className="flex flex-wrap gap-1.5">
           <a
@@ -870,7 +870,7 @@ export function RevisarEntregableDialog({
           Sin fotos cargadas todavia.
         </p>
       ) : (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {galeriaFotos.map((url, i) => (
             <div
               key={url}
@@ -882,7 +882,7 @@ export function RevisarEntregableDialog({
               <button type="button" onClick={() => setFotoAmpliadaIndex(i)} className="block w-full">
                 <MiniaturaVideo url={url} className="aspect-square" />
               </button>
-              <span className="pointer-events-none absolute left-1.5 top-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+              <span className="pointer-events-none absolute left-2 top-2 rounded bg-black/60 px-2 py-1 text-xs font-semibold text-white">
                 {i + 1}
               </span>
               {puedeComentar && !yaResuelto && (
@@ -894,41 +894,41 @@ export function RevisarEntregableDialog({
                     )
                   }
                   className={cn(
-                    "absolute right-1.5 top-1.5 rounded p-1 text-white",
+                    "absolute right-2 top-2 rounded-md p-1.5 text-white",
                     fotosComentando.includes(i) ? "bg-accent text-accent-foreground" : "bg-black/60 hover:bg-black/80"
                   )}
                   title="Marcar esta foto para comentar (toca varias para amarrar la misma observacion a todas)"
                 >
-                  <MessageSquarePlus className="h-3.5 w-3.5" />
+                  <MessageSquarePlus className="h-5 w-5" />
                 </button>
               )}
               {puedeEditarMaterial && (
-                <div className="absolute bottom-1.5 right-1.5 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                <div className="absolute bottom-2 right-2 flex gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
                   <button
                     type="button"
                     onClick={() => onMoverFoto(i, -1)}
                     disabled={i === 0}
-                    className="rounded bg-black/60 p-1 text-white hover:bg-black/80 disabled:opacity-30"
+                    className="rounded-md bg-black/60 p-1.5 text-white hover:bg-black/80 disabled:opacity-30"
                     title="Mover antes"
                   >
-                    <ArrowLeftCircle className="h-3.5 w-3.5" />
+                    <ArrowLeftCircle className="h-5 w-5" />
                   </button>
                   <button
                     type="button"
                     onClick={() => onMoverFoto(i, 1)}
                     disabled={i === galeriaFotos.length - 1}
-                    className="rounded bg-black/60 p-1 text-white hover:bg-black/80 disabled:opacity-30"
+                    className="rounded-md bg-black/60 p-1.5 text-white hover:bg-black/80 disabled:opacity-30"
                     title="Mover despues"
                   >
-                    <ArrowRightCircle className="h-3.5 w-3.5" />
+                    <ArrowRightCircle className="h-5 w-5" />
                   </button>
                   <button
                     type="button"
                     onClick={() => onEliminarFoto(url)}
-                    className="rounded bg-black/60 p-1 text-white hover:bg-destructive"
+                    className="rounded-md bg-black/60 p-1.5 text-white hover:bg-destructive"
                     title="Quitar foto"
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
+                    <Trash2 className="h-5 w-5" />
                   </button>
                 </div>
               )}

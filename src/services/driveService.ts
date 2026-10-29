@@ -381,24 +381,47 @@ export async function subirArchivoCentralizado(
 ): Promise<ArchivoSubido> {
   const { nombre, nombreCarpeta, subcarpeta, carpetaIdDestino, fileIdExistente, onProgress } = opciones;
 
-  const sesionRes = await fetch("/api/drive-upload-session", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-    body: JSON.stringify({ nombre, nombreCarpeta, subcarpeta, carpetaIdDestino, fileIdExistente }),
-  });
-  const sesionData = (await sesionRes.json()) as { sessionUrl?: string; carpetaId?: string | null; error?: string };
-  if (!sesionRes.ok || !sesionData.sessionUrl) {
-    throw new Error(sesionData.error || "No se pudo iniciar la subida a Drive.");
+  async function abrirSesionYSubir(intentarReemplazo: boolean) {
+    const sesionRes = await fetch("/api/drive-upload-session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+      body: JSON.stringify({
+        nombre,
+        nombreCarpeta,
+        subcarpeta,
+        carpetaIdDestino,
+        fileIdExistente: intentarReemplazo ? fileIdExistente : undefined,
+      }),
+    });
+    const sesionData = (await sesionRes.json()) as { sessionUrl?: string; carpetaId?: string | null; error?: string };
+    if (!sesionRes.ok || !sesionData.sessionUrl) {
+      throw new Error(sesionData.error || "No se pudo iniciar la subida a Drive.");
+    }
+    const { id } = await subirBytesPorChunks(file, sesionData.sessionUrl, idToken, onProgress);
+    return { id, carpetaId: sesionData.carpetaId ?? null };
   }
 
-  const { id } = await subirBytesPorChunks(file, sesionData.sessionUrl, idToken, onProgress);
-  await compartirEnDriveCentral(idToken, id);
-  // Cada subida crea un archivo NUEVO ahora (ver drive-upload-session.ts) — la carpeta siempre
-  // viene resuelta, se comparte siempre (barato e idempotente si ya lo estaba).
-  if (sesionData.carpetaId) {
-    await compartirEnDriveCentral(idToken, sesionData.carpetaId);
+  let resultado: { id: string; carpetaId: string | null };
+  try {
+    resultado = await abrirSesionYSubir(Boolean(fileIdExistente));
+  } catch (err) {
+    // Reemplazar en el MISMO archivo puede abrir la sesion bien pero rechazar los bytes ya a
+    // medias (403/404) si ese archivo es de antes de centralizar — en ese caso, y SOLO si se
+    // habia pedido reemplazo, se reintenta de cero como archivo NUEVO en vez de fallar la subida
+    // completa ("vuelve a subir y que quede en su lugar", sin que la persona sepa de este detalle).
+    const mensaje = err instanceof Error ? err.message : "";
+    if (fileIdExistente && /codigo 403|codigo 404/.test(mensaje)) {
+      resultado = await abrirSesionYSubir(false);
+    } else {
+      throw err;
+    }
   }
-  return linksDe(id, sesionData.carpetaId ?? undefined);
+
+  await compartirEnDriveCentral(idToken, resultado.id);
+  if (resultado.carpetaId) {
+    await compartirEnDriveCentral(idToken, resultado.carpetaId);
+  }
+  return linksDe(resultado.id, resultado.carpetaId ?? undefined);
 }
 
 /** Manda un archivo de Drive a la papelera (no borrado permanente — recuperable desde la
