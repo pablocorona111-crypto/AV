@@ -310,8 +310,16 @@ export function RevisarEntregableDialog({
         // Quien sube ya corrigio lo que se le pidio — las observaciones pendientes quedan
         // marcadas "corregido" para que el aprobador vea de una cuales ya se atendieron al
         // volver a revisar (no significa que el aprobador ya este de acuerdo, solo que del lado
-        // del responsable ya quedaron atendidas).
-        if (yaHabiaVideo) marcarComentariosCorregidos.mutate();
+        // del responsable ya quedaron atendidas). Con `await` + catch propio en vez de
+        // "mutate()" sin mas: antes, si esto fallaba (ej. permiso), quedaba en silencio total —
+        // el video si quedaba subido pero nadie se enteraba de que esto no se marco.
+        if (yaHabiaVideo) {
+          try {
+            await marcarComentariosCorregidos.mutateAsync();
+          } catch (err) {
+            console.error("No se pudieron marcar las observaciones como corregidas:", err);
+          }
+        }
         notificarRevisores(
           `${nombreResponsable} ${yaHabiaVideo ? "actualizo" : "agrego"} el video de "${entregable.nombre}".`
         );
@@ -435,7 +443,13 @@ export function RevisarEntregableDialog({
           carpetaFotosUrl: entregable.carpetaFotosUrl ?? carpetaUrl,
         });
         if (!completandoHistorico) {
-          if (galeriaFotos.length > 0) marcarComentariosCorregidos.mutate();
+          if (galeriaFotos.length > 0) {
+            try {
+              await marcarComentariosCorregidos.mutateAsync();
+            } catch (err) {
+              console.error("No se pudieron marcar las observaciones como corregidas:", err);
+            }
+          }
           notificarRevisores(
             `${nombreResponsable} agrego ${nuevas.length > 1 ? `${nuevas.length} fotos` : "una foto"} a "${entregable.nombre}".`
           );
