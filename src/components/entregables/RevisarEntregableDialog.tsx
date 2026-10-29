@@ -4,6 +4,8 @@ import {
   ArrowRightCircle,
   Check,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   Download,
   ExternalLink,
@@ -14,6 +16,7 @@ import {
   Pencil,
   Plus,
   RotateCcw,
+  SendHorizontal,
   Smartphone,
   Trash2,
   Upload,
@@ -1506,96 +1509,114 @@ export function RevisarEntregableDialog({
 
     {/* Vista previa ampliada: antes tocar una foto mandaba a Drive en pestaña nueva, sacando a
         la persona del dialogo de revision. Ahora se ve grande aqui mismo, con flechas para pasar
-        a la siguiente sin cerrar nada. */}
+        a la siguiente sin cerrar nada — diseño tipo visor de fotos (barra flotante sobre la
+        imagen, panel de comentarios debajo con el mismo lenguaje visual que Observaciones:
+        avatar + burbuja, badge "Corregido" en verde, composer en pildora). */}
     <Dialog open={fotoAmpliadaIndex != null} onOpenChange={(v) => !v && setFotoAmpliadaIndex(null)}>
-      <DialogContent className="flex max-h-[92vh] max-w-[95vw] flex-col items-center gap-3 overflow-y-auto border-white/10 bg-black/95 p-3 sm:max-w-4xl [&>button]:text-white">
+      <DialogContent className="flex max-h-[92vh] w-full max-w-[95vw] flex-col gap-0 overflow-hidden rounded-2xl border-white/10 bg-[#0B0B0C] p-0 sm:max-w-3xl [&>button]:z-20 [&>button]:rounded-full [&>button]:bg-black/50 [&>button]:p-1.5 [&>button]:text-white/90 [&>button]:backdrop-blur-sm [&>button]:hover:bg-black/70">
         {fotoAmpliadaUrl && (
           <>
-            <div className="relative flex w-full items-center justify-center">
-              {fotoAmpliadaIndex! > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setFotoAmpliadaIndex((i) => (i != null ? i - 1 : i))}
-                  className="absolute left-1 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-1 text-white hover:bg-black/70"
-                  title="Foto anterior"
-                >
-                  <ArrowLeftCircle className="h-7 w-7" />
-                </button>
-              )}
+            <div className="group/stage relative flex w-full shrink-0 items-center justify-center bg-black">
               {fotoAmpliadaFileId && idToken ? (
                 <img
                   src={`/api/drive-thumbnail?id=${encodeURIComponent(fotoAmpliadaFileId)}&token=${encodeURIComponent(idToken)}&size=1600`}
                   alt=""
-                  className="max-h-[60vh] w-auto max-w-full rounded-md object-contain"
+                  className="max-h-[58vh] w-auto max-w-full object-contain"
                 />
               ) : (
-                <div className="flex h-64 w-full items-center justify-center text-sm text-white/50">
+                <div className="flex h-72 w-full items-center justify-center text-sm text-white/50">
                   Cargando...
                 </div>
+              )}
+
+              {/* Barra flotante superior: contador + abrir en Drive, sobre la imagen (no le
+                  resta alto al visor). Siempre visible — a diferencia de las flechas, no
+                  depende de hover, para que no se sienta oculta en touch/mobile. */}
+              <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between bg-gradient-to-b from-black/70 to-transparent p-3">
+                <span className="pointer-events-auto rounded-full bg-black/50 px-2.5 py-1 text-[11px] font-medium text-white/90 backdrop-blur-sm">
+                  {fotoAmpliadaIndex! + 1} / {galeriaFotos.length}
+                </span>
+                <a
+                  href={fotoAmpliadaUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-black/50 px-2.5 py-1 text-[11px] font-medium text-white/90 backdrop-blur-sm transition-colors hover:bg-black/70"
+                >
+                  <ExternalLink className="h-3 w-3" /> Abrir en Drive
+                </a>
+              </div>
+
+              {fotoAmpliadaIndex! > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setFotoAmpliadaIndex((i) => (i != null ? i - 1 : i))}
+                  className="absolute left-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white opacity-0 backdrop-blur-sm transition-all duration-150 hover:bg-black/70 group-hover/stage:opacity-100"
+                  title="Foto anterior"
+                >
+                  <ChevronLeft className="h-6 w-6" />
+                </button>
               )}
               {fotoAmpliadaIndex! < galeriaFotos.length - 1 && (
                 <button
                   type="button"
                   onClick={() => setFotoAmpliadaIndex((i) => (i != null ? i + 1 : i))}
-                  className="absolute right-1 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-1 text-white hover:bg-black/70"
+                  className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white opacity-0 backdrop-blur-sm transition-all duration-150 hover:bg-black/70 group-hover/stage:opacity-100"
                   title="Siguiente foto"
                 >
-                  <ArrowRightCircle className="h-7 w-7" />
+                  <ChevronRight className="h-6 w-6" />
                 </button>
               )}
             </div>
-            <div className="flex w-full items-center justify-between text-xs text-white/60">
-              <span>
-                Foto {fotoAmpliadaIndex! + 1} de {galeriaFotos.length}
-              </span>
-              <a
-                href={fotoAmpliadaUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 hover:text-white"
-              >
-                <ExternalLink className="h-3.5 w-3.5" /> Abrir en Drive
-              </a>
-            </div>
 
             {/* Comentar sin salir de la vista ampliada — antes solo se podia desde la columna
-                de Observaciones, afuera de este lightbox. Amarrado siempre a ESTA foto. */}
-            <div className="w-full space-y-2 border-t border-white/10 pt-3">
+                de Observaciones, afuera de este lightbox. Amarrado siempre a ESTA foto. Mismo
+                estilo de burbuja/avatar que la columna de Observaciones, para que se lea como
+                parte del mismo sistema, no como un cuadro de chat aparte. */}
+            <div className="min-h-0 shrink-0 space-y-3 border-t border-white/10 bg-white/[0.03] p-3.5">
               {comentariosDeFotoAmpliada.length > 0 && (
-                <div className="max-h-32 space-y-2 overflow-y-auto pr-1 scrollbar-thin">
+                <div className="max-h-32 space-y-2.5 overflow-y-auto pr-1 scrollbar-thin">
                   {comentariosDeFotoAmpliada.map((c) => (
-                    <div key={c.id} className="flex items-start gap-2 text-xs text-white/85">
-                      <span className="shrink-0 font-semibold text-white">{c.autorNombre}:</span>
-                      <span className="min-w-0 flex-1">{c.texto}</span>
-                      {c.corregido && (
-                        <CheckCircle2
-                          className="h-3.5 w-3.5 shrink-0 text-green-400"
-                          aria-label="Corregido"
-                        />
-                      )}
+                    <div key={c.id} className="flex items-start gap-2">
+                      <Avatar className="h-6 w-6 shrink-0">
+                        <AvatarFallback className="text-[9px] bg-white/10 text-white/80">
+                          {iniciales(c.autorNombre)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1 rounded-lg rounded-tl-none bg-white/5 px-2.5 py-1.5">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="text-[11px] font-semibold text-white">{c.autorNombre}</span>
+                          {c.corregido && (
+                            <span className="flex items-center gap-1 rounded-full bg-green-500/15 px-1.5 py-0.5 text-[10px] font-medium text-green-400">
+                              <CheckCircle2 className="h-2.5 w-2.5" /> Corregido
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-white/85">{c.texto}</p>
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
               {puedeComentar && !yaResuelto && (
-                <div className="flex gap-2">
-                  <Input
+                <div className="flex items-center gap-2 rounded-full border border-white/15 bg-white/5 py-1 pl-4 pr-1.5 focus-within:border-white/30">
+                  <input
                     value={comentarioLightbox}
                     onChange={(e) => setComentarioLightbox(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") onComentarLightbox();
                     }}
                     placeholder="Comentar sobre esta foto..."
-                    className="h-9 flex-1 border-white/20 bg-white/10 text-white placeholder:text-white/40"
+                    className="h-7 min-w-0 flex-1 bg-transparent text-sm text-white placeholder:text-white/40 focus:outline-none"
                   />
-                  <Button
+                  <button
                     type="button"
-                    size="sm"
                     onClick={onComentarLightbox}
                     disabled={agregarComentario.isPending || !comentarioLightbox.trim()}
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground transition-opacity hover:brightness-95 disabled:opacity-30"
+                    title="Enviar"
                   >
-                    Enviar
-                  </Button>
+                    <SendHorizontal className="h-3.5 w-3.5" />
+                  </button>
                 </div>
               )}
             </div>
