@@ -31,6 +31,7 @@ import {
   useEnviarARevision,
   useEtiquetarOrientacion,
   useEtiquetarOrientacionAlt,
+  useActualizarCarpetaFotos,
   useGuardarFotos,
   useMarcarEntregado,
   useReasignarResponsableEntregable,
@@ -42,7 +43,7 @@ import { useProyectos } from "@/hooks/useProyectos";
 import { useUsuarios } from "@/hooks/useCatalogos";
 import { crearNotificacion } from "@/services/notificacionesService";
 import { driveUrlAPreview } from "@/services/entregablesService";
-import { subirArchivoADrive, extraerFileIdDrive } from "@/services/driveService";
+import { subirArchivoADrive, extraerFileIdDrive, compartirArchivo } from "@/services/driveService";
 import { DriveVideoPlayer, type MotivoErrorDrive } from "@/components/entregables/DriveVideoPlayer";
 import { MiniaturaVideo } from "@/components/entregables/MiniaturaVideo";
 import { mensajeErrorAuth } from "@/lib/authErrors";
@@ -102,6 +103,8 @@ export function RevisarEntregableDialog({
   const [errorPlayerPropio, setErrorPlayerPropio] = useState<MotivoErrorDrive | null>(null);
   const [linkCopiado, setLinkCopiado] = useState(false);
   const [carpetaCopiada, setCarpetaCopiada] = useState(false);
+  const [resolviendoCarpeta, setResolviendoCarpeta] = useState(false);
+  const [errorCarpeta, setErrorCarpeta] = useState<string | null>(null);
   const [orientacion, setOrientacion] = useState<"vertical" | "horizontal" | null>(null);
   const [ratioReal, setRatioReal] = useState<number | null>(null);
   const [orientacionSubida, setOrientacionSubida] = useState<"vertical" | "horizontal">("horizontal");
@@ -157,6 +160,7 @@ export function RevisarEntregableDialog({
   const [progresoFotos, setProgresoFotos] = useState<{ actual: number; total: number; pct: number } | null>(null);
   const [errorFotos, setErrorFotos] = useState<string | null>(null);
   const guardarFotos = useGuardarFotos();
+  const actualizarCarpetaFotos = useActualizarCarpetaFotos();
   // Sobre cual foto de la galeria es la observacion que se esta escribiendo (indice en
   // `galeriaFotos`) — reemplaza al campo "minuto" de video, que no tiene sentido en una foto.
   const [fotoComentando, setFotoComentando] = useState<number | null>(null);
@@ -407,6 +411,37 @@ export function RevisarEntregableDialog({
     const reordenadas = [...galeriaFotos];
     [reordenadas[indice], reordenadas[destino]] = [reordenadas[destino], reordenadas[indice]];
     guardarFotos.mutate({ id: entregable.id, fotos: reordenadas, comoHistorico: completandoHistorico });
+  };
+
+  // Backfill para galerias subidas ANTES de que `carpetaFotosUrl` existiera: pide la carpeta del
+  // archivo via `/api/drive-folder` (cuenta de servicio, cualquiera con sesion puede leerla) y la
+  // guarda. Si quien lo hace ya tiene `driveToken` (ya conecto Drive antes para subir), de paso
+  // intenta compartir la carpeta publica — sin pedirle conectar Drive solo para esto si no lo
+  // tenia ya.
+  const onObtenerCarpeta = async () => {
+    const primerFileId = galeriaFotos[0] ? extraerFileIdDrive(galeriaFotos[0]) : null;
+    if (!primerFileId || !idToken) return;
+    setErrorCarpeta(null);
+    setResolviendoCarpeta(true);
+    try {
+      const res = await fetch(
+        `/api/drive-folder?id=${encodeURIComponent(primerFileId)}&token=${encodeURIComponent(idToken)}`
+      );
+      const data = (await res.json()) as { carpetaId?: string; carpetaUrl?: string; error?: string };
+      if (!res.ok || !data.carpetaUrl) throw new Error(data.error || "No se pudo obtener la carpeta.");
+      if (driveToken && data.carpetaId) {
+        try {
+          await compartirArchivo(data.carpetaId, driveToken);
+        } catch {
+          // si no se pudo compartir, el link igual se guarda — puede que ya estuviera compartida.
+        }
+      }
+      await actualizarCarpetaFotos.mutateAsync({ id: entregable.id, carpetaFotosUrl: data.carpetaUrl });
+    } catch (err) {
+      setErrorCarpeta(err instanceof Error ? err.message : "No se pudo obtener la carpeta.");
+    } finally {
+      setResolviendoCarpeta(false);
+    }
   };
 
   const onAprobar = async () => {
@@ -692,6 +727,20 @@ export function RevisarEntregableDialog({
               </>
             )}
           </button>
+        </div>
+      )}
+      {!entregable.carpetaFotosUrl && galeriaFotos.length > 0 && (
+        <div className="space-y-1">
+          <button
+            type="button"
+            onClick={onObtenerCarpeta}
+            disabled={resolviendoCarpeta || !idToken}
+            className="flex items-center gap-1.5 rounded-md border border-dashed border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-bg-secondary disabled:opacity-60"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            {resolviendoCarpeta ? "Buscando la carpeta..." : "Obtener link para compartir todas las fotos"}
+          </button>
+          {errorCarpeta && <p className="text-xs text-destructive">{errorCarpeta}</p>}
         </div>
       )}
       {galeriaFotos.length === 0 ? (

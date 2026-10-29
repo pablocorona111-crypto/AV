@@ -270,6 +270,14 @@ export async function cambiarEstadoEntregableDirecto(
  * un video — asi el resto del sistema (miniaturas, metricas de "tiene material") no necesita
  * saber que esto es una galeria. Mismo criterio que completandoHistorico en el dialogo: si el
  * entregable ya estaba cerrado (aprobado/entregado), no se reabre a revision al tocar la galeria. */
+/** Backfill de `carpetaFotosUrl` para galerias subidas ANTES de que ese campo existiera — a
+ * diferencia de `guardarFotos`, esto NO toca `fotos` ni `estado`: es solo completar un dato que
+ * faltaba, no una subida nueva. Cualquiera que pueda ver el entregable puede completarlo (las
+ * reglas de Firestore ya exigen ser gestor/responsable/superadmin para `update`). */
+export async function actualizarCarpetaFotos(id: string, carpetaFotosUrl: string): Promise<void> {
+  await actualizarEntregable(id, { carpetaFotosUrl });
+}
+
 export async function guardarFotos(
   id: string,
   fotos: string[],

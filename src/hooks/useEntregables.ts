@@ -6,6 +6,7 @@ import {
   aprobarEntregable,
   asignarProyectoEntregable,
   cambiarEstadoEntregableDirecto,
+  actualizarCarpetaFotos,
   cambiarTipoEntregable,
   eliminarMaterialEntregable,
   reasignarResponsableEntregable,
@@ -58,6 +59,15 @@ export function useAsignarProyectoEntregable() {
   return useMutation({
     mutationFn: ({ id, proyectoId }: { id: string; proyectoId: string | null }) =>
       asignarProyectoEntregable(id, proyectoId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["entregables"] }),
+  });
+}
+
+export function useActualizarCarpetaFotos() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, carpetaFotosUrl }: { id: string; carpetaFotosUrl: string }) =>
+      actualizarCarpetaFotos(id, carpetaFotosUrl),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["entregables"] }),
   });
 }

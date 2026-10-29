@@ -162,7 +162,10 @@ async function renombrarArchivo(fileId: string, nombre: string, accessToken: str
   });
 }
 
-async function compartirArchivo(fileId: string, accessToken: string): Promise<void> {
+/** Publico: `role: reader, type: anyone` — mismo permiso para un archivo o una carpeta (la API
+ * de Drive usa el mismo endpoint para ambos). Exportada para compartir la carpeta de una galeria
+ * de fotos ya subida (ver backfill de `carpetaFotosUrl` en RevisarEntregableDialog.tsx). */
+export async function compartirArchivo(fileId: string, accessToken: string): Promise<void> {
   const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
     method: "POST",
     headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
