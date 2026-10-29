@@ -275,3 +275,87 @@ export async function subirArchivoADrive(
   }
   return linksDe(id, carpetaId);
 }
+
+function subirBytesASesion(
+  file: File,
+  sessionUrl: string,
+  onProgress?: (porcentaje: number) => void
+): Promise<{ id: string }> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", sessionUrl);
+    xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
+    };
+    xhr.onload = () => {
+      if (xhr.status < 200 || xhr.status >= 300) {
+        reject(new Error(`No se pudo subir el archivo a Drive (codigo ${xhr.status}).`));
+        return;
+      }
+      try {
+        resolve(JSON.parse(xhr.responseText) as { id: string });
+      } catch {
+        reject(new Error("Drive no entrego el id del archivo subido."));
+      }
+    };
+    xhr.onerror = () => reject(new Error("Error de red al subir a Drive."));
+    xhr.send(file);
+  });
+}
+
+async function compartirEnDriveCentral(idToken: string, id: string): Promise<void> {
+  try {
+    await fetch("/api/drive-share", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+      body: JSON.stringify({ id }),
+    });
+  } catch {
+    // si falla compartir, el archivo igual quedo subido.
+  }
+}
+
+/**
+ * Sube un archivo a la cuenta CENTRAL de Drive de la organizacion (impersonada server-side via
+ * delegacion de dominio completo — ver `api/drive-upload-session.ts`), sin importar de que
+ * cuenta de Google sea quien esta logueado en AV Control. Reemplaza a `subirArchivoADrive` para
+ * subidas nuevas: esa otra funcion sigue existiendo solo para lo que ya vivia en el Drive
+ * PERSONAL de alguien (de antes de esto) — ej. el boton "Obtener link" de fotos viejas.
+ *
+ * El navegador pide la sesion de subida al backend (que resuelve/crea la carpeta y la abre con
+ * la cuenta central) y luego sube los BYTES directo a esa sesion — el archivo nunca pasa por
+ * nuestra funcion serverless (sin eso, un video grande chocaria con el limite de tamaño de
+ * request de Vercel).
+ */
+export async function subirArchivoCentralizado(
+  file: File,
+  idToken: string,
+  opciones: {
+    nombre: string;
+    nombreCarpeta: string;
+    subcarpeta?: string;
+    carpetaIdDestino?: string;
+    fileIdExistente?: string;
+    onProgress?: (porcentaje: number) => void;
+  }
+): Promise<ArchivoSubido> {
+  const { nombre, nombreCarpeta, subcarpeta, carpetaIdDestino, fileIdExistente, onProgress } = opciones;
+
+  const sesionRes = await fetch("/api/drive-upload-session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+    body: JSON.stringify({ nombre, nombreCarpeta, subcarpeta, carpetaIdDestino, fileIdExistente }),
+  });
+  const sesionData = (await sesionRes.json()) as { sessionUrl?: string; carpetaId?: string | null; error?: string };
+  if (!sesionRes.ok || !sesionData.sessionUrl) {
+    throw new Error(sesionData.error || "No se pudo iniciar la subida a Drive.");
+  }
+
+  const { id } = await subirBytesASesion(file, sesionData.sessionUrl, onProgress);
+  await compartirEnDriveCentral(idToken, id);
+  if (sesionData.carpetaId && !fileIdExistente) {
+    await compartirEnDriveCentral(idToken, sesionData.carpetaId);
+  }
+  return linksDe(id, sesionData.carpetaId ?? undefined);
+}

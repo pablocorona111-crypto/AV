@@ -44,7 +44,7 @@ import { useUsuarios } from "@/hooks/useCatalogos";
 import { crearNotificacion } from "@/services/notificacionesService";
 import { driveUrlAPreview } from "@/services/entregablesService";
 import {
-  subirArchivoADrive,
+  subirArchivoCentralizado,
   extraerFileIdDrive,
   extraerCarpetaIdDrive,
   compartirArchivo,
@@ -96,7 +96,7 @@ export function RevisarEntregableDialog({
   nombreProyecto?: string;
   nombreAprobador?: string;
 }) {
-  const { usuario, driveToken, conectarDrive, limpiarDriveToken } = useAuth();
+  const { usuario, driveToken, limpiarDriveToken } = useAuth();
   const { data: usuarios = [] } = useUsuarios();
   const { data: proyectos = [] } = useProyectos();
   const asignarProyecto = useAsignarProyectoEntregable();
@@ -265,17 +265,16 @@ export function RevisarEntregableDialog({
     // horizontal) se este viendo en ese momento — la version alterna tiene su propio boton
     // (ver onSeleccionarArchivoAlt).
     const yaHabiaVideo = Boolean(linkPrincipal);
+    if (!idToken) {
+      setErrorSubida("Tu sesion no esta lista todavia. Espera un segundo e intenta de nuevo.");
+      return;
+    }
     setErrorSubida(null);
     setSubiendo(true);
     setProgreso(0);
     try {
-      const token = driveToken ?? (await conectarDrive());
-      if (!token) {
-        setErrorSubida("No se pudo conectar con Drive.");
-        return;
-      }
       const fileIdExistente = linkPrincipal ? extraerFileIdDrive(linkPrincipal) ?? undefined : undefined;
-      const subido = await subirArchivoADrive(file, token, {
+      const subido = await subirArchivoCentralizado(file, idToken, {
         nombre: `${nombreProyecto ?? "Sin proyecto"} - ${entregable.nombre}`,
         nombreCarpeta: nombreProyecto ?? "Sin proyecto",
         subcarpeta: esDiseno ? "Diseños" : "Videos",
@@ -323,17 +322,16 @@ export function RevisarEntregableDialog({
     e.target.value = "";
     if (!file) return;
 
+    if (!idToken) {
+      setErrorSubidaAlt("Tu sesion no esta lista todavia. Espera un segundo e intenta de nuevo.");
+      return;
+    }
     setErrorSubidaAlt(null);
     setSubiendoAlt(true);
     setProgresoAlt(0);
     try {
-      const token = driveToken ?? (await conectarDrive());
-      if (!token) {
-        setErrorSubidaAlt("No se pudo conectar con Drive.");
-        return;
-      }
       const fileIdExistente = linkAlt ? extraerFileIdDrive(linkAlt) ?? undefined : undefined;
-      const subido = await subirArchivoADrive(file, token, {
+      const subido = await subirArchivoCentralizado(file, idToken, {
         nombre: `${nombreProyecto ?? "Sin proyecto"} - ${entregable.nombre} (${orientacionAltSugerida})`,
         nombreCarpeta: nombreProyecto ?? "Sin proyecto",
         subcarpeta: "Videos",
@@ -375,21 +373,20 @@ export function RevisarEntregableDialog({
     // "Proyecto eliminado"). Sin esto, "todas dentro" se rompia con el tiempo.
     const carpetaIdConocida = entregable.carpetaFotosUrl ? extraerCarpetaIdDrive(entregable.carpetaFotosUrl) : null;
 
+    if (!idToken) {
+      setErrorFotos("Tu sesion no esta lista todavia. Espera un segundo e intenta de nuevo.");
+      return;
+    }
     cancelarFotosRef.current = false;
     setErrorFotos(null);
     setSubiendoFotos(true);
     try {
-      const token = driveToken ?? (await conectarDrive());
-      if (!token) {
-        setErrorFotos("No se pudo conectar con Drive.");
-        return;
-      }
       const nuevas: string[] = [];
       let carpetaUrl: string | undefined;
       for (let i = 0; i < archivos.length; i++) {
         if (cancelarFotosRef.current) break;
         setProgresoFotos({ actual: i + 1, total: archivos.length, pct: 0 });
-        const subida = await subirArchivoADrive(archivos[i], token, {
+        const subida = await subirArchivoCentralizado(archivos[i], idToken, {
           nombre: `${nombreProyecto ?? "Sin proyecto"} - ${entregable.nombre} (foto ${galeriaFotos.length + nuevas.length + 1})`,
           nombreCarpeta: nombreProyecto ?? "Sin proyecto",
           subcarpeta: "Fotografias",

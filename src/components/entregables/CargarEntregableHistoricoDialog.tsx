@@ -7,7 +7,8 @@ import { useProyectos } from "@/hooks/useProyectos";
 import { useUsuarios } from "@/hooks/useCatalogos";
 import { useCrearEntregableHistorico } from "@/hooks/useEntregables";
 import { useAuth } from "@/context/AuthContext";
-import { subirArchivoADrive } from "@/services/driveService";
+import { useIdToken } from "@/hooks/useIdToken";
+import { subirArchivoCentralizado } from "@/services/driveService";
 import { mensajeErrorAuth } from "@/lib/authErrors";
 import { CATEGORIA_CONTENIDO_LABELS, esCategoriaFotografia } from "@/lib/labels";
 import { Button } from "@/components/ui/button";
@@ -48,7 +49,8 @@ type FormValues = z.infer<typeof schema>;
  * graficas reflejen cuando de verdad paso.
  */
 export function CargarEntregableHistoricoDialog() {
-  const { usuario, driveToken, conectarDrive, limpiarDriveToken } = useAuth();
+  const { usuario } = useAuth();
+  const { token: idToken } = useIdToken();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [subiendo, setSubiendo] = useState(false);
@@ -85,15 +87,14 @@ export function CargarEntregableHistoricoDialog() {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
+    if (!idToken) {
+      setError("Tu sesion no esta lista todavia. Espera un segundo e intenta de nuevo.");
+      return;
+    }
     setError(null);
     setSubiendo(true);
     setProgreso(0);
     try {
-      const token = driveToken ?? (await conectarDrive());
-      if (!token) {
-        setError("No se pudo conectar con Drive.");
-        return;
-      }
       // Mismo criterio que la subida normal (RevisarEntregableDialog): carpeta = nombre del
       // proyecto, y el archivo se nombra "Proyecto - Entregable" — asi en Drive queda ordenado
       // por nombre y agrupado junto con el resto de ese proyecto, no aparte en una carpeta
@@ -101,7 +102,7 @@ export function CargarEntregableHistoricoDialog() {
       const proyectoSeleccionado = proyectos.find((p) => p.id === watch("proyectoId"));
       const nombreProyecto = proyectoSeleccionado?.nombre ?? "Sin proyecto";
       const nombreEntregable = watch("nombre") || `Historico-${Date.now()}`;
-      const subido = await subirArchivoADrive(file, token, {
+      const subido = await subirArchivoCentralizado(file, idToken, {
         nombre: `${nombreProyecto} - ${nombreEntregable}`,
         nombreCarpeta: nombreProyecto,
         subcarpeta: esDiseno ? "Diseños" : esFoto ? "Fotografias" : "Videos",
@@ -110,9 +111,6 @@ export function CargarEntregableHistoricoDialog() {
       setValue("urlFinal", subido.previewUrl, { shouldValidate: true });
     } catch (err) {
       const mensaje = mensajeErrorAuth(err);
-      // Token vencido/sin permiso (401/403) — se borra para que el siguiente intento de subir
-      // dispare la reconexion sola, en vez de quedar atorado con el mismo token invalido.
-      if (/sesion de Drive expiro|403/.test(mensaje)) limpiarDriveToken();
       setError(mensaje);
     } finally {
       setSubiendo(false);
