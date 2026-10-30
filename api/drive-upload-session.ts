@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { OAuth2Client } from "google-auth-library";
+import { GoogleAuth, OAuth2Client } from "google-auth-library";
 import { createPublicKey, createVerify } from "node:crypto";
 
 /**
@@ -146,6 +146,55 @@ async function obtenerTokenPropietario(): Promise<string> {
   return token;
 }
 
+const ROLES_PUEDEN_SUBIR_MATERIAL = new Set(["superadmin", "lider_audiovisual", "colaborador_audiovisual"]);
+
+let tokenFirestoreCacheado: { token: string; vence: number } | null = null;
+
+async function obtenerTokenFirestore(): Promise<string> {
+  if (tokenFirestoreCacheado && tokenFirestoreCacheado.vence > Date.now() + 60_000) return tokenFirestoreCacheado.token;
+
+  const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+  const clavePrivada = (process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY ?? "").replace(/\\n/g, "\n");
+  if (!email || !clavePrivada) {
+    throw new Error("Faltan las variables GOOGLE_SERVICE_ACCOUNT_EMAIL / GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY.");
+  }
+
+  const auth = new GoogleAuth({
+    credentials: { client_email: email, private_key: clavePrivada },
+    scopes: ["https://www.googleapis.com/auth/datastore"],
+  });
+  const cliente = await auth.getClient();
+  const { token } = await cliente.getAccessToken();
+  if (!token) throw new Error("Google no entrego token para leer Firestore.");
+
+  tokenFirestoreCacheado = { token, vence: Date.now() + 55 * 60 * 1000 };
+  return token;
+}
+
+/**
+ * El rol vive en Firestore (`usuarios/{uid}.rol`), no en el ID token — se lee por REST con la
+ * cuenta de servicio (scope `datastore`), sin depender de `firebase-admin`. Antes este endpoint
+ * solo exigia estar logueado: cualquier rol podia abrir una sesion de subida y, con
+ * `fileIdExistente` de un entregable ajeno, sobreescribir su contenido. Mismo filtro que ya
+ * aplica el cliente en `puedeSubirVideos` (`src/lib/roles.ts`), pero ahora tambien server-side.
+ */
+async function verificarRolAutorizado(uid: string): Promise<void> {
+  const projectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID;
+  if (!projectId) throw new ErrorAuth(500, "Falta la variable FIREBASE_PROJECT_ID / VITE_FIREBASE_PROJECT_ID.");
+
+  const token = await obtenerTokenFirestore();
+  const res = await fetch(
+    `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/usuarios/${uid}`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  if (!res.ok) throw new ErrorAuth(403, "No se pudo verificar tu rol.");
+  const data = (await res.json()) as { fields?: { rol?: { stringValue?: string } } };
+  const rol = data.fields?.rol?.stringValue;
+  if (!rol || !ROLES_PUEDEN_SUBIR_MATERIAL.has(rol)) {
+    throw new ErrorAuth(403, "Tu rol no tiene permiso para subir material a Drive.");
+  }
+}
+
 const CARPETA_RAIZ = "AV Control";
 
 async function buscarCarpeta(nombre: string, token: string, parentId: string | null): Promise<string | null> {
@@ -193,7 +242,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    await verificarIdTokenFirebase(req);
+    const uid = await verificarIdTokenFirebase(req);
+    await verificarRolAutorizado(uid);
   } catch (err) {
     const e = err as ErrorAuth;
     res.status(e.status ?? 401).json({ error: e.message });

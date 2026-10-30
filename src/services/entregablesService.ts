@@ -134,6 +134,10 @@ export async function eliminarMaterialEntregable(id: string): Promise<void> {
             aprobadorId: undefined,
             fechaAprobado: undefined,
             fechaEntregado: undefined,
+            // Sin esto, enviarARevision() ve que ya existe fechaEnviado y no la actualiza: el
+            // reenvio se cuenta como "a tiempo/tarde" contra la fecha del envio ORIGINAL, no la
+            // real. Al quitar todo el material, el proximo envio debe contar como el primero.
+            fechaEnviado: undefined,
           }
         : e
     );
@@ -151,6 +155,7 @@ export async function eliminarMaterialEntregable(id: string): Promise<void> {
     aprobadorId: deleteField(),
     fechaAprobado: deleteField(),
     fechaEntregado: deleteField(),
+    fechaEnviado: deleteField(),
   });
 }
 

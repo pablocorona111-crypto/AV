@@ -250,6 +250,26 @@ export function RevisarEntregableDialog({
   // reglas de hooks exigen que todos los hooks se declaren antes de cualquier return condicional.
   const totalFotosParaTeclado = entregable?.fotos?.length ?? (entregable?.urlRevision || entregable?.urlFinal ? 1 : 0);
 
+  // Fuente de verdad local para alternar/reordenar fotos SIN esperar a que la mutacion resuelva y
+  // re-renderice con el dato fresco del servidor — dos clicks rapidos (ej. marcar la foto 1 para
+  // borrar y luego la foto 2 antes de que la primera mutacion invalide la query, ~200-500ms de
+  // red) calculaban su `actual`/`reordenadas` contra el MISMO arreglo de `entregable`
+  // desactualizado, perdiendo el primer click. El ref se actualiza SINCRONO en cada toque (no
+  // solo cuando llega la respuesta del servidor), asi el segundo click ya ve lo que decidio el
+  // primero; el efecto solo resincroniza cuando el dato de verdad cambia desde afuera (otra
+  // pestaña, u otro usuario revisando la misma galeria).
+  const fotosParaBorrarRef = useRef<string[]>(entregable?.fotosParaBorrar ?? []);
+  const galeriaFotosRef = useRef<string[]>(
+    entregable?.fotos ?? (entregable?.urlRevision || entregable?.urlFinal ? [entregable.urlRevision || entregable.urlFinal!] : [])
+  );
+  useEffect(() => {
+    fotosParaBorrarRef.current = entregable?.fotosParaBorrar ?? [];
+  }, [entregable?.fotosParaBorrar]);
+  useEffect(() => {
+    galeriaFotosRef.current =
+      entregable?.fotos ?? (entregable?.urlRevision || entregable?.urlFinal ? [entregable.urlRevision || entregable.urlFinal!] : []);
+  }, [entregable?.fotos, entregable?.urlRevision, entregable?.urlFinal]);
+
   useEffect(() => {
     // Flechas del teclado para moverse entre fotos en la vista ampliada, sin tener que buscar
     // los botones con el mouse. Solo mientras esa vista este abierta, y SOLO si el foco no esta
@@ -603,22 +623,26 @@ export function RevisarEntregableDialog({
   // el borrado masivo al final (ver onEliminarFotosMarcadas), en vez de decidir foto por foto.
   const fotosParaBorrar = entregable.fotosParaBorrar ?? [];
   const onAlternarParaBorrar = (url: string, marcar: boolean) => {
-    const actual = entregable.fotosParaBorrar ?? [];
+    const actual = fotosParaBorrarRef.current;
     const nuevo = marcar ? [...new Set([...actual, url])] : actual.filter((u) => u !== url);
+    fotosParaBorrarRef.current = nuevo;
     marcarFotosParaBorrar.mutate({ id: entregable.id, fotosParaBorrar: nuevo });
   };
 
   const onEliminarFotosMarcadas = async () => {
-    const marcadas = entregable.fotosParaBorrar ?? [];
+    const marcadas = fotosParaBorrarRef.current;
     if (marcadas.length === 0) return;
     setErrorFotos(null);
     // Una sola escritura con el arreglo YA filtrado — si se llamara onEliminarFoto() una vez por
     // cada marcada, cada llamada calcularia su `fotos.filter` contra el MISMO arreglo original
     // (closure sin refrescar entre llamadas) y solo sobreviviria el ultimo intento, perdiendo las
     // demas.
+    const nuevaGaleria = galeriaFotosRef.current.filter((f) => !marcadas.includes(f));
+    galeriaFotosRef.current = nuevaGaleria;
+    fotosParaBorrarRef.current = [];
     await guardarFotos.mutateAsync({
       id: entregable.id,
-      fotos: galeriaFotos.filter((f) => !marcadas.includes(f)),
+      fotos: nuevaGaleria,
       comoHistorico: completandoHistorico,
     });
     marcarFotosParaBorrar.mutate({ id: entregable.id, fotosParaBorrar: [] });
@@ -636,9 +660,11 @@ export function RevisarEntregableDialog({
 
   const onMoverFoto = (indice: number, direccion: -1 | 1) => {
     const destino = indice + direccion;
-    if (destino < 0 || destino >= galeriaFotos.length) return;
-    const reordenadas = [...galeriaFotos];
+    const actual = galeriaFotosRef.current;
+    if (destino < 0 || destino >= actual.length) return;
+    const reordenadas = [...actual];
     [reordenadas[indice], reordenadas[destino]] = [reordenadas[destino], reordenadas[indice]];
+    galeriaFotosRef.current = reordenadas;
     guardarFotos.mutate({ id: entregable.id, fotos: reordenadas, comoHistorico: completandoHistorico });
   };
 
@@ -824,8 +850,11 @@ export function RevisarEntregableDialog({
   // el material en si (es solo una referencia, no el archivo): tanto quien sube el video como
   // quien lo aprueba pueden ajustarlo.
   const puedeVincularGuion = !esFoto && !esDiseno && (puedeEditarMaterial || puedeComentar);
+  // `===` ya cubre el caso huerfano (ambos `undefined` son iguales): un entregable sin proyecto
+  // solo debe ofrecer guiones TAMBIEN huerfanos, no "cualquier guion aprobado de cualquier
+  // proyecto" (lo que pasaba con `!entregable.proyectoId || ...`, que colapsaba a `true`).
   const guionesAprobadosDelProyecto = guiones.filter(
-    (g) => g.estado === "aprobado" && (!entregable.proyectoId || g.proyectoId === entregable.proyectoId)
+    (g) => g.estado === "aprobado" && g.proyectoId === entregable.proyectoId
   );
   const guionVinculado = entregable.guionId ? guiones.find((g) => g.id === entregable.guionId) : undefined;
   // La version alterna solo aplica a video (un diseño grafico o una foto no tienen

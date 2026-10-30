@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { GoogleAuth } from "google-auth-library";
 import { createPublicKey, createVerify } from "node:crypto";
 
 /**
@@ -109,6 +110,53 @@ async function verificarIdTokenFirebase(req: VercelRequest): Promise<string> {
   return datos.sub;
 }
 
+const ROLES_PUEDEN_SUBIR_MATERIAL = new Set(["superadmin", "lider_audiovisual", "colaborador_audiovisual"]);
+
+let tokenFirestoreCacheado: { token: string; vence: number } | null = null;
+
+async function obtenerTokenFirestore(): Promise<string> {
+  if (tokenFirestoreCacheado && tokenFirestoreCacheado.vence > Date.now() + 60_000) return tokenFirestoreCacheado.token;
+
+  const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+  const clavePrivada = (process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY ?? "").replace(/\\n/g, "\n");
+  if (!email || !clavePrivada) {
+    throw new Error("Faltan las variables GOOGLE_SERVICE_ACCOUNT_EMAIL / GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY.");
+  }
+
+  const auth = new GoogleAuth({
+    credentials: { client_email: email, private_key: clavePrivada },
+    scopes: ["https://www.googleapis.com/auth/datastore"],
+  });
+  const cliente = await auth.getClient();
+  const { token } = await cliente.getAccessToken();
+  if (!token) throw new Error("Google no entrego token para leer Firestore.");
+
+  tokenFirestoreCacheado = { token, vence: Date.now() + 55 * 60 * 1000 };
+  return token;
+}
+
+/**
+ * Mismo filtro de rol que `drive-upload-session.ts` (defensa en profundidad: aunque abrir la
+ * sesion ya este restringido, este endpoint reenvia bytes a CUALQUIER sessionUrl de Drive que le
+ * pasen en el header, asi que tambien exige rol valido en vez de solo "esta logueado").
+ */
+async function verificarRolAutorizado(uid: string): Promise<void> {
+  const projectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID;
+  if (!projectId) throw new ErrorAuth(500, "Falta la variable FIREBASE_PROJECT_ID / VITE_FIREBASE_PROJECT_ID.");
+
+  const token = await obtenerTokenFirestore();
+  const res = await fetch(
+    `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/usuarios/${uid}`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  if (!res.ok) throw new ErrorAuth(403, "No se pudo verificar tu rol.");
+  const data = (await res.json()) as { fields?: { rol?: { stringValue?: string } } };
+  const rol = data.fields?.rol?.stringValue;
+  if (!rol || !ROLES_PUEDEN_SUBIR_MATERIAL.has(rol)) {
+    throw new ErrorAuth(403, "Tu rol no tiene permiso para subir material a Drive.");
+  }
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "PUT") {
     res.status(405).json({ error: "Metodo no permitido." });
@@ -116,7 +164,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    await verificarIdTokenFirebase(req);
+    const uid = await verificarIdTokenFirebase(req);
+    await verificarRolAutorizado(uid);
   } catch (err) {
     const e = err as ErrorAuth;
     res.status(e.status ?? 401).json({ error: e.message });
