@@ -1,9 +1,10 @@
 import { useEffect } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db, isFirebaseConfigured } from "@/lib/firebase";
 import {
   actualizarGestorRequisiciones,
+  actualizarPerfilColaborador,
   actualizarRolUsuario,
   autorizarSalida,
   crearColaborador,
@@ -17,6 +18,41 @@ import {
 } from "@/services/catalogosService";
 import { crearInvitacion } from "@/services/invitacionesService";
 import type { Colaborador, Entregable, Invitacion, SalidaGrabacion, Usuario } from "@/types";
+
+/**
+ * Un solo onSnapshot por coleccion para TODA la app, con conteo de referencias. Antes cada
+ * componente que llamaba useEntregables()/useUsuarios() (paginas, cada dialogo abierto...) abria
+ * su PROPIO listener a la coleccion completa: N lecturas de Firestore y N re-renders por cada
+ * cambio. Ahora el primero que se monta abre el listener y el ultimo que se desmonta lo cierra.
+ */
+const suscripcionesEnVivo = new Map<string, { usuarios: number; cerrar: () => void }>();
+
+function useColeccionEnVivo<T>(nombre: string) {
+  const qc = useQueryClient();
+  useEffect(() => {
+    if (!isFirebaseConfigured || !db) return;
+    const actual = suscripcionesEnVivo.get(nombre);
+    if (actual) {
+      actual.usuarios++;
+    } else {
+      suscripcionesEnVivo.set(nombre, { usuarios: 1, cerrar: abrirListener<T>(qc, nombre) });
+    }
+    return () => {
+      const s = suscripcionesEnVivo.get(nombre);
+      if (!s) return;
+      if (--s.usuarios === 0) {
+        s.cerrar();
+        suscripcionesEnVivo.delete(nombre);
+      }
+    };
+  }, [qc, nombre]);
+}
+
+function abrirListener<T>(qc: QueryClient, nombre: string) {
+  return onSnapshot(collection(db!, nombre), (snap) => {
+    qc.setQueryData([nombre], snap.docs.map((d) => ({ id: d.id, ...d.data() }) as T));
+  });
+}
 
 export const useSalidas = () => useQuery({ queryKey: ["salidas"], queryFn: listarSalidas });
 
@@ -43,19 +79,8 @@ export function useAutorizarSalida() {
  * — con un fetch normal, Inicio se quedaba con numeros viejos hasta refrescar la pagina.
  */
 export function useEntregables() {
-  const qc = useQueryClient();
-  const query = useQuery({ queryKey: ["entregables"], queryFn: listarEntregables });
-
-  useEffect(() => {
-    if (!isFirebaseConfigured || !db) return;
-    const unsubscribe = onSnapshot(collection(db, "entregables"), (snap) => {
-      const entregables = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Entregable);
-      qc.setQueryData(["entregables"], entregables);
-    });
-    return unsubscribe;
-  }, [qc]);
-
-  return query;
+  useColeccionEnVivo<Entregable>("entregables");
+  return useQuery({ queryKey: ["entregables"], queryFn: listarEntregables });
 }
 export const useEquipoAV = () => useQuery({ queryKey: ["equipo_av"], queryFn: listarEquipoAV });
 export const useColaboradores = () => useQuery({ queryKey: ["colaboradores"], queryFn: listarColaboradores });
@@ -78,19 +103,8 @@ export function useCrearColaborador() {
  * al cache de react-query al instante, sin que nadie tenga que hacer nada manual.
  */
 export function useUsuarios() {
-  const qc = useQueryClient();
-  const query = useQuery({ queryKey: ["usuarios"], queryFn: listarUsuarios });
-
-  useEffect(() => {
-    if (!isFirebaseConfigured || !db) return;
-    const unsubscribe = onSnapshot(collection(db, "usuarios"), (snap) => {
-      const usuarios = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Usuario);
-      qc.setQueryData(["usuarios"], usuarios);
-    });
-    return unsubscribe;
-  }, [qc]);
-
-  return query;
+  useColeccionEnVivo<Usuario>("usuarios");
+  return useQuery({ queryKey: ["usuarios"], queryFn: listarUsuarios });
 }
 
 export function useInvitarUsuario() {
@@ -107,6 +121,18 @@ export function useActualizarGestorRequisiciones() {
     mutationFn: ({ id, gestorRequisiciones }: { id: string; gestorRequisiciones: Usuario["gestorRequisiciones"] }) =>
       actualizarGestorRequisiciones(id, gestorRequisiciones),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["usuarios"] }),
+  });
+}
+
+export function useActualizarPerfilColaborador() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ colaborador, cambios }: { colaborador: Colaborador; cambios: { especialidades: string[]; puesto: string } }) =>
+      actualizarPerfilColaborador(colaborador, cambios),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["usuarios"] });
+      qc.invalidateQueries({ queryKey: ["colaboradores"] });
+    },
   });
 }
 

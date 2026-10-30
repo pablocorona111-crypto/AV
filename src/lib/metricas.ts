@@ -9,7 +9,7 @@ const DIAS_SEMANA = ["Lun", "Mar", "Mie", "Jue", "Vie", "Sab"];
  * haya un video/archivo cargado (urlRevision o urlFinal), ya se entrego — pendiente/en_proceso
  * son los unicos estados donde de verdad todavia no hay nada subido. */
 export function yaEntregoMaterial(e: Entregable): boolean {
-  return Boolean(e.urlRevision || e.urlFinal);
+  return Boolean(e.urlRevision || e.urlFinal) || e.estado === "aprobado" || e.estado === "entregado";
 }
 
 /** Fecha real de cuando se entrego el material — si todavia no hay fechaEntregado/fechaAprobado
@@ -17,9 +17,11 @@ export function yaEntregoMaterial(e: Entregable): boolean {
  * se escribe con `serverTimestamp()` — al leerlo de vuelta es un Timestamp de Firestore, NO un
  * string (a diferencia de fechaEntregado/fechaAprobado, que siempre se guardan como ISO) asi que
  * hay que normalizarlo con `aFecha()` antes de poder hacer `.slice()` sobre el resultado. */
-function fechaDeEntrega(e: Entregable): string | undefined {
-  if (e.fechaEntregado) return e.fechaEntregado;
+export function fechaDeEntrega(e: Entregable): string | undefined {
+  // Prioridad: cuando se subio el material (lo que hizo el colaborador) > aprobado > entregado.
+  if (e.fechaEnviado) return e.fechaEnviado;
   if (e.fechaAprobado) return e.fechaAprobado;
+  if (e.fechaEntregado) return e.fechaEntregado;
   return yaEntregoMaterial(e) ? aFecha(e.creadoEn).toISOString() : undefined;
 }
 

@@ -91,6 +91,23 @@ function PuntoEvento({ tipo, terminado, titulo }: { tipo: TipoEvento; terminado:
   );
 }
 
+/** Chip con el titulo del evento dentro de la celda del dia (pantallas sm+). Relleno suave si ya
+ * se termino, solo borde si sigue pendiente — mismo criterio que PuntoEvento. */
+function ChipEvento({ evento }: { evento: EventoCalendario }) {
+  return (
+    <span
+      title={`${evento.titulo} — ${evento.estadoLabel}`}
+      className={
+        "flex w-full min-w-0 items-center gap-1 rounded px-1 py-px text-left text-[10px] font-medium leading-tight text-text-primary " +
+        (evento.terminado ? "bg-bg-secondary" : `border ${BORDE_TIPO[evento.tipo]}`)
+      }
+    >
+      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${COLOR_TIPO[evento.tipo]}`} />
+      <span className="truncate">{evento.titulo}</span>
+    </span>
+  );
+}
+
 function TarjetaEvento({ evento }: { evento: EventoCalendario }) {
   const navigate = useNavigate();
   const Icono = ICONO_TIPO[evento.tipo];
@@ -191,7 +208,17 @@ export function CalendarioPage() {
   const dias = useMemo(() => construirDiasDelMes(mesVista), [mesVista]);
   const hoy = isoLocal(hoyDate);
   const [diaSeleccionado, setDiaSeleccionado] = useState<string | null>(null);
-  const eventosDelDiaSeleccionado = diaSeleccionado ? eventos.filter((e) => e.fecha === diaSeleccionado) : [];
+  // Indexado por fecha una sola vez (antes cada celda filtraba la lista completa de eventos).
+  const eventosPorFecha = useMemo(() => {
+    const mapa = new Map<string, EventoCalendario[]>();
+    for (const e of eventos) {
+      const lista = mapa.get(e.fecha);
+      if (lista) lista.push(e);
+      else mapa.set(e.fecha, [e]);
+    }
+    return mapa;
+  }, [eventos]);
+  const eventosDelDiaSeleccionado = diaSeleccionado ? eventosPorFecha.get(diaSeleccionado) ?? [] : [];
 
   const proximosEventos = useMemo(
     () =>
@@ -247,7 +274,7 @@ export function CalendarioPage() {
               </button>
             </div>
           </CardHeader>
-          <CardContent className="p-3 sm:p-5">
+          <CardContent className="p-3 sm:p-4">
             <div className="grid grid-cols-7 gap-0.5 text-center text-xs text-muted-foreground sm:gap-1">
               {DIAS_SEMANA.map((d, i) => (
                 <div key={i} className="py-1 font-medium">
@@ -257,34 +284,48 @@ export function CalendarioPage() {
               {dias.map((dia, i) => {
                 if (!dia) return <div key={i} />;
                 const iso = isoLocal(dia);
-                const eventosDia = eventos.filter((e) => e.fecha === iso);
+                const eventosDia = eventosPorFecha.get(iso) ?? [];
                 const esHoy = iso === hoy;
+                // Caben 2 chips; si hay mas, 1 chip + "+N mas" para no desbordar la celda.
+                const visibles = eventosDia.length > 2 ? 1 : 2;
+                const ocultos = eventosDia.length - visibles;
                 return (
                   <button
                     key={i}
                     type="button"
                     onClick={() => eventosDia.length > 0 && setDiaSeleccionado(iso)}
                     className={
-                      "flex min-h-12 flex-col items-center gap-1 rounded-md border border-transparent p-1 text-xs sm:min-h-16 sm:p-1.5 sm:text-sm " +
-                      // `text-text-primary` explicito: la celda de hoy aclara su fondo con
-                      // `bg-accent/20` y el gris heredado del grid se quedaba corto de contraste.
-                      (esHoy
-                        ? "border-accent bg-accent/20 font-bold text-text-primary"
-                        : "hover:bg-bg-secondary") +
-                      (eventosDia.length > 0 ? " cursor-pointer" : " cursor-default")
+                      "flex h-11 min-w-0 flex-col items-center gap-0.5 rounded-md border p-1 sm:h-[4.25rem] sm:items-stretch sm:p-1 " +
+                      (esHoy ? "border-accent" : "border-transparent") +
+                      (eventosDia.length > 0 ? " cursor-pointer hover:bg-bg-secondary" : " cursor-default")
                     }
                   >
-                    <span>{dia.getDate()}</span>
-                    <div className="flex flex-wrap justify-center gap-0.5">
+                    {/* Hoy: numero en circulo de acento (antes toda la celda se pintaba gris). */}
+                    <span
+                      className={
+                        "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] sm:self-start " +
+                        (esHoy ? "bg-accent font-bold text-accent-foreground" : "text-text-primary/80")
+                      }
+                    >
+                      {dia.getDate()}
+                    </span>
+                    {/* Movil: puntos. sm+: hasta 2 chips con titulo y "+N" si hay mas. */}
+                    <div className="flex flex-wrap justify-center gap-0.5 sm:hidden">
                       {eventosDia.slice(0, 4).map((e, idx) => (
                         <PuntoEvento key={idx} tipo={e.tipo} terminado={e.terminado} titulo={`${e.titulo} — ${e.estadoLabel}`} />
                       ))}
+                    </div>
+                    <div className="hidden min-w-0 flex-col gap-0.5 sm:flex">
+                      {eventosDia.slice(0, visibles).map((e, idx) => (
+                        <ChipEvento key={idx} evento={e} />
+                      ))}
+                      {ocultos > 0 && <span className="text-left text-[10px] text-muted-foreground">+{ocultos} mas</span>}
                     </div>
                   </button>
                 );
               })}
             </div>
-            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
+            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
               {(Object.keys(ETIQUETA_TIPO) as TipoEvento[]).map((tipo) => (
                 <span key={tipo} className="flex items-center gap-1.5">
                   <span className={`h-2 w-2 rounded-full ${COLOR_TIPO[tipo]}`} /> {ETIQUETA_TIPO[tipo]}

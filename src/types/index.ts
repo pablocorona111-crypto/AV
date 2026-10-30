@@ -207,6 +207,13 @@ export interface Entregable {
   guionId?: string;
   aprobadorId?: string;
   creadoEn: string;
+  /** Avance real (0-100) que reporta el responsable mientras trabaja (ej. "la web va al 60%").
+   * Si no lo ha capturado se estima por estado — ver avanceDe() en lib/rendimiento.ts. */
+  porcentajeAvance?: number;
+  avanceActualizadoEn?: string;
+  /** Cuando se subio el material POR PRIMERA VEZ (envio a revision). Es la fecha que cuenta para
+   * "a tiempo / tarde": las correcciones posteriores no la mueven. */
+  fechaEnviado?: string;
   /** Cuando `estado` paso a "entregado" — para agrupar entregas por mes en la grafica del lider. */
   fechaEntregado?: string;
   /** Cuando `estado` paso a "aprobado" — una vez aprobado ya cuenta como cumplido en las
@@ -295,6 +302,9 @@ export interface EquipoAV {
 
 export interface Colaborador {
   id: string;
+  /** true = sale de una cuenta en "usuarios" (id = uid). false/ausente = alta manual en
+   * "colaboradores" (externo sin login). Define en que coleccion se guardan sus especialidades. */
+  tieneCuenta?: boolean;
   nombre: string;
   puesto: string;
   especialidades: string[];
@@ -335,4 +345,20 @@ export interface KpiDashboard {
   salidasProgramadas: number;
   colaboradoresDisponibles: number;
   proyectosQueRequierenAtencion: number;
+}
+
+/** Grupos de trabajo para medir KPIs (varias categorias de entregable cuentan como "videos"). */
+export type GrupoKpi = "videos" | "fotografia" | "diseno" | "animacion" | "web";
+
+/** Lo que el lider define para cada integrante (y para si mismo) en "Estructura y KPI". */
+export interface MetaColaborador {
+  /** = id del usuario/colaborador. */
+  id: string;
+  /** De que se encarga, en palabras (ej. "Edicion de video y redes sociales"). */
+  responsabilidad: string;
+  /** Meta SEMANAL por grupo (ej. { videos: 3 } = editar 3 videos por semana). */
+  metasSemanales: Partial<Record<GrupoKpi, number>>;
+  /** Proyectos de los que esta persona es responsable. */
+  proyectosACargo: string[];
+  actualizadoEn?: string;
 }

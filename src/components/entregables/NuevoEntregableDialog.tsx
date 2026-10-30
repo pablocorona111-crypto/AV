@@ -1,10 +1,13 @@
-import { useState } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useMemo, useState } from "react";
+import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus } from "lucide-react";
+import { Plus, Star } from "lucide-react";
 import { useProyectos } from "@/hooks/useProyectos";
-import { useUsuarios } from "@/hooks/useCatalogos";
+import { useEntregables, useUsuarios } from "@/hooks/useCatalogos";
+import { useColaboradoresDelEquipo } from "@/hooks/useColaboradoresDelEquipo";
+import { especialidadesPara } from "@/lib/especialidades";
+import { cargaDeTrabajo, entregablesPorResponsable } from "@/lib/rendimiento";
 import { useCrearEntregable } from "@/hooks/useEntregables";
 import { CATEGORIA_CONTENIDO_LABELS } from "@/lib/labels";
 import { Button } from "@/components/ui/button";
@@ -28,11 +31,11 @@ import type { CategoriaContenido } from "@/types";
 const SIN_PROYECTO = "sin-proyecto";
 
 const schema = z.object({
-  nombre: z.string().min(3, "Minimo 3 caracteres"),
-  proyectoId: z.string().min(1, "Requerido"),
-  responsableId: z.string().min(1, "Requerido"),
-  tipo: z.custom<CategoriaContenido>((v) => typeof v === "string" && v.length > 0, "Requerido"),
-  fechaCompromiso: z.string().min(1, "Requerido"),
+  nombre: z.string().min(3, "Escribe al menos 3 caracteres"),
+  proyectoId: z.string().min(1, "Elige un proyecto o “Sin proyecto”"),
+  responsableId: z.string().min(1, "Elige a quién se asigna"),
+  tipo: z.custom<CategoriaContenido>((v) => typeof v === "string" && v.length > 0, "Elige el tipo de trabajo"),
+  fechaCompromiso: z.string().min(1, "Elige la fecha de entrega"),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -52,9 +55,25 @@ export function NuevoEntregableDialog() {
     formState: { errors },
   } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { proyectoId: SIN_PROYECTO } });
 
-  const colaboradores = usuarios.filter(
-    (u) => u.rol === "colaborador_audiovisual" || u.rol === "lider_audiovisual" || u.rol === "superadmin"
-  );
+  const { data: equipo = [] } = useColaboradoresDelEquipo();
+  const { data: entregables = [] } = useEntregables();
+  const tipo = useWatch({ control, name: "tipo" });
+
+  // Primero quien tiene la especialidad para este tipo de trabajo; entre iguales, el menos cargado.
+  const colaboradores = useMemo(() => {
+    const porResponsable = entregablesPorResponsable(entregables);
+    return usuarios
+      .filter((u) => u.rol === "colaborador_audiovisual" || u.rol === "lider_audiovisual")
+      .map((u) => {
+        const perfil = equipo.find((c) => c.id === u.id);
+        return {
+          ...u,
+          fuertes: especialidadesPara(tipo, perfil?.especialidades ?? u.especialidades),
+          carga: cargaDeTrabajo(porResponsable.get(u.id) ?? []).activas,
+        };
+      })
+      .sort((a, b) => Number(b.fuertes.length > 0) - Number(a.fuertes.length > 0) || a.carga - b.carga);
+  }, [usuarios, equipo, entregables, tipo]);
 
   const onSubmit = async (values: FormValues) => {
     setError(null);
@@ -83,12 +102,12 @@ export function NuevoEntregableDialog() {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Nuevo entregable</DialogTitle>
-          <DialogDescription>Asigna el trabajo a un colaborador del equipo.</DialogDescription>
+          <DialogDescription>Asigna el trabajo a un colaborador del equipo. Los campos con * son obligatorios.</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="nombre">Nombre del entregable</Label>
+            <Label htmlFor="nombre">Nombre del entregable *</Label>
             <Input id="nombre" {...register("nombre")} placeholder="Ej. Video institucional planta - corte 1" />
             {errors.nombre && <p className="text-xs text-destructive">{errors.nombre.message}</p>}
           </div>
@@ -118,8 +137,9 @@ export function NuevoEntregableDialog() {
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label>Responsable</Label>
+            {/* order-2: el Tipo va primero — de el depende el orden sugerido de responsables. */}
+            <div className="order-2 space-y-1.5">
+              <Label>Responsable *</Label>
               <Controller
                 control={control}
                 name="responsableId"
@@ -131,7 +151,14 @@ export function NuevoEntregableDialog() {
                     <SelectContent>
                       {colaboradores.map((c) => (
                         <SelectItem key={c.id} value={c.id}>
-                          {c.nombre}
+                          <span className="flex items-center gap-1.5">
+                            {c.fuertes.length > 0 && <Star className="h-3 w-3 fill-amber-400 text-amber-400" />}
+                            {c.nombre}
+                            <span className="text-xs text-muted-foreground">
+                              · {c.carga} {c.carga === 1 ? "tarea" : "tareas"}
+                              {c.fuertes.length > 0 && ` · ${c.fuertes.join(", ")}`}
+                            </span>
+                          </span>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -139,16 +166,17 @@ export function NuevoEntregableDialog() {
                 )}
               />
               {errors.responsableId && <p className="text-xs text-destructive">{errors.responsableId.message}</p>}
+              {!tipo && <p className="text-[11px] text-muted-foreground">Elige primero el tipo de trabajo: marcamos con ★ a quien tiene esa especialidad.</p>}
             </div>
             <div className="space-y-1.5">
-              <Label>Tipo</Label>
+              <Label>Tipo de trabajo *</Label>
               <Controller
                 control={control}
                 name="tipo"
                 render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecciona" />
+                      <SelectValue placeholder="Selecciona el tipo" />
                     </SelectTrigger>
                     <SelectContent>
                       {Object.entries(CATEGORIA_CONTENIDO_LABELS).map(([value, label]) => (
@@ -165,7 +193,7 @@ export function NuevoEntregableDialog() {
           </div>
 
           <div className="space-y-1.5">
-            <Label>Fecha compromiso</Label>
+            <Label>Fecha compromiso *</Label>
             <Controller
               control={control}
               name="fechaCompromiso"

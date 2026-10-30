@@ -8,8 +8,12 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import App from "./App";
 import "./index.css";
 
+// Tras cada deploy, una pestaña ya abierta pide chunks con hash viejo que ya no existen: en vez
+// de "Algo salio mal" al cambiar de pagina, se recarga sola con la version nueva.
+window.addEventListener("vite:preloadError", () => window.location.reload());
+
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
+  defaultOptions: { queries: { staleTime: 5 * 60_000, refetchOnWindowFocus: false, retry: 1 } },
 });
 
 createRoot(document.getElementById("root")!).render(

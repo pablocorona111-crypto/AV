@@ -7,13 +7,16 @@ export function useNotificaciones() {
   const { usuario } = useAuth();
   const [notificaciones, setNotificaciones] = useState<Notificacion[]>([]);
 
+  // Depende del id (no del objeto usuario): AuthContext recrea el objeto en cada snapshot del
+  // doc del usuario y eso cerraba/reabria el listener re-descargando todas las notificaciones.
+  const uid = usuario?.id;
   useEffect(() => {
-    if (!usuario) {
+    if (!uid) {
       setNotificaciones([]);
       return;
     }
-    return escucharNotificaciones(usuario.id, setNotificaciones);
-  }, [usuario]);
+    return escucharNotificaciones(uid, setNotificaciones);
+  }, [uid]);
 
   const noLeidas = notificaciones.filter((n) => !n.leida).length;
 

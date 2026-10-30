@@ -76,7 +76,7 @@ export function LoginPage() {
 
         <div className="relative space-y-8">
           <h2 className="max-w-md text-3xl font-bold leading-tight">
-            Gestion audiovisual de Grupo Ortiz, ordenada de principio a fin.
+            Gestión audiovisual de Grupo Ortiz, ordenada de principio a fin.
           </h2>
           <ul className="space-y-4">
             {BENEFICIOS.map(({ icon: Icon, texto }) => (
@@ -137,7 +137,7 @@ export function LoginPage() {
 
             <div className="mt-6 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
               <ShieldCheck className="h-3.5 w-3.5" />
-              Acceso solo por invitacion
+              Acceso solo por invitación
             </div>
           </CardContent>
         </Card>

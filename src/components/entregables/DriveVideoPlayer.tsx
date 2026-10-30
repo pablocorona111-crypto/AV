@@ -195,7 +195,7 @@ export const DriveVideoPlayer = forwardRef<
             src={src}
             controls
             playsInline
-            preload="auto"
+            preload="metadata"
             className={cn(
               "h-full w-full scale-[1.03] origin-bottom object-cover [accent-color:#FB670B]",
               "[&:fullscreen]:scale-100 [&:fullscreen]:object-contain [&:fullscreen]:bg-black",
@@ -277,7 +277,7 @@ export const DriveVideoPlayer = forwardRef<
             src={src}
             controls
             playsInline
-            preload="auto"
+            preload="metadata"
             className={cn(
               "h-full w-full scale-[1.03] origin-bottom object-cover [accent-color:#FB670B]",
               "[&:fullscreen]:scale-100 [&:fullscreen]:object-contain [&:fullscreen]:bg-black",

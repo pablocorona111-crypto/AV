@@ -353,7 +353,7 @@ export function RequisicionesPage() {
         {lista.length === 0 && (
           <TableRow>
             <TableCell colSpan={8} className="py-8 text-center text-sm text-muted-foreground">
-              Sin requisiciones en esta vista.
+              Aún no hay solicitudes aquí. Usa “Nueva requisición” para pedir un video, foto o diseño.
             </TableCell>
           </TableRow>
         )}
@@ -366,7 +366,7 @@ export function RequisicionesPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-bold">Requisiciones</h1>
-          <p className="text-sm text-muted-foreground">Recepcion y autorizacion de solicitudes de contenido.</p>
+          <p className="text-sm text-muted-foreground">Recepción y autorización de solicitudes de contenido.</p>
         </div>
         <div className="flex items-center gap-2">
           <DemoBadge />
@@ -375,14 +375,14 @@ export function RequisicionesPage() {
       </div>
 
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Cargando...</p>
+        <p className="text-sm text-muted-foreground">Cargando requisiciones…</p>
       ) : (
         <Tabs defaultValue={puedeAprobar ? "tabla" : "mis"}>
           <TabsList>
-            {puedeAprobar && <TabsTrigger value="tabla">Tabla</TabsTrigger>}
-            {puedeAprobar && <TabsTrigger value="kanban">Kanban</TabsTrigger>}
+            {puedeAprobar && <TabsTrigger value="tabla">Todas</TabsTrigger>}
+            {puedeAprobar && <TabsTrigger value="kanban">Por estado</TabsTrigger>}
             <TabsTrigger value="mis">Mis solicitudes</TabsTrigger>
-            {puedeAprobar && <TabsTrigger value="pendientes">Pendientes aprobacion</TabsTrigger>}
+            {puedeAprobar && <TabsTrigger value="pendientes">Por aprobar</TabsTrigger>}
             {esGestor && !esCommunity && <TabsTrigger value="gestor">Asignadas a mi</TabsTrigger>}
           </TabsList>
 

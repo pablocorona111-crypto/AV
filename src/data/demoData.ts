@@ -9,6 +9,7 @@ import type {
   SalidaGrabacion,
   Usuario,
 } from "@/types";
+import { DEMO_USUARIOS_EXTRA, generarDemoMasivo } from "@/data/demoMasivo";
 
 export const DEMO_USUARIOS: Usuario[] = [
   {
@@ -243,7 +244,7 @@ export const DEMO_SALIDAS: SalidaGrabacion[] = [
     proyectosRelacionados: ["p-1"],
     tipoActividad: "grabacion_proceso_industrial",
     planta: "Planta Stretch Film",
-    direccion: "Parque Industrial Ortiz, Nave 3",
+    direccion: "Parque Industrial Ortiz, Nave 3, Morelia",
     contactoPlanta: "Ing. Roberto Pena",
     telefonoContacto: "55 1234 5678",
     fecha: "2026-10-17",
@@ -267,6 +268,7 @@ export const DEMO_SALIDAS: SalidaGrabacion[] = [
     proyectosRelacionados: [],
     tipoActividad: "cobertura_evento",
     planta: "Centro de Convenciones",
+    direccion: "Expo Guadalajara, Jal.",
     fecha: "2026-10-20",
     horaSalida: "08:00",
     horaEstimadaLlegada: "09:00",
@@ -361,7 +363,7 @@ export const DEMO_ENTREGABLES: Entregable[] = [
     nombre: "Animacion_Lanzamiento",
     tipo: "animacion_2d_3d",
     formato: "MP4 1080p",
-    responsableId: "u-carlos",
+    responsableId: "u-valeria",
     fechaCompromiso: "2026-08-12",
     version: "FINAL",
     estado: "entregado",
@@ -376,7 +378,7 @@ export const DEMO_ENTREGABLES: Entregable[] = [
     nombre: "Cobertura_Evento_Septiembre",
     tipo: "cobertura_evento",
     formato: "MP4 1080p",
-    responsableId: "u-sofia",
+    responsableId: "u-luis",
     fechaCompromiso: "2026-09-18",
     version: "FINAL",
     estado: "entregado",
@@ -418,3 +420,20 @@ export const DEMO_ENTREGABLES: Entregable[] = [
 ];
 
 export const DEMO_MODE_LABEL = "DATOS DE DEMOSTRACION";
+
+// Volumen extra para ver Inicio/Entregables/Rendimiento/Reportes con datos realistas
+// (~3 meses de trabajo, fechas relativas a hoy). Ver demoMasivo.ts.
+const masivo = generarDemoMasivo();
+DEMO_USUARIOS.push(...DEMO_USUARIOS_EXTRA);
+DEMO_PROYECTOS.push(...masivo.proyectos);
+DEMO_ENTREGABLES.push(...masivo.entregables);
+DEMO_REQUISICIONES.push(...masivo.requisiciones);
+
+// Equipo demo reducido a 3 colaboradores (Luis, Mariana, Valeria) + la lider: Carlos y Sofia
+// quedan como cuentas de otra area para que no aparezcan en Equipo/Rendimiento/Reportes.
+for (const u of DEMO_USUARIOS) {
+  if (u.id === "u-carlos" || u.id === "u-sofia") u.rol = "solicitante";
+}
+
+// Salidas de grabacion extra (Morelia y foraneas) para que el plan del area muestre demanda real.
+DEMO_SALIDAS.push(...masivo.salidas);

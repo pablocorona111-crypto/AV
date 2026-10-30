@@ -113,12 +113,12 @@ export function NuevaRequisicionDialog() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button>
-          <Plus className="h-4 w-4" /> Nueva requisicion
+          <Plus className="h-4 w-4" /> Nueva requisición
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Nueva requisicion</DialogTitle>
+          <DialogTitle>Nueva requisición</DialogTitle>
           <DialogDescription>Folio se asigna automaticamente al enviar.</DialogDescription>
         </DialogHeader>
 

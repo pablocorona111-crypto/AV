@@ -17,6 +17,7 @@ const COLECCIONES_A_VACIAR = [
   "equipo_av",
   "colaboradores",
   "invitaciones",
+  "metas",
 ];
 
 // entregables y guiones tienen una subcoleccion "comentarios" por documento — Firestore no

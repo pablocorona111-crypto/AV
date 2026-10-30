@@ -1,3 +1,4 @@
+import { MisAvances } from "@/components/entregables/MisAvances";
 import {
   BarChart,
   Bar,
@@ -6,6 +7,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  Legend,
   PieChart,
   Pie,
   Cell,
@@ -82,7 +84,7 @@ export function DashboardPage() {
     (e) => aFecha(e.fechaCompromiso) < ahora && !yaEntregoMaterial(e)
   ).length;
   // "Colaboradores" se cuenta de las cuentas reales (usuarios) por rol — la coleccion aparte
-  // "colaboradores" (carga de trabajo/disponibilidad en Equipo) casi nunca esta poblada todavia.
+  // "colaboradores" (carga de trabajo/disponibilidad en Equipo) casi nunca esta poblada todavía.
   const colaboradoresDelEquipo = usuarios.filter((u) => u.rol === "colaborador_audiovisual");
   const proyectosAtencion = proyectos.filter(
     (p) => (p.prioridad === "critica" || p.prioridad === "alta") && !["entregado", "cerrado"].includes(p.etapaActual)
@@ -110,7 +112,7 @@ export function DashboardPage() {
   // Produccion real de la semana en curso (ya no datos de ejemplo fijos).
   const produccionSemanal = calcularProduccionSemanal(entregables, requisiciones, ahora);
 
-  // Tipo de entregables del mes en curso, real — si no hay nada todavia, un placeholder gris
+  // Tipo de entregables del mes en curso, real — si no hay nada todavía, un placeholder gris
   // para que la dona siga mostrando su forma (y no desaparezca el bloque completo).
   const porTipoMap = new Map<Entregable["tipo"], number>();
   entregables
@@ -120,14 +122,33 @@ export function DashboardPage() {
     })
     .forEach((e) => porTipoMap.set(e.tipo, (porTipoMap.get(e.tipo) ?? 0) + 1));
   const totalTipoMes = [...porTipoMap.values()].reduce((a, b) => a + b, 0);
+  // Top 5 tipos + el resto agrupado: con 14 tipos la paleta (7 colores) se repetia y la
+  // leyenda estiraba la tarjeta, deformando la grafica de al lado.
+  const TOP_TIPOS = 5;
+  const ordenTipos = [...porTipoMap.entries()].sort((a, b) => b[1] - a[1]);
+  const restoTipos = ordenTipos.slice(TOP_TIPOS);
   const tipoEntregables =
     totalTipoMes > 0
-      ? [...porTipoMap.entries()].map(([tipo, cantidad], i) => ({
-          name: CATEGORIA_CONTENIDO_LABELS[tipo],
-          value: Math.round((cantidad / totalTipoMes) * 100),
-          color: COLORES_TIPO[i % COLORES_TIPO.length],
-        }))
-      : [{ name: "Sin datos este mes", value: 100, color: g.vacio }];
+      ? [
+          ...ordenTipos.slice(0, TOP_TIPOS).map(([tipo, cantidad], i) => ({
+            name: CATEGORIA_CONTENIDO_LABELS[tipo],
+            cantidad,
+            value: Math.round((cantidad / totalTipoMes) * 100),
+            color: COLORES_TIPO[i],
+          })),
+          ...(restoTipos.length
+            ? [(() => {
+                const cantidad = restoTipos.reduce((a, [, c]) => a + c, 0);
+                return {
+                  name: `Otros ${restoTipos.length} tipos`,
+                  cantidad,
+                  value: Math.round((cantidad / totalTipoMes) * 100),
+                  color: g.barraNeutra,
+                };
+              })()]
+            : []),
+        ]
+      : [{ name: "Sin datos este mes", cantidad: 0, value: 100, color: g.vacio }];
 
   // Solo para lider/superadmin (`puedeVerMetricasGlobales`).
   const entregadosPorMesReal = cumplidosPorMes(entregables);
@@ -144,15 +165,15 @@ export function DashboardPage() {
       if (e.fechaEntregado) {
         eventos.push({
           icono: CheckCircle2,
-          texto: `${nombreDe(e.responsableId)} marco "${e.nombre}" como ${ACCION_ENTREGA_LABELS[e.tipo]}`,
+          texto: `${nombreDe(e.responsableId)} marcó "${e.nombre}" como ${ACCION_ENTREGA_LABELS[e.tipo]}`,
           cuando: aFecha(e.fechaEntregado),
         });
       }
       if (e.fechaAprobado) {
-        eventos.push({ icono: CheckCircle2, texto: `Se aprobo "${e.nombre}"`, cuando: aFecha(e.fechaAprobado) });
+        eventos.push({ icono: CheckCircle2, texto: `Se aprobó "${e.nombre}"`, cuando: aFecha(e.fechaAprobado) });
       }
       if (e.creadoEn) {
-        eventos.push({ icono: Upload, texto: `${nombreDe(e.responsableId)} creo el entregable "${e.nombre}"`, cuando: aFecha(e.creadoEn) });
+        eventos.push({ icono: Upload, texto: `${nombreDe(e.responsableId)} creó el entregable "${e.nombre}"`, cuando: aFecha(e.creadoEn) });
       }
       const proyecto = proyectoDe(e.proyectoId);
       return eventos.map((ev) => ({ ...ev, detalle: `${CATEGORIA_CONTENIDO_LABELS[e.tipo]}${proyecto ? ` · ${proyecto}` : ""}` }));
@@ -165,19 +186,23 @@ export function DashboardPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-bold">¡Hola, {usuario?.nombre?.split(" ")[0] ?? "de nuevo"}!</h1>
-          <p className="text-sm text-muted-foreground">Aqui tienes el resumen del departamento audiovisual.</p>
+          <p className="text-sm text-muted-foreground">Aquí tienes el resumen del departamento audiovisual.</p>
         </div>
         <DemoBadge />
       </div>
 
+      {/* Cada quien reporta aqui su % de avance (antes solo existia en Rendimiento, que es solo del
+          lider — los colaboradores no tenian donde actualizarlo). */}
+      {usuario && <MisAvances usuarioId={usuario.id} nombre={usuario.nombre} puesto={usuario.puesto} />}
+
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard icon={FileText} label="Requisiciones" value={requisiciones.length} hint="Este mes" />
-        <StatCard icon={Clock} label="Pendientes aprobacion" value={pendientesAprobacion} hint="Requieren revision" />
-        <StatCard icon={Film} label="En postproduccion" value={enPostproduccion} hint="Proyectos activos" />
+        <StatCard icon={FileText} label="Requisiciones" value={requisiciones.length} hint="En total" />
+        <StatCard icon={Clock} label="Por aprobar" value={pendientesAprobacion} hint="Requieren revisión" />
+        <StatCard icon={Film} label="En postproducción" value={enPostproduccion} hint="Proyectos activos" />
         <StatCard icon={CheckCircle2} label="Entregados" value={entregadosEsteMes} hint="Este mes" />
-        <StatCard icon={AlertTriangle} label="Entregas atrasadas" value={entregasAtrasadas} hint="Requieren atencion" iconBg="bg-red-100 dark:bg-red-400/20" />
+        <StatCard icon={AlertTriangle} label="Entregas atrasadas" value={entregasAtrasadas} hint="Requieren atención" iconBg="bg-red-100 dark:bg-red-400/20" />
         <StatCard icon={Clock} label="Cumplimiento" value={`${cumplimiento}%`} hint="A tiempo" />
-        <StatCard icon={Camera} label="Salidas programadas" value={salidas.length} hint="Proximos 7 dias" />
+        <StatCard icon={Camera} label="Salidas programadas" value={salidas.length} hint="Registradas" />
         <StatCard icon={Users} label="Colaboradores" value={colaboradoresDelEquipo.length} hint="Audiovisuales en el equipo" />
       </div>
 
@@ -186,7 +211,7 @@ export function DashboardPage() {
           <div>
             <p className="text-sm font-semibold">Cumplimiento semanal</p>
             <p className="text-xs text-muted-foreground">
-              Lunes a sabado · {cumplidosEstaSemana} de {entregablesDeEstaSemana.length || 0} con fecha compromiso
+              Lunes a sábado · {cumplidosEstaSemana} de {entregablesDeEstaSemana.length || 0} con fecha compromiso
               esta semana
             </p>
           </div>
@@ -202,24 +227,28 @@ export function DashboardPage() {
           <CardContent className="flex items-center gap-3 p-4">
             <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
             <p className="text-sm text-amber-900 dark:text-amber-200">
-              {proyectosAtencion} proyecto(s) de prioridad alta/critica requieren atencion.
+              {proyectosAtencion === 1
+                ? "1 proyecto de prioridad alta o crítica requiere atención."
+                : `${proyectosAtencion} proyectos de prioridad alta o crítica requieren atención.`}
             </p>
           </CardContent>
         </Card>
       )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
+        {/* flex-col + flex-1: la grafica llena la altura de la fila en vez de dejar hueco abajo. */}
+        <Card className="flex flex-col lg:col-span-2">
           <CardHeader>
-            <CardTitle>Produccion semanal</CardTitle>
+            <CardTitle>Producción semanal</CardTitle>
           </CardHeader>
-          <CardContent className="h-56">
+          <CardContent className="min-h-56 flex-1">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={produccionSemanal}>
                 <CartesianGrid strokeDasharray="3 3" stroke={g.grid} vertical={false} />
                 <XAxis dataKey="dia" tickLine={false} axisLine={false} fontSize={12} tick={g.tick} />
                 <YAxis tickLine={false} axisLine={false} fontSize={12} tick={g.tick} />
                 <Tooltip cursor={g.cursor} {...g.tooltip} />
+                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} />
                 <Bar dataKey="entregados" name="Entregados" fill="#C1EB1F" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="solicitudes" name="Solicitudes" fill={g.barraNeutra} radius={[4, 4, 0, 0]} />
               </BarChart>
@@ -257,7 +286,9 @@ export function DashboardPage() {
                     <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: t.color }} />
                     <span className="truncate">{t.name}</span>
                   </span>
-                  <span className="shrink-0 font-medium">{t.value}%</span>
+                  <span className="shrink-0 font-medium">
+                    {t.value}%{t.cantidad > 0 && <span className="ml-1 font-normal text-muted-foreground">({t.cantidad})</span>}
+                  </span>
                 </div>
               ))}
             </div>
@@ -273,7 +304,7 @@ export function DashboardPage() {
           <CardContent className="h-48">
             {entregadosPorMes.length === 0 ? (
               <p className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                Aun no hay entregables marcados como entregados.
+                Aún no hay entregables marcados como entregados.
               </p>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
@@ -300,10 +331,10 @@ export function DashboardPage() {
               <thead>
                 <tr className="border-b border-border text-left text-xs text-muted-foreground">
                   <th className="py-2 font-medium">Folio</th>
-                  <th className="py-2 font-medium">Titulo</th>
-                  <th className="py-2 font-medium">Prioridad</th>
-                  <th className="py-2 font-medium">Fecha entrega</th>
-                  <th className="py-2 font-medium">Estatus</th>
+                  <th className="py-2 font-medium">Título</th>
+                  <th className="py-2 font-medium">Tipo</th>
+                  <th className="py-2 font-medium">Fecha requerida</th>
+                  <th className="py-2 font-medium">Estado</th>
                 </tr>
               </thead>
               <tbody>
@@ -332,7 +363,7 @@ export function DashboardPage() {
           <CardContent className="space-y-3">
             {colaboradores.length === 0 && (
               <p className="py-6 text-center text-sm text-muted-foreground">
-                Sin colaboradores registrados en Equipo todavia.
+                Sin colaboradores registrados en Equipo todavía.
               </p>
             )}
             {colaboradores.map((c) => (
@@ -354,7 +385,7 @@ export function DashboardPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           {actividadReciente.length === 0 && (
-            <p className="py-6 text-center text-sm text-muted-foreground">Sin actividad registrada todavia.</p>
+            <p className="py-6 text-center text-sm text-muted-foreground">Sin actividad registrada todavía.</p>
           )}
           {actividadReciente.map((a, i) => (
             <div key={i} className="flex items-start gap-3">

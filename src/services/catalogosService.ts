@@ -21,7 +21,8 @@ import type {
 export type DecisionSalida = Exclude<EstadoAutorizacionSalida, "pendiente">;
 
 async function listar<T>(coleccion: string, demo: T[]): Promise<T[]> {
-  if (!isFirebaseConfigured || !db) return demo;
+  // Copia: si se devuelve el mismo arreglo, react-query no detecta los cambios hechos en demo.
+  if (!isFirebaseConfigured || !db) return [...demo];
   const snap = await getDocs(collection(db, coleccion));
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as T);
 }
@@ -84,7 +85,7 @@ export const listarUsuarios = () => listar<Usuario>("usuarios", DEMO_USUARIOS);
 let demoColaboradores: Colaborador[] = [...DEMO_COLABORADORES];
 
 export const listarColaboradores = async (): Promise<Colaborador[]> => {
-  if (!isFirebaseConfigured || !db) return demoColaboradores;
+  if (!isFirebaseConfigured || !db) return [...demoColaboradores];
   const snap = await getDocs(collection(db, "colaboradores"));
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Colaborador);
 };
@@ -111,6 +112,25 @@ export async function actualizarGestorRequisiciones(
 ) {
   if (!isFirebaseConfigured || !db) return;
   await updateDoc(doc(db, "usuarios", usuarioId), { gestorRequisiciones });
+}
+
+/** Especialidades/puesto que el lider asigna en Equipo. Cuenta real -> "usuarios" (lo que lee
+ * todo el sistema); externo sin cuenta -> su doc en "colaboradores". */
+export async function actualizarPerfilColaborador(
+  colaborador: Pick<Colaborador, "id" | "tieneCuenta">,
+  cambios: { especialidades: string[]; puesto: string }
+) {
+  if (!isFirebaseConfigured || !db) {
+    // Objeto nuevo (no mutar el existente) para que react-query vea el cambio y re-renderice.
+    if (colaborador.tieneCuenta) {
+      const i = DEMO_USUARIOS.findIndex((u) => u.id === colaborador.id);
+      if (i >= 0) DEMO_USUARIOS[i] = { ...DEMO_USUARIOS[i], ...cambios };
+    } else {
+      demoColaboradores = demoColaboradores.map((c) => (c.id === colaborador.id ? { ...c, ...cambios } : c));
+    }
+    return;
+  }
+  await updateDoc(doc(db, colaborador.tieneCuenta ? "usuarios" : "colaboradores", colaborador.id), cambios);
 }
 
 export async function actualizarRolUsuario(usuarioId: string, rol: Usuario["rol"]) {

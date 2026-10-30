@@ -66,7 +66,7 @@ export function ProyectosPage() {
       </div>
 
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Cargando...</p>
+        <p className="text-sm text-muted-foreground">Cargando proyectos…</p>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {proyectos.map((p) => (
@@ -113,7 +113,7 @@ export function ProyectosPage() {
           ))}
           {proyectos.length === 0 && (
             <p className="col-span-full py-8 text-center text-sm text-muted-foreground">
-              Sin proyectos activos.
+              Aún no hay proyectos. Se crean a partir de una requisición aprobada.
             </p>
           )}
         </div>

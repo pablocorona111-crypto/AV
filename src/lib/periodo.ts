@@ -22,6 +22,10 @@ export function inicioDePeriodo(periodo: Periodo, ahora: Date = new Date()): Dat
  * (nunca entraba nada a "esta semana"/"este mes"). Acepta cualquiera de las dos formas. */
 export function aFecha(valor: unknown): Date {
   if (valor instanceof Date) return valor;
+  if (typeof valor === "string" && /^\d{4}-\d{2}-\d{2}$/.test(valor)) {
+    const [a, m, d] = valor.split("-").map(Number);
+    return new Date(a, m - 1, d);
+  }
   if (typeof valor === "string" || typeof valor === "number") return new Date(valor);
   if (valor && typeof valor === "object" && "toDate" in valor && typeof (valor as { toDate: unknown }).toDate === "function") {
     return (valor as { toDate: () => Date }).toDate();

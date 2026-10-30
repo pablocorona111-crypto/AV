@@ -3,6 +3,7 @@ import {
   collection,
   deleteField,
   doc,
+  getDoc,
   getDocs,
   orderBy,
   query,
@@ -215,9 +216,16 @@ export async function enviarARevision(
   urlRevision: string,
   orientacionVideo?: "vertical" | "horizontal"
 ): Promise<void> {
+  // Solo la PRIMERA subida fija fechaEnviado: si luego hay correcciones, la entrega original
+  // sigue contando con su fecha (no se vuelve "tarde" por la revision de community).
+  const yaEnviado =
+    !isFirebaseConfigured || !db
+      ? Boolean(demoStore.find((e) => e.id === id)?.fechaEnviado)
+      : Boolean((await getDoc(doc(db, COLECCION, id))).data()?.fechaEnviado);
   await actualizarEntregable(id, {
     urlRevision,
     estado: "en_revision",
+    ...(yaEnviado ? {} : { fechaEnviado: new Date().toISOString() }),
     ...(orientacionVideo ? { orientacionVideo } : {}),
   });
 }

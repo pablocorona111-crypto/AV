@@ -139,7 +139,8 @@ export function DatePicker({
               <button
                 type="button"
                 onClick={() => setVista(new Date(vista.getFullYear(), vista.getMonth() - 1, 1))}
-                className="rounded-md p-1 hover:bg-bg-secondary"
+                aria-label="Mes anterior"
+                className="rounded-md p-2 hover:bg-bg-secondary"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
@@ -149,7 +150,8 @@ export function DatePicker({
               <button
                 type="button"
                 onClick={() => setVista(new Date(vista.getFullYear(), vista.getMonth() + 1, 1))}
-                className="rounded-md p-1 hover:bg-bg-secondary"
+                aria-label="Mes siguiente"
+                className="rounded-md p-2 hover:bg-bg-secondary"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>

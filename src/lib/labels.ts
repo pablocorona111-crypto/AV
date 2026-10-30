@@ -13,11 +13,11 @@ import type { BadgeVariant } from "@/components/ui/badge";
 export const ESTADO_REQUISICION_LABELS: Record<EstadoRequisicion, string> = {
   borrador: "Borrador",
   enviada: "Enviada",
-  en_evaluacion: "En evaluacion",
+  en_evaluacion: "En evaluación",
   aprobada: "Aprobada",
   rechazada: "Rechazada",
-  requiere_informacion: "Requiere informacion",
-  en_planeacion: "En planeacion",
+  requiere_informacion: "Requiere información",
+  en_planeacion: "En planeación",
 };
 
 export const ESTADO_REQUISICION_BADGE: Record<EstadoRequisicion, BadgeVariant> = {
@@ -34,16 +34,16 @@ export const CATEGORIA_CONTENIDO_LABELS: Record<CategoriaContenido, string> = {
   video_institucional: "Video institucional",
   video_industrial: "Video industrial",
   video_producto: "Video de producto",
-  fotografia: "Fotografia",
-  fotografia_producto: "Fotografia de producto",
-  fotografia_industrial: "Fotografia industrial",
+  fotografia: "Fotografía",
+  fotografia_producto: "Fotografía de producto",
+  fotografia_industrial: "Fotografía industrial",
   cobertura_evento: "Cobertura de evento",
-  diseno_grafico: "Diseño grafico",
-  animacion_2d_3d: "Animacion 2D/3D",
+  diseno_grafico: "Diseño gráfico",
+  animacion_2d_3d: "Animación 2D/3D",
   motion_graphics: "Motion Graphics",
   contenido_redes_sociales: "Contenido para redes sociales",
   entrevistas: "Entrevistas",
-  capacitacion: "Capacitacion",
+  capacitacion: "Capacitación",
   otros: "Otros",
 };
 
@@ -76,7 +76,7 @@ export const PRIORIDAD_LABELS: Record<Prioridad, string> = {
   baja: "Baja",
   media: "Media",
   alta: "Alta",
-  critica: "Critica",
+  critica: "Crítica",
 };
 
 export const PRIORIDAD_BADGE: Record<Prioridad, BadgeVariant> = {
@@ -87,13 +87,13 @@ export const PRIORIDAD_BADGE: Record<Prioridad, BadgeVariant> = {
 };
 
 export const ETAPA_PROYECTO_LABELS: Record<EtapaProyecto, string> = {
-  planeacion: "Planeacion",
-  preproduccion: "Preproduccion",
-  produccion: "Produccion",
+  planeacion: "Planeación",
+  preproduccion: "Preproducción",
+  produccion: "Producción",
   ingesta_respaldo: "Ingesta y respaldo",
-  edicion: "Edicion",
-  animacion_acabados: "Animacion / Acabados",
-  revision: "Revision",
+  edicion: "Edición",
+  animacion_acabados: "Animación / Acabados",
+  revision: "Revisión",
   correcciones: "Correcciones",
   aprobado: "Aprobado",
   entregado: "Entregado",
@@ -102,7 +102,7 @@ export const ETAPA_PROYECTO_LABELS: Record<EtapaProyecto, string> = {
 
 export const ESTADO_GUION_LABELS: Record<EstadoGuion, string> = {
   borrador: "Borrador",
-  en_revision: "En revision",
+  en_revision: "En revisión",
   correcciones: "Correcciones",
   aprobado: "Aprobado",
 };
@@ -117,7 +117,7 @@ export const ESTADO_GUION_BADGE: Record<EstadoGuion, BadgeVariant> = {
 export const ESTADO_ENTREGABLE_LABELS: Record<EstadoEntregable, string> = {
   pendiente: "Pendiente",
   en_proceso: "En proceso",
-  en_revision: "En revision",
+  en_revision: "En revisión",
   correcciones: "Correcciones",
   aprobado: "Aprobado",
   entregado: "Entregado",
@@ -144,15 +144,15 @@ export function etiquetaEstadoEntregable(e: { estado: EstadoEntregable; tipo: Ca
 
 export const TIPO_ACTIVIDAD_SALIDA_LABELS: Record<TipoActividadSalida, string> = {
   levantamiento_contenido: "Levantamiento de contenido",
-  grabacion_proceso_industrial: "Grabacion de proceso industrial",
-  fotografia_maquinaria: "Fotografia de maquinaria",
-  fotografia_producto: "Fotografia de producto",
+  grabacion_proceso_industrial: "Grabación de proceso industrial",
+  fotografia_maquinaria: "Fotografía de maquinaria",
+  fotografia_producto: "Fotografía de producto",
   entrevista: "Entrevista",
   recorrido_reconocimiento: "Recorrido de reconocimiento",
-  grabacion_dron: "Grabacion con dron",
+  grabacion_dron: "Grabación con dron",
   cobertura_evento: "Cobertura de evento",
-  grabacion_institucional: "Grabacion institucional",
-  visita_tecnica: "Visita tecnica",
+  grabacion_institucional: "Grabación institucional",
+  visita_tecnica: "Visita técnica",
 };
 
 /** Unica fuente del texto/color del estado de autorizacion de una salida — lo usan la pagina

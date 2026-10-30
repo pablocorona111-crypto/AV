@@ -13,7 +13,7 @@ import {
   GoogleAuthProvider,
   signOut as firebaseSignOut,
 } from "firebase/auth";
-import { doc, getDoc, onSnapshot, setDoc, updateDoc } from "firebase/firestore";
+import { clearIndexedDbPersistence, doc, getDoc, onSnapshot, setDoc, terminate, updateDoc } from "firebase/firestore";
 import { auth, db, isFirebaseConfigured } from "@/lib/firebase";
 import { DEMO_USUARIOS } from "@/data/demoData";
 import { buscarInvitacionPorCorreo } from "@/services/invitacionesService";
@@ -167,6 +167,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     await firebaseSignOut(auth);
+    // La cache persistente (IndexedDB) guardaba los datos del usuario anterior: en una compu
+    // compartida, el siguiente alcanzaba a verlos. Se borra y se recarga limpio.
+    if (db) {
+      try {
+        await terminate(db);
+        await clearIndexedDbPersistence(db);
+      } catch {
+        // Otra pestaña abierta aun usa la cache: se limpiara cuando todas se cierren.
+      }
+      window.location.reload();
+    }
   };
 
   const cambiarUsuarioDemo = (usuarioId: string) => {

@@ -55,7 +55,7 @@ function NotificacionesMenu() {
         <DropdownMenuLabel>Notificaciones</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {notificaciones.length === 0 && (
-          <p className="px-2 py-4 text-center text-xs text-muted-foreground">Sin notificaciones.</p>
+          <p className="px-2 py-4 text-center text-xs text-muted-foreground">No tienes notificaciones. Aquí te avisaremos cuando te asignen, revisen o aprueben un trabajo.</p>
         )}
         <div className="max-h-80 overflow-y-auto">
           {notificaciones.map((n) => (
@@ -112,7 +112,7 @@ export function Header({ onAbrirMenu }: { onAbrirMenu: () => void }) {
         type="button"
         onClick={onAbrirMenu}
         className="shrink-0 rounded-md p-2 hover:bg-bg-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent lg:hidden"
-        aria-label="Abrir menu"
+        aria-label="Abrir menú"
       >
         <Menu className="h-5 w-5 text-text-primary/70" />
       </button>
@@ -167,7 +167,7 @@ export function Header({ onAbrirMenu }: { onAbrirMenu: () => void }) {
             </>
           )}
           <DropdownMenuItem onClick={() => logout()} className="text-destructive gap-2">
-            <LogOut className="h-4 w-4" /> Cerrar sesion
+            <LogOut className="h-4 w-4" /> Cerrar sesión
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

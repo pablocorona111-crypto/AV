@@ -25,9 +25,11 @@ export function useColaboradoresDelEquipo(): { data: Colaborador[]; isLoading: b
       const extra = colaboradores.find((c) => normalizar(c.nombre) === normalizar(u.nombre));
       return {
         id: u.id,
+        tieneCuenta: true,
         nombre: u.nombre,
-        puesto: extra?.puesto || ROLE_LABELS[u.rol],
-        especialidades: extra?.especialidades ?? [],
+        puesto: u.puesto || extra?.puesto || ROLE_LABELS[u.rol],
+        // Las de la cuenta mandan (las edita el lider en Equipo); el roster viejo es respaldo.
+        especialidades: u.especialidades?.length ? u.especialidades : extra?.especialidades ?? [],
         disponibilidad: extra?.disponibilidad ?? "disponible",
         proyectosAsignados: extra?.proyectosAsignados ?? [],
         tareasPendientes: extra?.tareasPendientes ?? 0,

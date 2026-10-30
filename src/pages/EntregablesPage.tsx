@@ -134,7 +134,7 @@ export function EntregablesPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold">Postproduccion y entregables</h1>
+          <h1 className="text-xl font-bold">Postproducción y entregables</h1>
           <p className="text-sm text-muted-foreground">Guiones y versionado de entregables por proyecto.</p>
         </div>
         <DemoBadge />
@@ -173,7 +173,7 @@ export function EntregablesPage() {
                         <p className="mt-1 text-muted-foreground">{nombreDe(g.responsableId)}</p>
                       </button>
                     ))}
-                    {items.length === 0 && <p className="py-4 text-center text-xs text-muted-foreground">—</p>}
+                    {items.length === 0 && <p className="py-4 text-center text-xs text-muted-foreground">Sin guiones en esta etapa.</p>}
                   </CardContent>
                 </Card>
               );
@@ -206,7 +206,7 @@ export function EntregablesPage() {
             </div>
           </div>
           {isLoading ? (
-            <p className="text-sm text-muted-foreground">Cargando...</p>
+            <p className="text-sm text-muted-foreground">Cargando entregables…</p>
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
               {COLUMNAS.map((estado) => {
@@ -260,7 +260,7 @@ export function EntregablesPage() {
                           </div>
                         </div>
                       ))}
-                      {items.length === 0 && <p className="py-4 text-center text-xs text-muted-foreground">—</p>}
+                      {items.length === 0 && <p className="py-4 text-center text-xs text-muted-foreground">Nada en esta columna.</p>}
                     </CardContent>
                   </Card>
                 );

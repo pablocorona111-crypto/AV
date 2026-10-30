@@ -82,7 +82,8 @@ service cloud.firestore {
       // campo (incluido `rol`), lo que le permitia autopromoverse o promover a alguien mas a
       // superadmin desde el mismo Select de ConfiguracionPage.tsx que usa para esto.
       allow update: if esSuperadmin() ||
-        (esLiderAudiovisual() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['gestorRequisiciones'])) ||
+        // Tambien especialidades/puesto: los asigna el lider en Equipo (perfil de trabajo, no permisos).
+        (esLiderAudiovisual() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['gestorRequisiciones', 'especialidades', 'puesto'])) ||
         (request.auth.uid == usuarioId && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['avatarUrl']));
       allow delete: if esSuperadmin() || esLiderAudiovisual();
     }
@@ -178,6 +179,8 @@ service cloud.firestore {
       // departamental). El responsable puede actualizar su entregable (ej. subir link de
       // Drive, mandar a revision) pero nunca puede aprobarse a si mismo.
       allow update: if esSuperadmin() || esGestorRequisiciones() ||
+        // Lider: corrige datos del trabajo de su equipo, pero nunca aprueba (estado sin cambios).
+        (esLiderAudiovisual() && request.resource.data.estado == resource.data.estado) ||
         (resource.data.responsableId == request.auth.uid && request.resource.data.estado != 'aprobado' &&
           rol() in ['superadmin', 'lider_audiovisual', 'colaborador_audiovisual']);
 
@@ -230,6 +233,13 @@ service cloud.firestore {
     }
 
     match /equipo_av/{equipoId} {
+      allow read: if usuarioAutenticado();
+      allow write: if esSuperadmin() || esLiderAudiovisual();
+    }
+
+    // Metas/KPI por persona y proyectos a cargo (pestaña "Estructura y KPI"): todos las leen
+    // (cada quien ve su meta), solo lider/superadmin las definen.
+    match /metas/{usuarioId} {
       allow read: if usuarioAutenticado();
       allow write: if esSuperadmin() || esLiderAudiovisual();
     }
